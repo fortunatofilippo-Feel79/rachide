@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0F14">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rachide">
+<title>Rachide</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiUmFjaGlkZSIsInNob3J0X25hbWUiOiJSYWNoaWRlIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwQTBGMTQiLCJ0aGVtZV9jb2xvciI6IiMwQTBGMTQifQ==">
+<style>
+:root{
+  --bg:#0A0F14; --surf:#131C24; --surf2:#1B2833; --line:#26343F;
+  --bone:#E9EEF3; --mut:#7D8D9B; --dim:#4E5F6D;
+  --amb:#E0A458; --glow:#6FB3C4; --alert:#D45D5D; --ok:#7FB069;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--bone)}
+body{
+  font:400 16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-variant-numeric:tabular-nums;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  overscroll-behavior-y:contain;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px}
+
+/* ---------- micro-label: the clinical register of a radiology report ---------- */
+.eyebrow{
+  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);
+}
+.eyebrow.amb{color:var(--amb)}
+.eyebrow.glow{color:var(--glow)}
+
+h1{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0}
+h2{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:0}
+.num{font-weight:700;letter-spacing:-.03em}
+.mut{color:var(--mut)}
+.sm{font-size:13px}
+.xs{font-size:11.5px}
+
+/* ---------- top bar ---------- */
+header.top{
+  position:sticky;top:0;z-index:40;background:rgba(10,15,20,.92);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+  padding:calc(8px + env(safe-area-inset-top)) 0 8px;
+}
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.clock{font-size:15px;font-weight:700;letter-spacing:-.02em;padding:5px 10px;border:1px solid var(--line);border-radius:10px}
+.clock.warn{border-color:var(--amb);color:var(--amb)}
+
+/* ---------- cards ---------- */
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:10px 0}
+.card.flat{background:none;border-style:dashed}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+hr.hair{border:0;border-top:1px solid var(--line);margin:12px 0}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surf2);font-weight:600;font-size:15px;width:100%;
+}
+.btn:active{transform:scale(.985)}
+.btn.pri{background:var(--glow);color:#08151A;border-color:var(--glow)}
+.btn.amb{background:var(--amb);color:#1A1206;border-color:var(--amb)}
+.btn.ghost{background:none}
+.btn.sm{min-height:38px;font-size:13.5px;padding:0 12px;width:auto}
+.btn[disabled]{opacity:.4}
+
+/* ---------- steppers ---------- */
+.step{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surf2)}
+.step button{width:46px;height:46px;font-size:22px;font-weight:600;color:var(--mut);flex:none}
+.step button:active{background:var(--line);color:var(--bone)}
+.step .val{flex:1;text-align:center;font-size:19px;font-weight:700;letter-spacing:-.02em;min-width:52px}
+.step .val small{font-size:11px;font-weight:500;color:var(--mut);margin-left:2px}
+
+/* ---------- set chips ---------- */
+.sets{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  min-width:46px;height:42px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surf2);display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:16px;color:var(--dim);flex:1;
+}
+.chip.done{color:var(--bone);border-color:var(--glow)}
+.chip.top{background:rgba(111,179,196,.14);border-color:var(--glow);color:var(--glow)}
+.chip.cur{border-color:var(--amb);color:var(--amb)}
+
+/* ---------- SIGNATURE: the plumb line. left and right read off a shared axis ---------- */
+.plumb{margin:10px 0 2px}
+.plumb .lbl{display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.plumb .lbl .l{color:var(--amb)}
+.plumb .lbl .r{color:var(--glow)}
+.axis{position:relative;height:26px;display:flex;align-items:center;margin-top:5px}
+.axis::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--bone);opacity:.55}
+.axis .half{flex:1;height:12px;display:flex}
+.axis .half.l{justify-content:flex-end}
+.axis .bar{height:12px;border-radius:3px}
+.axis .half.l .bar{background:var(--amb);border-radius:3px 0 0 3px}
+.axis .half.r .bar{background:var(--glow);border-radius:0 3px 3px 0}
+.axis .cap{position:absolute;font-size:11px;font-weight:700;top:4px}
+.axis .cap.l{right:calc(50% + 6px);color:var(--amb)}
+.axis .cap.r{left:calc(50% + 6px);color:var(--glow)}
+
+/* ---------- flags ---------- */
+.flag{display:flex;gap:9px;padding:11px 12px;border-radius:11px;font-size:13.5px;line-height:1.35;margin:8px 0;border:1px solid}
+.flag b{font-weight:700}
+.flag.stop{background:rgba(212,93,93,.12);border-color:rgba(212,93,93,.5);color:#F0B9B9}
+.flag.up{background:rgba(127,176,105,.11);border-color:rgba(127,176,105,.45);color:#BEDDAB}
+.flag.info{background:rgba(111,179,196,.09);border-color:rgba(111,179,196,.35);color:#BBDCE4}
+.flag.disc{background:rgba(224,164,88,.1);border-color:rgba(224,164,88,.4);color:#EBCFA6}
+
+/* ---------- pills / tabs ---------- */
+.pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none;padding:9px 13px;border-radius:11px;border:1px solid var(--line);background:var(--surf);font-size:13.5px;font-weight:600;color:var(--mut)}
+.pill.on{background:var(--bone);color:#0A0F14;border-color:var(--bone)}
+
+/* ---------- inputs ---------- */
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;background:var(--surf2);border:1px solid var(--line);border-radius:11px;
+  padding:12px;min-height:46px;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--glow)}
+textarea{min-height:74px;resize:vertical}
+label.fld{display:block;margin:10px 0 0}
+label.fld>span{display:block;margin-bottom:5px}
+
+/* ---------- checklist ---------- */
+.check{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.check:last-child{border-bottom:0}
+.box{width:26px;height:26px;border-radius:8px;border:1.5px solid var(--dim);flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent}
+.check.on .box{border-color:var(--ok);color:var(--ok)}
+.check.on .t{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--dim)}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:700;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{padding:8px 4px;border-bottom:1px solid var(--line)}
+td.n{text-align:right;font-weight:600}
+
+/* ---------- spark ---------- */
+.spark{display:flex;align-items:flex-end;gap:3px;height:38px}
+.spark i{flex:1;background:var(--surf2);border-radius:2px 2px 0 0;min-height:2px}
+.spark i.on{background:var(--glow)}
+.spark i.amb{background:var(--amb)}
+
+/* ---------- bottom nav ---------- */
+nav.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(10,15,20,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav.tabs .in{display:flex;max-width:560px;margin:0 auto}
+nav.tabs button{flex:1;padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--dim)}
+nav.tabs button.on{color:var(--bone)}
+nav.tabs .ico{font-size:19px;line-height:1}
+nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+/* ---------- toast / sheet ---------- */
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:80;background:var(--bone);color:#0A0F14;
+  padding:11px 16px;border-radius:11px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88%}
+#toast.on{opacity:1}
+.sheet{position:fixed;inset:0;z-index:70;background:rgba(4,7,10,.7);display:none;align-items:flex-end}
+.sheet.on{display:flex}
+.sheet .inner{background:var(--surf);width:100%;max-width:560px;margin:0 auto;border-radius:18px 18px 0 0;
+  padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;border-top:1px solid var(--line)}
+.handle{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabs"><div class="in" id="nav"></div></nav>
+<div id="toast"></div>
+<div class="sheet" id="sheet"><div class="inner" id="sheetIn"></div></div>
+<script>
+/* ============================================================
+   RACHIDE — registro allenamento
+   Dati clinici di riferimento: RX rachide in toto 31/10/2008,
+   dorsale dx-convessa 20° Cobb · lombare sn-convessa 29° Cobb
+   (curva maggiore) · emibacino sn più basso di 1,3 cm.
+   Piano: Piano_Unico_v5 · Guida_Tecnica_v5
+   ============================================================ */
+
+/* ---------- catalogo esercizi ---------- */
+/* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
+var EX = {
+  "Floor Press manubri":        {g:"Petto",   t:"comp", cap:20, step:2},
+  "Rematore manubri":           {g:"Dorso",   t:"comp", cap:20, step:2},
+  "Shoulder Press manubri":     {g:"Spalle",  t:"comp", cap:20, step:2},
+  "Push-up piedi rialzati con banda":{g:"Petto",t:"compl", band:true},
+  "French Press":               {g:"Tricipiti",t:"iso",  step:2},
+  "Plank":                      {g:"Core",    t:"core", sec:true},
+  "Box Squat":                  {g:"Gambe",   t:"comp", cap:30, step:2},
+  "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",cap:20, step:2, uni:true},
+  "Calf raise monopodalico":    {g:"Gambe",   t:"iso",  uni:true},
+  "Band tricep extension":      {g:"Tricipiti",t:"iso", band:true},
+  "Side plank":                 {g:"Core",    t:"core", sec:true, uni:true},
+  "Rematore manubri (volume)":  {g:"Dorso",   t:"comp", cap:20, step:2},
+  "Pullover manubrio":          {g:"Dorso",   t:"compl",step:2},
+  "Floor Press (volume)":       {g:"Petto",   t:"compl",cap:20, step:2},
+  "Push-up":                    {g:"Petto",   t:"compl"},
+  "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  cap:8,  step:2},
+  "Alzate laterali":            {g:"Spalle",  t:"iso",  step:2},
+  "Face pull":                  {g:"Spalle",  t:"iso",  step:2},
+  "Hip thrust con banda":       {g:"Gambe",   t:"compl",band:true},
+  "Split-stance RDL":           {g:"Gambe",   t:"comp", cap:20, step:2, uni:true},
+  "Affondi indietro manubri":   {g:"Gambe",   t:"compl",step:2, uni:true},
+  "Hammer Curl":                {g:"Bicipiti",t:"iso",  cap:8,  step:2},
+  "Reverse Fly":                {g:"Spalle",  t:"iso",  cap:6,  step:2},
+  "Bulgarian split squat 3s":   {g:"Gambe",   t:"compl",uni:true},
+  "Pike push-up":               {g:"Spalle",  t:"compl"},
+  "Hip hinge una gamba":        {g:"Gambe",   t:"compl",uni:true},
+  "Push-up stretti":            {g:"Tricipiti",t:"compl"},
+  "Band row seduto":            {g:"Dorso",   t:"comp", band:true},
+  "Band row un braccio":        {g:"Dorso",   t:"compl",band:true, uni:true},
+  "Band pull-apart":            {g:"Spalle",  t:"iso",  band:true},
+  "Band curl bicipiti":         {g:"Bicipiti",t:"iso",  band:true},
+  "Hammer curl con banda":      {g:"Bicipiti",t:"iso",  band:true},
+  "Dead bug":                   {g:"Core",    t:"core", uni:true},
+  /* storici, non più nel piano v5 */
+  "Chest Press manubri":{g:"Petto",t:"comp"}, "Incline Press manubri":{g:"Petto",t:"compl"},
+  "RDL (Romanian Deadlift)":{g:"Gambe",t:"comp"}, "Bulgarian split squat (BW)":{g:"Gambe",t:"compl",uni:true},
+  "Calf raise":{g:"Gambe",t:"iso"}, "Calf raise (BW)":{g:"Gambe",t:"iso"},
+  "Band pull-down":{g:"Dorso",t:"compl",band:true}, "Rematore un braccio manubrio":{g:"Dorso",t:"compl",uni:true}, "Reverse Fly leggero":{g:"Spalle",t:"iso"},
+  "Reverse Fly manubri":{g:"Spalle",t:"iso"}, "Kick back tricipiti":{g:"Tricipiti",t:"iso"},
+  "Face pull con banda":{g:"Spalle",t:"iso"}, "Isometria push-up":{g:"Petto",t:"compl",sec:true},
+  "Push-up piedi rialzati o deficit":{g:"Petto",t:"compl"}
+};
+
+var REST = {comp:120, compl:90, iso:60, core:45};
+var BANDS = ["gialla","verde","azzurra","nera","rossa"];
+
+/* ---------- riscaldamento: 6 minuti, blocco scoliosi ---------- */
+var WARM = [
+  {n:"Cat-cow", d:"8 ripetizioni lente · muovi lo sterno, non la testa"},
+  {n:"Rotazioni toraciche", d:"6 per lato · bacino fermo, seduto sui talloni"},
+  {n:"Bird-dog con pausa 3s", d:"8 per lato · unico lavoro diretto sugli estensori lombari"},
+  {n:"Respirazione costale asimmetrica", d:"5 respiri · mano sn attiva sulle costole, mano dx passiva sul gibbo"},
+  {n:"Attivazione del giorno", d:"", var:{A:"15 band pull-apart + 10 cerchi braccia", C:"15 band pull-apart + 10 cerchi braccia",
+    B:"10 glute bridge + 10 squat lenti", D:"10 glute bridge + 10 squat lenti",
+    T1:"10 glute bridge + 10 squat lenti", T2:"15 band pull-apart + 10 cerchi braccia"}}
+];
+
+/* ---------- i 4 giorni + 2 trasferte ---------- */
+/* s = serie · lo/hi = range rep · L = carico di partenza · b = banda · u = unilaterale */
+var BASEPLAN = {
+ A:{name:"Spinta e trazione, forza", sede:"Casa", dischi:"20 › 20 › 14 › 16", min:60, ex:[
+   {n:"Floor Press manubri", s:4, lo:8, hi:10, L:20, tip:"Discesa contata 3 secondi. Sei al tetto dei manubri: qui si progredisce col tempo."},
+   {n:"Rematore manubri", s:4, lo:8, hi:10, L:20, tip:"Se la schiena si arrotonda anche di poco, appoggia i pesi. Non finire la serie."},
+   {n:"Shoulder Press manubri", s:3, lo:8, hi:10, L:14, tip:"Seduto, schiena appoggiata. Fastidio spalla sn → ferma la serie e attiva il flag."},
+   {n:"Push-up piedi rialzati con banda", s:3, lo:10, hi:12, b:"gialla", swap:"Porta i manubri a 16 kg mentre fai questo"},
+   {n:"French Press", s:3, lo:10, hi:10, L:16, tip:"Gomiti fermi e stretti. Se si aprono, scendi di 2 kg."},
+   {n:"Plank", s:3, lo:60, hi:60, sec:true, tip:"Conta i secondi a voce: non puoi contare in apnea."}
+ ]},
+ B:{name:"Gambe quadricipiti e core", sede:"Casa", dischi:"28 › 16", min:45, ex:[
+   {n:"Box Squat", s:3, lo:8, hi:10, L:28, tip:"Sfiora il box, non ci si siede. Talloni a terra."},
+   {n:"Bulgarian Split Squat manubri", s:3, lo:10, hi:10, L:16, u:true, swap:"Manubri a 16 kg", tip:"Se un lato scende meno, quello definisce la profondità di entrambi."},
+   {n:"Calf raise monopodalico", s:3, lo:12, hi:12, u:true, tip:"A due gambe eri a RIR 3-4: non allenante."},
+   {n:"Band tricep extension", s:2, lo:12, hi:12, b:"rossa"},
+   {n:"Side plank", s:3, lo:40, hi:60, sec:true, u:true, asym:true, tip:"Sinistra 60s · destra 40s. Non è un errore: la convessità lombare è a sinistra."}
+ ]},
+ C:{name:"Volume upper", sede:"Casa", dischi:"20 › 16 › 16 › 16 › 8 › 6 › 6", min:70, ex:[
+   {n:"Rematore manubri (volume)", s:4, lo:12, hi:12, L:20, tip:"Dalla rep 9 in poi il busto non deve raddrizzarsi. Meglio 10 pulite che 12 sporche."},
+   {n:"Pullover manubrio", s:3, lo:12, hi:12, L:16, tip:"Espira mentre porti il peso dietro: impedisce meccanicamente l'inarcamento lombare."},
+   {n:"Floor Press (volume)", s:3, lo:12, hi:12, L:16},
+   {n:"French Press", s:3, lo:10, hi:10, L:16},
+   {n:"Push-up", s:3, lo:12, hi:15, swap:"Manubri a 8 kg"},
+   {n:"Curl bicipiti manubri", s:4, lo:10, hi:10, L:8, tip:"8 kg fissi. A 10 kg la terza serie crolla: prima chiudi 4×10 pulite per due sessioni."},
+   {n:"Alzate laterali", s:3, lo:15, hi:15, L:6, swap:"Manubri a 6 kg"},
+   {n:"Face pull", s:3, lo:15, hi:15, L:6, tip:"Gomiti alti. Non saltarlo quando la sessione è lunga: è il più protettivo per la spalla."}
+ ]},
+ D:{name:"Catena posteriore e braccia", sede:"Casa", dischi:"14 › 16 › 16 › 8 › 8 › 6", min:60, ex:[
+   {n:"Hip thrust con banda", s:3, lo:12, hi:15, b:"rossa", tip:"Va prima del RDL: i glutei spingono a fresco e la lombare non compensa."},
+   {n:"Split-stance RDL", s:3, lo:8, hi:8, L:12, u:true, tip:"80% del peso sulla gamba avanti. Schiena che si arrotonda = stop immediato."},
+   {n:"Affondi indietro manubri", s:2, lo:12, hi:12, L:16, u:true, swap:"Manubri a 16 kg"},
+   {n:"French Press", s:3, lo:10, hi:10, L:16},
+   {n:"Curl bicipiti manubri", s:3, lo:10, hi:10, L:8, swap:"Manubri a 8 kg"},
+   {n:"Hammer Curl", s:3, lo:10, hi:10, L:8, tip:"Presa neutra rinforza la presa, che è stata il limite sul RDL."},
+   {n:"Reverse Fly", s:3, lo:15, hi:15, L:6, tip:"6 kg è tetto assoluto. A 8 kg la spalla sn ha ceduto due volte."}
+ ]},
+ T1:{name:"Trasferta · spinta e gambe", sede:"Trasferta", dischi:"solo bande", min:40, ex:[
+   {n:"Push-up piedi rialzati con banda", s:4, lo:10, hi:12, b:"gialla", tip:"In hotel il rialzo è il bordo del letto o la valigia rigida."},
+   {n:"Bulgarian split squat 3s", s:3, lo:12, hi:12, u:true, tip:"Senza manubri lo stimolo viene dalla durata: 3 secondi in discesa."},
+   {n:"Pike push-up", s:3, lo:8, hi:10},
+   {n:"Hip hinge una gamba", s:3, lo:10, hi:10, u:true, tip:"È l'esercizio in trasferta che più probabilmente rivela l'asimmetria."},
+   {n:"Push-up stretti", s:3, lo:10, hi:12},
+   {n:"Side plank", s:3, lo:40, hi:60, sec:true, u:true, asym:true}
+ ]},
+ T2:{name:"Trasferta · trazione e braccia", sede:"Trasferta", dischi:"solo bande", min:40, ex:[
+   {n:"Band row seduto", s:4, lo:12, hi:15, b:"rossa"},
+   {n:"Band row un braccio", s:3, lo:12, hi:12, b:"nera", u:true, tip:"La misura di asimmetria più pulita che hai in trasferta."},
+   {n:"Band pull-apart", s:3, lo:15, hi:15, b:"verde", tip:"Qui è esercizio, non riscaldamento: ritorno rallentato a 3 secondi."},
+   {n:"Band curl bicipiti", s:3, lo:12, hi:12, b:"nera"},
+   {n:"Hammer curl con banda", s:3, lo:12, hi:12, b:"nera"},
+   {n:"Band tricep extension", s:3, lo:12, hi:12, b:"rossa"},
+   {n:"Dead bug", s:3, lo:10, hi:10, u:true, tip:"La lombare deve restare schiacciata a terra. È l'unico errore che conta."},
+   {n:"Side plank", s:3, lo:40, hi:60, sec:true, u:true, asym:true}
+ ]}
+};
+
+/* ---------- i tre segnali che fermano la serie ---------- */
+var STOPS = [
+  "Schiena che si arrotonda su hinge o rematore → appoggia i pesi.",
+  "Dolore articolare puntuale (spalla sn su Reverse Fly, Shoulder Press, Alzate) → ferma la serie.",
+  "Bruciore o risalita acida → fermati, alzati, respira. Poi verifica: quante ore dall'ultimo pasto?"
+];
+
+/* ---------- storico settimane 24-30 (dal tracker v4) ---------- */
+/* w|data|giorno|esercizio|lato|banda|carico|reps|rir|top|nota */
+var SEED_LOG = ``;
+
+/* w|data|giorno|sede|modalità|durata|energia|riscaldamento|segnale|nota */
+var SEED_SESS = ``;
+
+/* w|data|peso|torace|bicipite|coscia|vita|nota */
+var SEED_MIS = ``;
+
+/* data|w|reflusso|resp47|camminate|hrv|readiness|sonno|alcol|nota */
+var SEED_BEN = ``;
+/* ============================================================
+   GUIDA TECNICA IN APP — da Guida_Tecnica_v5
+   p = setup ed esecuzione (si legge una volta)
+   f = devi sentire · e = stai sbagliando se · c = correzione
+   (f/e/c sono quello che serve tra una serie e l'altra)
+   ============================================================ */
+var G = {
+"Cat-cow":{p:"A quattro zampe, mani sotto le spalle. Inspira inarcando (sterno avanti), espira arrotondando (mento al petto). 3 secondi per fase.",
+ f:"Un'onda che parte dal bacino e arriva al collo, segmento dopo segmento. La zona dorsale alta deve partecipare.",
+ e:"Il movimento è tutto nel collo e nella lombare, con la zona fra le scapole ferma.",
+ c:"Riduci l'ampiezza del 50% e pensa a muovere lo sterno, non la testa."},
+"Rotazioni toraciche":{p:"A quattro zampe, glutei sui talloni per bloccare il bacino. Un braccio passa sotto il corpo, poi si apre verso il soffitto seguendo la mano con lo sguardo.",
+ f:"Rotazione libera fra le scapole. Nessun tiro in zona lombare.",
+ e:"Il bacino ruota col busto, o senti tirare in basso nella schiena. Con la tua scoliosi è probabile che un lato ruoti meno: non è un errore, è un'informazione.",
+ c:"Siediti sui talloni. Sul lato più rigido fai 2 ripetizioni in più, restando più a lungo in posizione invece di forzare l'ampiezza."},
+"Bird-dog con pausa 3s":{p:"A quattro zampe, schiena neutra. Estendi braccio e gamba opposta fino a quasi orizzontali, fermati 3 secondi, torna con controllo.",
+ f:"Obliqui e muscoli profondi che lavorano per IMPEDIRE la rotazione del bacino. Gluteo della gamba estesa attivo. Nessuna compressione lombare.",
+ e:"Il fianco ruota verso il lato della gamba sollevata. Il piede sale sopra il livello dell'anca. Se un lato è nettamente più instabile, è quasi certamente il dislivello pelvico.",
+ c:"Bastano 20 cm da terra. Punta il piede verso il pavimento. Se il fianco ruota ancora, estendi solo la gamba."},
+"Respirazione costale asimmetrica":{p:"Seduto senza schienale. Mano SINISTRA sulle costole laterali sinistre, mano DESTRA appoggiata passiva sulla zona del gibbo. Inspira 4s spingendo le costole sinistre contro la mano, espira 6-7s.",
+ f:"L'espansione laterale sinistra sotto la mano. A destra, in espirazione, uno sgonfiamento verso il centro.",
+ e:"Le spalle si alzano in inspirazione. La pancia si gonfia e le costole restano ferme.",
+ c:"Mano libera sulla spalla: se si alza, sei in respiro apicale. Riduci il volume d'aria del 30% e pensa alla direzione, non alla quantità."},
+
+"Floor Press manubri":{p:"A terra, ginocchia piegate, gomiti a 45° dal busto (non 90°). Spingi in alto senza bloccare i gomiti. Scendi contando 3 secondi fino a sfiorare il pavimento.",
+ f:"Petto e tricipiti nella spinta. Nella discesa lenta un allungamento controllato nel petto. Scapole appoggiate e leggermente ravvicinate.",
+ e:"I gomiti sbattono a terra invece di sfiorarla. La schiena forma un ponte marcato. Un braccio arriva in alto prima dell'altro. Senti la spalla davanti più del petto.",
+ c:"Gomiti che sbattono: conta i 3 secondi a voce. Un braccio che anticipa: fermati in alto e riallinea prima di scendere. Spalla: avvicina i gomiti al busto."},
+"Floor Press (volume)":{p:"Stessa tecnica del Floor Press, carico più leggero, SENZA il tempo di 3 secondi. Qui l'obiettivo è volume.",
+ f:"Petto e tricipiti. Il movimento deve restare pulito fino alla dodicesima.",
+ e:"Alla terza serie i gomiti sbattono a terra.",
+ c:"Riduci a 10 ripetizioni invece di arrivare a 12 sporche."},
+"Rematore manubri":{p:"Piedi larghezza anche, busto a 45°, schiena dritta. Tira i manubri ai fianchi, gomiti vicini al busto, scapole strette a fine movimento.",
+ f:"Contrazione nel dorso e fra le scapole. I bicipiti lavorano ma non devono dominare.",
+ e:"La schiena si arrotonda — il rischio più serio del tuo programma. Il busto si raddrizza per dare slancio. Senti solo i bicipiti. Un lato arriva più in alto.",
+ c:"Schiena che si arrotonda: abbassa il carico subito, non finire la serie. Pensa 'gomiti verso le tasche posteriori'. Se un lato è più corto, fermalo lì per tutte le ripetizioni: si pareggia sul lato debole."},
+"Rematore manubri (volume)":{p:"Stessa tecnica del rematore. La differenza è mantenere la schiena dritta per tutte e 12 le ripetizioni, non solo le prime otto.",
+ f:"Dorso e interscapolari, con la schiena che non si muove mai.",
+ e:"Dalla ripetizione 9 in poi il busto inizia a raddrizzarsi: hai finito la serie utile.",
+ c:"Fermati a 10 pulite invece di arrivare a 12 sporche."},
+"Shoulder Press manubri":{p:"Seduto con schiena appoggiata. Manubri all'altezza delle spalle, gomiti sotto i polsi. Spingi in alto, scendi fino al mento.",
+ f:"Deltoidi nella spinta, addome attivo, schiena che resta appoggiata.",
+ e:"La lombare si stacca dallo schienale inarcandosi. I manubri vanno dietro la testa. Compare fastidio nella spalla sinistra.",
+ c:"Espira durante la spinta, contrai l'addome prima di partire. Lombare che si inarca: torna a 12 kg. Fastidio spalla sinistra: ferma la serie e attiva il flag — è la stessa spalla del Reverse Fly."},
+"Push-up piedi rialzati con banda":{p:"Piedi su un rialzo basso. Banda dietro la parte alta della schiena, all'altezza delle scapole, mai sulle vertebre o sul collo, estremità sotto le mani.",
+ f:"Petto, soprattutto la parte alta. Carico crescente verso la fine della spinta.",
+ e:"Il bacino cede o si alza a punta. Senti la spalla più del petto. La banda scivola verso il collo. I gomiti si aprono in modo diverso.",
+ c:"Bacino: stringi glutei e addome, è un plank in movimento. Spalla: il rialzo dei piedi è troppo alto. Banda che scivola: riposizionala sulla parte muscolosa."},
+"French Press":{p:"Seduto, schiena appoggiata. Un manubrio con entrambe le mani sopra la testa, gomiti puntati avanti e vicini alla testa. Piega i gomiti dietro la nuca. I gomiti non si muovono.",
+ f:"Il tricipite, in particolare il capo lungo, che si allunga in basso e si contrae in alto.",
+ e:"I gomiti si aprono lateralmente scendendo — è l'errore che ti ha fatto scrivere 'non sento lavorare bene i tricipiti' il 26/07. La schiena si inarca.",
+ c:"Se i gomiti si aprono il carico è troppo alto per il controllo che hai: scendi di 2 kg. Immagina di far passare la testa fra due binari stretti."},
+"Plank":{p:"Avambracci sotto le spalle, gomiti a 90°, corpo in linea da testa a talloni.",
+ f:"Addome e glutei attivi. Respiro libero. Nessuna pressione allo stomaco.",
+ e:"Il bacino cade (senti la lombare) o si alza a triangolo. Trattieni il respiro. Un fianco è più basso dell'altro.",
+ c:"Se la lombare si carica, 30 secondi con la linea perfetta valgono più di 60 storti. Conta i secondi a voce: non puoi contare in apnea. Vale doppio per il reflusso."},
+
+"Box Squat":{p:"Davanti a una sedia all'altezza del ginocchio. Scendi spingendo i fianchi indietro fino a SFIORARE il box. Risali spingendo con i talloni.",
+ f:"Quadricipiti e glutei nella risalita. Il box dà un riferimento costante di profondità: serve a confrontare i due lati.",
+ e:"Ti lasci cadere sul box. Le ginocchia collassano dentro. I talloni si sollevano. Il peso è più su un piede che sull'altro — con 1,3 cm di dislivello è il pattern atteso.",
+ c:"Test: appoggia il peso e fai 5 squat a occhi chiusi. A occhi aperti compensi visivamente senza accorgertene. Questo è l'esercizio da filmare da dietro ogni 4 settimane."},
+"Bulgarian Split Squat manubri":{p:"Piede posteriore su un rialzo, collo del piede in appoggio. Piede anteriore avanti quanto basta perché il ginocchio resti sopra la caviglia. Scendi a 90°, risali spingendo col piede anteriore.",
+ f:"Quadricipite e gluteo della gamba ANTERIORE. Allungamento davanti all'anca posteriore.",
+ e:"Spingi col piede posteriore. Il busto si inclina molto avanti. Il ginocchio va dentro. Un lato richiede più equilibrio o scende meno profondo.",
+ c:"Se spingi col posteriore, avanza di 10 cm il piede anteriore. Se un lato scende meno, usa QUEL lato per definire la profondità di entrambi."},
+"Bulgarian split squat 3s":{p:"Stessa tecnica della versione con manubri. Senza carico lo stimolo viene dal tempo: 3 secondi di discesa controllata.",
+ f:"Quadricipite e gluteo della gamba anteriore, con bruciore che arriva dalla durata più che dal carico.",
+ e:"Fai 12 ripetizioni con 3 secondi di discesa senza fatica: sei sotto stimolo.",
+ c:"Passa a 4 secondi o aggiungi una pausa di 2 secondi in basso."},
+"Calf raise monopodalico":{p:"Su una gamba, avampiede su un rialzo col tallone libero di scendere. Una mano al muro solo per l'equilibrio. Sali sulla punta, pausa 1 secondo, scendi lentamente.",
+ f:"Contrazione intensa del polpaccio in alto, allungamento chiaro in basso.",
+ e:"Rimbalzi in basso invece di controllare. Ti aggrappi al muro. Il ginocchio si piega per aiutare.",
+ c:"Se non arrivi a 12, scendi a 8 ma con pausa piena. Annota se un polpaccio regge sistematicamente meno."},
+"Band tricep extension":{p:"In piedi, un'estremità della banda sotto un piede ben piantato, l'altra con entrambe le mani dietro la testa. Gomiti piegati e puntati in alto.",
+ f:"Il tricipite isolato, capo lungo.",
+ e:"I gomiti si aprono. Il busto dà slancio. Il piede scivola sulla banda: verifica sempre prima di partire.",
+ c:"Gomiti stretti, immagina due binari. Se la rossa è troppo dura per tenerli fermi, torna alla nera."},
+"Side plank":{p:"Su un fianco, avambraccio esattamente sotto la spalla, gomito a 90°. Solleva il bacino fino alla linea retta e mantieni.",
+ f:"Obliqui e quadrato dei lombi del lato A TERRA. Sul sinistro, la sensazione di spingere il fianco verso il soffitto.",
+ e:"Il bacino scende progressivamente. Il busto ruota invece di restare di taglio. La spalla d'appoggio si schiaccia verso l'orecchio.",
+ c:"Meglio 40s perfetti che 60s col bacino che cala. Sul sinistro, quando la tenuta cede, fermati e recupera 20 secondi: conta il tempo totale. Sinistra più lunga perché la convessità lombare è a sinistra."},
+
+"Pullover manubrio":{p:"A terra, ginocchia piegate. UN manubrio con entrambe le mani, palmi contro il disco superiore, braccia quasi distese sopra il petto. Porta il manubrio dietro la testa in un arco ampio.",
+ f:"Allungamento chiaro nel gran dorsale, sotto le ascelle, quando il peso è dietro. Le costole restano basse.",
+ e:"La lombare si stacca da terra formando un arco — per te è l'errore più rilevante. Pieghi molto i gomiti. Senti solo le spalle.",
+ c:"Espira MENTRE porti il peso dietro: abbassa le costole e impedisce meccanicamente l'inarcamento. Se non basta, fermati dove riesci a tenere la schiena a terra, anche a metà range."},
+"Push-up":{p:"Mani poco più larghe delle spalle, corpo in linea da testa a talloni, glutei contratti. Gomiti a 45° dal busto.",
+ f:"Petto e tricipiti. Il corpo che si muove come un blocco unico.",
+ e:"Il bacino cede o si alza. La testa scende prima del petto. Un gomito si apre più dell'altro.",
+ c:"Se non arrivi a 12 pulite, mani su un rialzo: meglio ripetizioni complete facilitate che parziali a terra."},
+"Push-up stretti":{p:"Come il push-up ma mani alla larghezza delle spalle o poco meno. Gomiti vicini al busto, non aperti a T.",
+ f:"Tricipiti in modo dominante, petto in secondo piano.",
+ e:"I gomiti si aprono. I polsi fanno male.",
+ c:"Se i polsi danno fastidio, appoggia le mani su due manubri per tenerli neutri."},
+"Curl bicipiti manubri":{p:"Seduto o in piedi, gomiti vicini al busto e fermi. Piega portando i manubri alle spalle, scendi controllato in 2 secondi.",
+ f:"Bicipite isolato. Nessun coinvolgimento della schiena.",
+ e:"La schiena si inarca per dare slancio — da evitare in particolare col tuo quadro lombare. I gomiti scivolano avanti. La discesa è una caduta libera.",
+ c:"Appoggia la schiena a un muro: se ti stacchi stai usando slancio. La discesa lenta è metà dello stimolo."},
+"Hammer Curl":{p:"Come il curl ma presa NEUTRA: i palmi si guardano. La presa resta neutra per tutto il movimento.",
+ f:"La parte esterna del braccio e l'avambraccio. È una sensazione diversa dal curl classico: se è identica, stai ruotando il polso.",
+ e:"Il polso ruota in salita. Usi slancio. La discesa è troppo veloce.",
+ c:"Ha un bonus per te: rinforza la presa, che è stata il fattore limitante sul RDL. Se scendi in 3 secondi, quel beneficio raddoppia."},
+"Alzate laterali":{p:"In piedi, gomiti leggermente piegati e FISSI. Solleva lateralmente fino all'altezza delle spalle, non oltre. Mignolo leggermente più alto del pollice.",
+ f:"Il deltoide laterale, il cappuccio della spalla.",
+ e:"Le spalle salgono verso le orecchie (lavora il trapezio). Usi slancio con le gambe. Superi l'altezza delle spalle. Il braccio sinistro sale meno o con più fatica.",
+ c:"Se le spalle salgono, torna a 4 kg. È l'esercizio dove l'ego costa di più e rende di meno."},
+"Face pull":{p:"Busto a 45°, schiena dritta, un manubrio per mano che pende. Tira verso l'ALTEZZA DEL VISO tenendo i gomiti ALTI, aprendo le braccia a fine corsa.",
+ f:"Parte posteriore della spalla e zona fra le scapole. Una sensazione larga, non concentrata in un punto.",
+ e:"I gomiti scendono sotto la linea delle spalle: diventa un rematore. Senti tirare nel collo.",
+ c:"Se senti il collo, abbassa il carico. Pensa 'gomiti verso le pareti laterali', non 'mani verso il viso'. Non saltarlo quando la sessione è lunga: è il più protettivo per la spalla."},
+
+"Hip thrust con banda":{p:"Schiena appoggiata a un divano basso sotto le scapole, piedi larghezza anche, banda appena sopra le ginocchia. Spingi il bacino in alto fino alla linea retta spalle-ginocchia, pausa 1 secondo.",
+ f:"Contrazione forte dei glutei in alto. Un lavoro laterale negli abduttori per via della banda.",
+ e:"La lombare si inarca invece che il bacino salire. Senti i femorali o la lombare più dei glutei. Le ginocchia collassano dentro.",
+ c:"Contrai i glutei PRIMA di iniziare la spinta, mento verso il petto. La linea retta è il massimo, non un punto da superare. Va prima del RDL: i glutei spingono a fresco e la lombare non compensa."},
+"Split-stance RDL":{p:"Un piede avanti che porta l'80% del carico, l'altro arretrato 30 cm con SOLO la punta appoggiata. Spingi il bacino INDIETRO, non scendere in basso. I manubri scorrono vicino alla gamba.",
+ f:"Allungamento netto nel femorale della gamba ANTERIORE. Lombare neutra e ferma. Glutei che si contraggono nella risalita.",
+ e:"La schiena si arrotonda: STOP immediato. Pieghi il ginocchio anteriore per scendere più in basso: è uno squat, non un hinge. Spingi col piede posteriore. Un lato scende molto più dell'altro.",
+ c:"Test del muro: a 20 cm dal muro, tocca con i glutei senza piegare le ginocchia. Quella è la sensazione. Se un lato scende meno, quel lato definisce la profondità di entrambi. Se non tieni la schiena dritta, 10 kg."},
+"Affondi indietro manubri":{p:"Passo INDIETRO (non avanti: riduce lo stress sul ginocchio anteriore), scendi piegando entrambe le ginocchia a 90°, spingi con la gamba ANTERIORE per tornare.",
+ f:"Quadricipite e gluteo della gamba anteriore.",
+ e:"Il busto si inclina troppo avanti. Il ginocchio anteriore supera la punta del piede. Perdi l'equilibrio lateralmente — se succede sempre dallo stesso lato è informazione, non caso.",
+ c:"Allarga leggermente la traiettoria del passo indietro. Guarda un punto fisso davanti a te all'altezza degli occhi."},
+"Reverse Fly":{p:"Busto a 45°, schiena dritta, manubri che pendono, gomiti leggermente piegati e fissi. Apri le braccia lateralmente fino all'altezza delle spalle stringendo le scapole.",
+ f:"Parte posteriore della spalla e zona interscapolare.",
+ e:"Ti raddrizzi per usare slancio. Senti il trapezio alto o il collo. Il braccio sinistro arriva meno in alto o molla a fine serie — è il segnale specifico da monitorare.",
+ c:"Se la spalla sinistra dà segnali: FERMA la serie, non finirla, e attiva il flag. Non è un dato da annotare a fine settimana. 6 kg è tetto assoluto: a 8 ha ceduto due volte."},
+
+"Pike push-up":{p:"Da posizione di push-up, cammina coi piedi verso le mani fino a una V rovesciata. Testa fra le braccia, bacino alto. Abbassa la testa verso il pavimento: la traiettoria è verticale.",
+ f:"Deltoidi anteriori e tricipiti. È l'equivalente a corpo libero dello Shoulder Press.",
+ e:"Il movimento diventa orizzontale come un push-up (bacino troppo basso). La testa va avanti invece che in basso. Senti il collo.",
+ c:"Avvicina i piedi alle mani per alzare il bacino. Se è troppo duro, appoggia i piedi più lontano."},
+"Hip hinge una gamba":{p:"In piedi su una gamba, l'altra sollevata dietro. Spingi il bacino indietro inclinando il busto avanti: busto e gamba formano una linea. Risali contraendo il gluteo.",
+ f:"Femorale e gluteo della gamba d'appoggio. Il core che lavora per non farti ruotare.",
+ e:"Il bacino ruota aprendosi verso l'esterno. La schiena si arrotonda. Pieghi troppo il ginocchio d'appoggio.",
+ c:"Immagina due fari sulle creste iliache: devono puntare al pavimento per tutto il movimento. È l'esercizio in trasferta che più probabilmente rivela la tua asimmetria."},
+"Band row seduto":{p:"Seduto a terra, gambe distese, banda attorno alla pianta dei piedi. Busto eretto. Tira le mani verso i fianchi, gomiti vicini al busto, scapole strette.",
+ f:"Dorso e zona fra le scapole.",
+ e:"Il busto si inclina indietro per aiutare. La schiena si arrotonda nel ritorno. Senti solo i bicipiti.",
+ c:"Siediti contro un muro con la schiena appoggiata: se ti stacchi stai barando. Pensa 'gomiti indietro', non 'mani verso di me'."},
+"Band row un braccio":{p:"Seduto o in affondo, banda sotto un piede, una mano sull'estremità, busto leggermente inclinato. Tira verso il fianco senza ruotare il busto.",
+ f:"Il dorso del lato che lavora. Il core che impedisce la rotazione.",
+ e:"Il busto ruota seguendo il braccio. La spalla si alza. Un lato completa 12 ripetizioni con evidente più facilità dell'altro.",
+ c:"Mano libera su una superficie stabile per bloccare il busto. Pareggia sempre sul lato debole. È la misura di asimmetria più pulita che hai in trasferta."},
+"Band pull-apart":{p:"Banda con due mani davanti al petto, braccia tese, presa poco più larga delle spalle. Allontana le mani fino quasi a toccare il petto con le braccia distese. In T2 rallenta il ritorno a 3 secondi.",
+ f:"Contrazione fra le scapole.",
+ e:"La senti nelle spalle davanti, o pieghi i gomiti: la banda è troppo dura o la presa troppo stretta.",
+ c:"Allarga la presa o scendi di banda. Il ritorno lento è metà dell'esercizio."},
+"Band curl bicipiti":{p:"In piedi, banda sotto entrambi i piedi, gomiti vicini al busto. Il ritorno è la parte importante: 3 secondi.",
+ f:"Bicipite, con tensione crescente verso la fine della salita — l'opposto del manubrio, dove è massima a metà.",
+ e:"Ti pieghi in avanti quando la banda tira. I gomiti si spostano. Il ritorno è uno scatto.",
+ c:"Allarga i piedi sulla banda per aumentare la tensione, restringi per ridurla. Regola così invece di cambiare banda."},
+"Hammer curl con banda":{p:"Presa neutra, banda sotto i piedi, gomiti fermi. Ritorno in 3 secondi.",
+ f:"Parte esterna del braccio e avambraccio.",
+ e:"Il polso ruota. Il ritorno è veloce.",
+ c:"Come per il band curl: regola la tensione con la larghezza dei piedi."},
+"Dead bug":{p:"Supino, braccia verso il soffitto, ginocchia e anche a 90°. La LOMBARE SCHIACCIATA A TERRA è la posizione di partenza. Abbassa braccio e gamba opposta senza toccare il pavimento. Espira mentre estendi.",
+ f:"L'addome profondo che lavora per tenere la schiena a terra. È anti-estensione: il lavoro è nel non muoversi.",
+ e:"La lombare si stacca dal pavimento. È l'unico errore che conta: nel momento in cui si stacca, l'esercizio ha smesso di funzionare.",
+ c:"Metti una mano sotto la lombare: se senti che si alleggerisce hai perso la posizione. Muovi la gamba di soli 20 cm se serve."}
+};
+/* ============================================================
+   MOTORE
+   ============================================================ */
+var KEY = "rachide:v1";
+var S = {log:[], sess:[], mis:[], ben:[], sim:[], patches:[], draft:null, seeded:false,
+         lastBackup:null, installed:null};
+
+/* ---------- storage ----------
+   Regola: non fidarsi mai della scrittura. Ogni salvataggio viene
+   riletto e confrontato. Se non torna indietro uguale, l'app lo dice
+   invece di far finta di niente. */
+var Store = {
+  mode:"?", ok:null, last:null, bytes:0, err:"", fallback:false,
+  async probe(k,v){
+    if(this.mode==="artifact"){ await window.storage.set(k,v); var r=await window.storage.get(k); return r&&r.value; }
+    if(this.mode==="device"){ localStorage.setItem(k,v); return localStorage.getItem(k); }
+    return null;
+  },
+  async detect(){
+    if(typeof window!=="undefined" && window.storage && window.storage.set){
+      this.mode="artifact";
+      try{ if(await this.probe(KEY+":probe","1")==="1") return this.mode; }
+      catch(e){ this.err="artifact: "+(e&&e.message||e); }
+    }
+    if(this.mode==="artifact") this.fallback=true;
+    this.mode="device";
+    try{ if(await this.probe(KEY+":probe","1")==="1"){ localStorage.removeItem(KEY+":probe"); return this.mode; } }
+    catch(e){ this.err=(this.err?this.err+" · ":"")+"device: "+(e&&e.message||e); }
+    this.mode="none";
+    return this.mode;
+  },
+  async get(){
+    try{
+      if(this.mode==="artifact"){ var r=await window.storage.get(KEY); return r? JSON.parse(r.value):null; }
+      if(this.mode==="device"){ var v=localStorage.getItem(KEY); return v? JSON.parse(v):null; }
+    }catch(e){ this.err="lettura: "+(e&&e.message||e); }
+    return null;
+  },
+  async set(o){
+    if(this.mode==="none"){ this.ok=false; return false; }
+    try{
+      o.savedAt = new Date().toISOString();
+      var s=JSON.stringify(o); this.bytes=s.length;
+      if(this.mode==="artifact") await window.storage.set(KEY,s); else localStorage.setItem(KEY,s);
+      /* rilettura di verifica */
+      var back = this.mode==="artifact" ? (await window.storage.get(KEY)||{}).value : localStorage.getItem(KEY);
+      if(!back || back.length!==s.length){ this.ok=false; this.err="verifica fallita"; return false; }
+      this.ok=true; this.last=new Date(); this.err=""; return true;
+    }catch(e){ this.ok=false; this.err="scrittura: "+(e&&e.message||e); return false; }
+  }
+};
+async function save(){ var r=await Store.set(S);
+  if(!r && !Store._shown && typeof PLAN!=="undefined" && PLAN){ Store._shown=true; render(); }
+  return r; }
+
+/* ---------- date ---------- */
+var W0 = new Date(2026,6,13); /* lunedì della settimana 24 */
+function d2s(d){ var p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear(); }
+function s2d(s){ var a=String(s).split("/"); return new Date(+a[2],+a[1]-1,+a[0]); }
+function weekOf(s){ return 24 + Math.floor((s2d(s)-W0)/604800000); }
+function today(){ return d2s(new Date()); }
+function dayName(s){ return ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"][s2d(s).getDay()]; }
+function ago(s){ var n=Math.round((new Date().setHours(0,0,0,0)-s2d(s))/86400000);
+  return n===0?"oggi":n===1?"ieri":n+" giorni fa"; }
+
+/* ---------- seed ---------- */
+function parse(txt, keys){
+  return txt.trim().split("\n").filter(l=>l.trim()).map(function(l){
+    var p=l.split("|"), o={};
+    keys.forEach(function(k,i){ o[k]= p[i]===undefined?"":p[i].trim(); });
+    return o;
+  });
+}
+function seed(){
+  S.log = parse(SEED_LOG,["w","date","day","ex","side","band","load","reps","rir","top","note"]).map(function(r,i){
+    return {id:"h"+i, w:+r.w, date:r.date, day:r.day, ex:r.ex, side:r.side, band:r.band,
+      load: r.load?+r.load:0, reps: r.reps?r.reps.split(".").map(Number):[],
+      rir: r.rir===""?null:+r.rir, top: r.top==="1", note:r.note};
+  });
+  S.sess = parse(SEED_SESS,["w","date","day","sede","mod","min","en","warm","sig","note"]).map(function(r,i){
+    return {id:"s"+i, w:+r.w, date:r.date, day:r.day, sede:r.sede, mod:r.mod, min:+r.min||0,
+      en:+r.en||0, warm:r.warm==="1", sig:r.sig==="1", note:r.note};
+  });
+  S.mis = parse(SEED_MIS,["w","date","peso","torace","bic","coscia","vita","note"]).map(function(r){
+    return {w:+r.w, date:r.date, peso:+r.peso||null, torace:+r.torace||null, bic:+r.bic||null,
+      coscia:+r.coscia||null, vita:+r.vita||null, note:r.note};
+  });
+  S.ben = parse(SEED_BEN,["date","w","refl","resp","camm","hrv","read","sonno","alc","note"]).map(function(r){
+    return {date:r.date, w:+r.w, refl:r.refl===""?null:+r.refl, resp:r.resp==="1",
+      camm:r.camm===""?null:+r.camm, hrv:+r.hrv||null, read:+r.read||null,
+      sonno:+r.sonno||null, alc:r.alc==="1", note:r.note};
+  });
+  S.seeded = true;
+}
+
+/* ---------- lettura storico ---------- */
+var ALIAS={"Reverse Fly":["Reverse Fly manubri","Reverse Fly leggero"]};
+var PLAN_W0=30; /* prima settimana del Piano Unico v5 */
+function meta(n){ return EX[n] || {g:"—", t:"compl"}; }
+function hist(name, side){
+  var names=[name];
+  return S.log.filter(r=>names.indexOf(r.ex)>=0 && (side===undefined || r.side===side))
+              .sort((a,b)=>s2d(a.date)-s2d(b.date));
+}
+/* storico esteso: include i nomi con cui l'esercizio era loggato prima del piano v5 */
+function histAll(name){
+  var names=[name].concat(ALIAS[name]||[]);
+  return S.log.filter(r=>names.indexOf(r.ex)>=0).sort((a,b)=>s2d(a.date)-s2d(b.date));
+}
+/* un carico che non hai chiuso non diventa il nuovo standard */
+function suggestLoad(def){
+  var h=hist(def.n).filter(r=>r.load>0);
+  if(!h.length) return def.L||0;
+  var last=h[h.length-1];
+  if(def.L && last.load>def.L && !last.top) return def.L;
+  return last.load;
+}
+function lastLoad(name, fallback){
+  var h = hist(name).filter(r=>r.load>0);
+  return h.length ? h[h.length-1].load : (fallback||0);
+}
+function lastBand(name, fallback){
+  var h = hist(name).filter(r=>r.band);
+  return h.length ? h[h.length-1].band : (fallback||"");
+}
+function lastTwo(name){
+  var h = hist(name), seen=[], out=[];
+  for(var i=h.length-1;i>=0 && out.length<2;i--){
+    if(seen.indexOf(h[i].date)<0){ seen.push(h[i].date); out.push(h[i]); }
+  }
+  return out;
+}
+/* soglia doppia progressione: top del range su ≥3 serie su 4, o 3 su 3, o 2 su 2 */
+function isTop(reps, hi, sets){
+  if(!reps || !reps.length) return false;
+  var need = sets>=3 ? 3 : sets;
+  return reps.filter(r=>r>=hi).length >= Math.min(need, reps.length) && reps.length>=Math.min(sets,need);
+}
+
+/* ---------- il motore di progressione ---------- */
+function readiness(exDef){
+  var n=exDef.n, m=meta(n), h=histAll(n), out={ready:false, why:"", cap:false};
+  if(!h.length) return out;
+  var dates=[...new Set(h.map(r=>r.date))].slice(-2);
+  if(dates.length<2) return out;
+  var ok = dates.every(function(d){
+    var rows=h.filter(r=>r.date===d);
+    if(exDef.u){ return rows.every(r=>isTop(r.reps, exDef.hi, exDef.s)); }
+    return rows.some(r=>isTop(r.reps, exDef.hi, exDef.s));
+  });
+  if(!ok) return out;
+  var cur = exDef.b ? lastBand(n, exDef.b) : suggestLoad(exDef);
+  if(exDef.b){
+    var i=BANDS.indexOf(cur);
+    if(i>=BANDS.length-1){ return {ready:true, cap:true, why:"Banda rossa: aggiungi una serie o rallenta il ritorno a 3s"}; }
+    return {ready:true, why:"banda "+cur+" → "+BANDS[i+1], next:BANDS[i+1]};
+  }
+  if(m.cap && cur>=m.cap){
+    var alt = n.indexOf("Reverse Fly")===0 ? "6 kg è tetto assoluto finché non hai una valutazione. Non salire."
+            : n.indexOf("Floor Press")===0 ? "sei al tetto: allunga la discesa a 3-4 secondi"
+            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto 8 kg: chiudi 4×10 pulite per due sessioni prima di salire"
+            : "tetto raggiunto: progredisci con tempo o ripetizioni";
+    return {ready:true, cap:true, why:alt};
+  }
+  if(!cur) return {ready:true, why:"passa alla variante successiva della scala"};
+  var step = m.step||2;
+  return {ready:true, why:cur+" → "+(cur+step)+" kg", next:cur+step};
+}
+
+/* ---------- KPI settimanali ---------- */
+function weeks(){ return [...new Set(S.sess.map(s=>s.w))].sort((a,b)=>a-b); }
+function kpi(w){
+  var ss=S.sess.filter(s=>s.w===w), ls=S.log.filter(r=>r.w===w);
+  var dur=ss.filter(s=>s.min).map(s=>s.min), en=ss.filter(s=>s.en).map(s=>s.en);
+  var ton=ls.reduce((a,r)=>a + r.load*(r.reps.reduce((x,y)=>x+y,0)), 0);
+  var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
+  var grp={};
+  ls.forEach(function(r){ var g=meta(r.ex).g; grp[g]=(grp[g]||0)+r.reps.length; });
+  /* asimmetria: solo esercizi loggati per lato */
+  var sx=0,dx=0;
+  ls.forEach(function(r){ var t=r.reps.reduce((a,b)=>a+b,0); if(r.side==="S")sx+=t; if(r.side==="D")dx+=t; });
+  var asim = (sx+dx)? Math.round(Math.abs(sx-dx)/((sx+dx)/2)*100) : 0;
+  var b=S.ben.filter(x=>x.w===w && x.refl!==null);
+  var m=S.mis.filter(x=>x.w===w)[0];
+  return {w:w, n:ss.length, ader:Math.round(ss.length/4*100),
+    dur:dur.length?Math.round(dur.reduce((a,b)=>a+b,0)/dur.length):null,
+    en:en.length?+(en.reduce((a,b)=>a+b,0)/en.length).toFixed(1):null,
+    top: tot? Math.round(top/tot*100):null, ton:Math.round(ton), grp:grp, asim:asim,
+    warm: ss.filter(s=>s.warm).length, sig: ss.filter(s=>s.sig).length,
+    refl: b.length? +(b.reduce((a,x)=>a+x.refl,0)/b.length).toFixed(1) : null,
+    peso: m?m.peso:null, vt: (m&&m.vita&&m.torace)? +(m.vita/m.torace).toFixed(3):null};
+}
+
+/* ---------- diagnosi: adeguatezza di carichi ed esercizi ---------- */
+var TGT={Petto:[10,16],Dorso:[10,16],Spalle:[10,16],Bicipiti:[10,16],Tricipiti:[10,16],Gambe:[10,18],Core:[6,12]};
+function diagnose(){
+  var out=[], ws=weeks(), lastFull = ws.filter(w=>w>=PLAN_W0 && S.sess.filter(s=>s.w===w).length>=4).pop();
+  /* 1. stallo o carico troppo alto */
+  var seen={};
+  Object.keys(PLAN).forEach(function(d){
+    PLAN[d].ex.forEach(function(e){
+      if(seen[e.n]||e.sec) return; seen[e.n]=1;
+      var h=hist(e.n); if(h.length<3) return;
+      var dates=[...new Set(h.map(r=>r.date))].slice(-3);
+      if(dates.length<3) return;
+      var rows=dates.map(d2=>h.filter(r=>r.date===d2)[0]);
+      var sameLoad = rows.every(r=>r.load===rows[0].load) && rows[0].load>0;
+      var neverTop = rows.every(r=>!r.top);
+      if(sameLoad && neverTop) out.push({k:"stallo", t:e.n,
+        m:"Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."});
+      var hiRir = rows.filter(r=>r.rir!==null && r.rir>=3).length;
+      if(hiRir>=2) out.push({k:"leggero", t:e.n,
+        m:"RIR 3 o più su due sessioni: non è allenante. Sali di carico o passa alla variante successiva."});
+      var last=rows[rows.length-1];
+      if(last.reps.length>=3){
+        var drop = last.reps[0]-last.reps[last.reps.length-1];
+        if(drop>=3) out.push({k:"crollo", t:e.n,
+          m:"Ultima sessione "+last.reps.join("-")+": perdi "+drop+" ripetizioni dalla prima all'ultima serie. Prima allunga il recupero, poi valuta il carico."});
+      }
+    });
+  });
+  /* 2. volume per gruppo — solo su una settimana piena del piano corrente */
+  if(!lastFull) out.push({k:"attesa", t:"Volume non ancora valutabile",
+    m:"Serve una settimana completa (4 sessioni) sul Piano Unico v5. Poi il confronto con i target diventa affidabile."});
+  if(lastFull){
+    var k=kpi(lastFull);
+    Object.keys(TGT).forEach(function(g){
+      var v=k.grp[g]||0, t=TGT[g];
+      if(v<t[0]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sotto il minimo di "+t[0]+"."});
+      if(v>t[1]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sopra il massimo di "+t[1]+". Toglile da qui, non aggiungerle altrove."});
+    });
+    if(k.dur && k.dur>75) out.push({k:"durata", t:"Durata media "+k.dur+" min",
+      m:"Oltre i 75 minuti è il principale fattore di abbandono. Cambia i dischi dentro il recupero, non dopo."});
+    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"%", m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
+  }
+  /* 3. segnali articolari */
+  var sig=S.sess.filter(s=>s.sig).slice(-3);
+  if(sig.length) out.push({k:"segnale", t:"Ultimo segnale articolare: "+sig[sig.length-1].date,
+    m:sig[sig.length-1].note||"Registrato nel tracker."});
+  /* 4. composizione */
+  var m2=S.mis.filter(x=>x.vita&&x.torace).slice(-2);
+  if(m2.length===2){
+    var a=m2[0].vita/m2[0].torace, b=m2[1].vita/m2[1].torace;
+    if(b>a+0.005 && m2[1].peso>=m2[0].peso) out.push({k:"comp", t:"Vita/Torace "+b.toFixed(3),
+      m:"Salito da "+a.toFixed(3)+" mentre il peso non scendeva. Se si conferma alla prossima misura, il surplus è troppo aggressivo."});
+  }
+  /* 5. riscaldamento */
+  if(lastFull){
+    var kk=kpi(lastFull);
+    if(kk.warm<kk.n) out.push({k:"warm", t:"Riscaldamenti "+kk.warm+"/"+kk.n,
+      m:"Il riscaldamento contiene il blocco scoliosi. Se scende, lo perdi senza accorgertene."});
+  }
+  return out;
+}
+
+/* ---------- export ---------- */
+function tsv(){
+  var h=["Settimana","Data","Giorno tipo","Esercizio","Gruppo muscolare","Lato","Banda","Carico (kg)",
+    "Rep 1","Rep 2","Rep 3","Rep 4","Serie eseguite","Reps totali","Volume (kg)","RIR","Top range","Note"];
+  var rows=S.log.map(function(r){
+    var t=r.reps.reduce((a,b)=>a+b,0);
+    return [r.w, r.date, r.day, r.ex, meta(r.ex).g,
+      r.side==="S"?"Sinistra":r.side==="D"?"Destra":"N/A", r.band||"", r.load||"",
+      r.reps[0]||"", r.reps[1]||"", r.reps[2]||"", r.reps[3]||"",
+      r.reps.length, t, r.load*t, r.rir===null?"":r.rir, r.top?"Sì":"No", r.note||""].join("\t");
+  });
+  return [h.join("\t")].concat(rows).join("\n");
+}
+function briefing(){
+  var ws=weeks().slice(-4), L=[];
+  L.push("BRIEFING ALLENAMENTO — "+today()+" (settimana "+weekOf(today())+")");
+  L.push("");
+  L.push("KPI ultime 4 settimane");
+  L.push("Sett | Sess | Durata | Energia | %top | Tonn. | Asim | Segn.");
+  ws.forEach(function(w){ var k=kpi(w);
+    L.push(w+" | "+k.n+"/4 | "+(k.dur||"-")+" | "+(k.en||"-")+" | "+(k.top!==null?k.top+"%":"-")+" | "+k.ton+" | "+k.asim+"% | "+k.sig);
+  });
+  var lw=ws[ws.length-1], k=kpi(lw);
+  L.push("");
+  L.push("Serie per gruppo, settimana "+lw+": "+Object.keys(k.grp).map(g=>g+" "+k.grp[g]).join(" · "));
+  var m=S.mis[S.mis.length-1];
+  if(m) L.push("Misure "+m.date+": peso "+(m.peso||"-")+" · torace "+(m.torace||"-")+" · vita "+(m.vita||"-")+
+    ((m.vita&&m.torace)?" · V/T "+(m.vita/m.torace).toFixed(3):""));
+  L.push("");
+  L.push("Pronti per salire");
+  var seen={}, any=false;
+  Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
+    if(seen[e.n]) return; seen[e.n]=1;
+    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why); }
+  });});
+  if(!any) L.push("- nessuno");
+  L.push("");
+  L.push("Diagnosi automatica");
+  var dg=diagnose();
+  if(!dg.length) L.push("- nulla da segnalare");
+  dg.forEach(d=>L.push("- ["+d.k+"] "+d.t+": "+d.m));
+  var notes=S.log.filter(r=>r.note && ws.indexOf(r.w)>=0).slice(-12);
+  if(notes.length){ L.push(""); L.push("Note libere recenti"); notes.forEach(n=>L.push("- "+n.date+" "+n.ex+": "+n.note)); }
+  var bn=S.ben.filter(b=>b.refl!==null||b.hrv).slice(-7);
+  if(bn.length){ L.push(""); L.push("Benessere ultimi giorni");
+    bn.forEach(b=>L.push("- "+b.date+": reflusso "+(b.refl===null?"-":b.refl)+" · HRV "+(b.hrv||"-")+" · readiness "+(b.read||"-")+" · sonno "+(b.sonno||"-")+" · alcol "+(b.alc?"sì":"no"))); }
+  return L.join("\n");
+}
+function copy(txt, msg){
+  var done=function(){ toast(msg||"Copiato"); };
+  if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(txt).then(done, fallback); }
+  else fallback();
+  function fallback(){
+    var ta=document.createElement("textarea"); ta.value=txt;
+    ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ toast("Copia non riuscita"); }
+    document.body.removeChild(ta);
+  }
+}
+function download(name, txt, type){
+  var b=new Blob([txt],{type:type||"text/plain"}), u=URL.createObjectURL(b);
+  var a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(u), 2000);
+}
+
+/* ============================================================
+   AGGIORNAMENTI DEL PIANO
+   Il piano vivo = piano base + patch applicate in ordine.
+   Una patch arriva dalla chat, si incolla, si vede l'anteprima,
+   si applica. Nessun esercizio entra senza che tu lo confermi.
+   ============================================================ */
+var PLAN = null;
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function buildPlan(){
+  var P = clone(BASEPLAN);
+  (S.patches||[]).forEach(function(pt){ (pt.ops||[]).forEach(function(op){ applyOp(P, op); }); });
+  return P;
+}
+function applyOp(P, op){
+  var day = P[op.d]; if(!day) return;
+  if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
+  if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
+  if(op.op==="add"){
+    if(day.ex.some(e=>e.n===op.ex.n)) return;
+    var at = op.after ? day.ex.findIndex(e=>e.n===op.after)+1 : day.ex.length;
+    day.ex.splice(at, 0, op.ex); return;
+  }
+  if(op.op==="set"){
+    var e = day.ex.filter(x=>x.n===op.n)[0]; if(!e) return;
+    ["s","lo","hi","L","b","tip","swap","u","sec","asym"].forEach(function(k){
+      if(op[k]!==undefined) e[k]=op[k];
+    });
+    return;
+  }
+  if(op.op==="dischi"){ day.dischi = op.v; return; }
+}
+/* anteprima leggibile prima di applicare */
+function previewPatch(pt){
+  return (pt.ops||[]).map(function(o){
+    if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
+    if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
+    if(o.op==="dischi") return "Sequenza dischi giorno "+o.d+" → "+o.v;
+    var ch=[];
+    if(o.s!==undefined) ch.push(o.s+" serie");
+    if(o.lo!==undefined||o.hi!==undefined) ch.push("range "+(o.lo!==undefined?o.lo:"?")+"-"+(o.hi!==undefined?o.hi:"?"));
+    if(o.L!==undefined) ch.push(o.L+" kg");
+    if(o.b!==undefined) ch.push("banda "+o.b);
+    if(o.tip!==undefined) ch.push("nota tecnica");
+    if(o.swap!==undefined) ch.push("promemoria dischi");
+    return o.n+" (giorno "+o.d+"): "+(ch.length?ch.join(", "):"nessun cambio");
+  });
+}
+
+/* ---------- promemoria backup ----------
+   Scade per tempo (30 giorni) o per lavoro accumulato (8 sessioni).
+   Quello che conta non è il calendario: è quanto perderesti. */
+function backupState(){
+  var ref = S.lastBackup || S.installed || today();
+  var days = Math.round((s2d(today())-s2d(ref))/86400000);
+  var since = S.sess.filter(x=>s2d(x.date) > s2d(ref)).length;
+  /* con il foglio collegato lo storico è già al sicuro: il .json serve
+     solo per il piano e il check simmetria, che nel foglio non vanno */
+  var safe = (typeof SYNC!=="undefined" && SYNC.on() && SYNC.state==="ok");
+  return {ref:ref, days:days, since:since, never:!S.lastBackup, safe:safe,
+          due: safe ? days>=60 : (days>=30 || since>=8),
+          soon: safe ? days>=45 : (days>=21 || since>=6)};
+}
+
+/* identificativo di riga: due esercizi uguali nella stessa sessione restano distinti */
+var _uid=0;
+function uid(p){ _uid++; return p+"-"+Date.now().toString(36)+"-"+_uid; }
+/* ============================================================
+   ANIMAZIONI SCHEMATICHE
+   Solo dove l'errore è una GEOMETRIA visibile, non una sensazione.
+   Le lunghezze dei segmenti restano costanti: dove serve, il
+   ginocchio è calcolato dalla posizione dell'anca, non disegnato.
+   ============================================================ */
+function r1(n){ return Math.round(n*10)/10; }
+function ln(x1,y1,x2,y2,o){ return '<line x1="'+r1(x1)+'" y1="'+r1(y1)+'" x2="'+r1(x2)+'" y2="'+r1(y2)+'" '+(o||"")+'/>'; }
+function pl(p,o){ return '<polyline points="'+p.map(q=>r1(q[0])+","+r1(q[1])).join(" ")+'" '+(o||"")+'/>'; }
+function ci(x,y,r,o){ return '<circle cx="'+r1(x)+'" cy="'+r1(y)+'" r="'+r+'" '+(o||"")+'/>'; }
+function rc(x,y,w,h,o){ return '<rect x="'+r1(x)+'" y="'+r1(y)+'" width="'+r1(w)+'" height="'+r1(h)+'" rx="2" '+(o||"")+'/>'; }
+function pa(d,o){ return '<path d="'+d+'" '+(o||"")+'/>'; }
+var DBF='fill="currentColor" stroke="none"', HEADF='fill="var(--bg)"';
+var GH='stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 4" fill="none"';
+
+/* ginocchio da caviglia e anca, lunghezze fisse */
+function knee(ax,ay,hx,hy,l1,l2){
+  var dx=hx-ax, dy=hy-ay, dd=Math.sqrt(dx*dx+dy*dy), ux=dx/dd, uy=dy/dd;
+  var d=Math.min(dd, l1+l2-0.5);
+  var a=(l1*l1-l2*l2+d*d)/(2*d), h=Math.sqrt(Math.max(0,l1*l1-a*a));
+  return {x: ax+a*ux + h*uy, y: ay+a*uy - h*ux};
+}
+function db(x,y){ return rc(x-7.5,y-3,15,6,DBF); }
+
+/* 1. Split-stance RDL — hinge contro squat */
+function aHinge(ox,t,w){
+  var ay=152, S=44, T=46, TO=54, AR=30, hx,hy,th;
+  if(!w){ hx=ox+4+34*t; hy=ay-88+12*t; th=(8+58*t)*Math.PI/180; }
+  else  { hx=ox+4+4*t;  hy=ay-88+40*t; th=(8+14*t)*Math.PI/180; }
+  var k=knee(ox,ay,hx,hy,S,T);
+  var sx=hx-Math.sin(th)*TO, sy=hy-Math.cos(th)*TO;
+  return ln(hx,hy,ox+44,ay,'stroke-width="2.4" opacity=".5"')+
+    pl([[ox,ay],[k.x,k.y],[hx,hy]])+ ln(hx,hy,sx,sy)+ ln(sx,sy,sx,sy+AR,'stroke-width="2.6"')+
+    ci(sx-Math.sin(th)*13, sy-Math.cos(th)*13, 9, HEADF)+ db(sx,sy+AR);
+}
+/* 2. Box Squat — anca indietro contro ginocchio avanti e tallone che si alza */
+function aBox(ox,t,w){
+  var ay=152, S=44, T=46, TO=52, hx,hy,th,heel=0;
+  if(!w){ hx=ox+8+30*t; hy=ay-88+40*t; th=(10+32*t)*Math.PI/180; }
+  else  { hx=ox+6+2*t;  hy=ay-88+40*t; th=(10+10*t)*Math.PI/180; heel=6*t; }
+  var k=knee(ox,ay-heel,hx,hy,S,T);
+  var sx=hx-Math.sin(th)*TO, sy=hy-Math.cos(th)*TO;
+  return rc(ox+24,112,40,40,'fill="var(--surf2)" stroke="var(--dim)" stroke-width="1.5"')+
+    ln(ox-18,ay,ox+8,ay-heel,'stroke-width="2.6"')+
+    pl([[ox,ay-heel],[k.x,k.y],[hx,hy]])+ ln(hx,hy,sx,sy)+
+    ln(sx,sy,sx+6,sy+28,'stroke-width="2.4"')+
+    ci(sx-Math.sin(th)*13, sy-Math.cos(th)*13, 9, HEADF)+ db(sx+6,sy+28);
+}
+/* 3. Floor Press — gomiti a 45° contro 90°, vista dall'alto */
+function aPress(ox,t,w){
+  var cy=64, UA=30, FA=26, ang=(w? 18+72*t : 18+27*t)*Math.PI/180, o="";
+  o+=ln(ox,cy+6,ox,cy+78,'stroke-width="9" opacity=".8" stroke-linecap="butt"');
+  o+=ci(ox,cy-6,10,HEADF);
+  o+=ln(ox,cy+22,ox,cy+96,GH);
+  [-1,1].forEach(function(s){
+    var shx=ox+s*8, shy=cy+18;
+    var ex=shx+s*Math.sin(ang)*UA, ey=shy+Math.cos(ang)*UA;
+    var hx=ex-s*0.24*FA, hy=ey-0.97*FA;
+    o+=ln(shx,shy,ex,ey)+ln(ex,ey,hx,hy,'stroke-width="3"')+db(hx,hy);
+    o+=ci(ex,ey,3.2,'fill="currentColor" stroke="none"');
+  });
+  return o;
+}
+/* colonna supina: piatta a terra oppure inarcata */
+function spine(px,py,sx,sy,lift){
+  var mx=(px+sx)/2, my=(py+sy)/2-lift*2;
+  return pa("M"+r1(px)+","+r1(py)+" Q"+r1(mx)+","+r1(my)+" "+r1(sx)+","+r1(sy));
+}
+/* 4. Pullover — costole basse contro lombare che si stacca */
+function aPullover(ox,t,w){
+  var fl=152, lift=w? 13*t : 0;
+  var px=ox+26, py=fl-11, sx=ox-14, sy=fl-11;
+  var ph=(6+96*t)*Math.PI/180, ah=38;
+  var hx=sx-Math.sin(ph)*ah, hy=sy-Math.cos(ph)*ah;
+  var o=ln(ox-30,fl,ox+66,fl,'stroke="var(--line)" stroke-width="1.5"')+
+    spine(px,py,sx,sy,lift)+ pl([[px,py],[ox+50,fl-34],[ox+62,fl]])+
+    ln(sx,sy,hx,hy)+ db(hx,hy)+ ci(sx-15,sy-5,9,HEADF);
+  if(lift>3) o+=pa("M"+r1(ox+2)+","+r1(fl-3)+" q11,-"+r1(lift+3)+" 22,0",
+    'stroke="var(--alert)" stroke-width="1.6" stroke-dasharray="2 3" fill="none"');
+  return o;
+}
+/* 5. Dead bug — lombare a terra contro lombare che si alza */
+function aDead(ox,t,w){
+  var fl=152, lift=w? 14*t : 0;
+  var px=ox+22, py=fl-11, sx=ox-18, sy=fl-11;
+  var kx=px-6+10*t, ky=py-40+16*t, fx=kx-14-20*t, fy=ky+34+4*t;
+  var ph=(4+92*t)*Math.PI/180, ah=34;
+  var hx=sx-Math.sin(ph)*ah, hy=sy-Math.cos(ph)*ah;
+  var o=ln(ox-34,fl,ox+56,fl,'stroke="var(--line)" stroke-width="1.5"')+
+    spine(px,py,sx,sy,lift)+
+    ln(px,py,px+15,py-37,'stroke-width="2.4" opacity=".45"')+
+    pl([[px,py],[kx,ky],[fx,fy]])+
+    ln(sx,sy,hx,hy)+ ci(sx-15,sy-4,9,HEADF);
+  if(lift>3) o+=pa("M"+r1(ox-2)+","+r1(fl-3)+" q11,-"+r1(lift+3)+" 22,0",
+    'stroke="var(--alert)" stroke-width="1.6" stroke-dasharray="2 3" fill="none"');
+  return o;
+}
+/* 6. Hip thrust — sale il bacino contro si inarca la lombare */
+function aThrust(ox,t,w){
+  var fl=152, shx=ox-30, shy=118, kx=ox+30, ky=116, fx=ox+36;
+  var px=ox+2, py = w ? fl-10-16*t : fl-10-30*t;
+  var arch = w ? 13*t : 0;
+  var mx=(shx+px)/2, my=(shy+py)/2-arch;
+  return ln(ox-6,fl,ox+46,fl,'stroke="var(--line)" stroke-width="1.5"')+
+    rc(ox-58,118,30,34,'fill="var(--surf2)" stroke="var(--dim)" stroke-width="1.5"')+
+    ln(shx,shy,kx,ky,GH)+
+    pa("M"+r1(shx)+","+r1(shy)+" Q"+r1(mx)+","+r1(my)+" "+r1(px)+","+r1(py))+
+    pl([[px,py],[kx,ky],[fx,fl]])+
+    ci(shx-13,shy-4,9,HEADF);
+}
+/* 7. Side plank — linea retta contro bacino che cala */
+function aPlank(ox,t,w){
+  var elx=ox-36, ely=150, shx=ox-32, shy=112, ax=ox+54, ay=146;
+  var sag = w ? 20*t : 0;
+  var hx=(shx+ax)/2+4, hy=(shy+ay)/2+sag;
+  return ln(ox-50,152,ox+62,152,'stroke="var(--line)" stroke-width="1.5"')+
+    ln(shx,shy,ax,ay,GH)+
+    ln(elx,ely,shx,shy,'stroke-width="3"')+ ln(elx-13,ely,elx+6,ely,'stroke-width="3"')+
+    pl([[shx,shy],[hx,hy],[ax,ay]])+
+    ci(shx-11,shy-7,9,HEADF);
+}
+/* 8. Bird-dog — piede all'altezza dell'anca contro piede più alto */
+function aBird(ox,t,w){
+  var sh=[ox-34,114], hip=[ox+26,114];
+  var sag = w ? 9*t : 0, lg = w ? -17*t : 0;
+  var mx=(sh[0]+hip[0])/2, my=114+sag;
+  return ln(ox-46,152,ox+46,152,'stroke="var(--line)" stroke-width="1.5"')+
+    ln(ox+20,114,ox+72,114,GH)+
+    pa("M"+r1(sh[0])+","+r1(sh[1])+" Q"+r1(mx)+","+r1(my)+" "+r1(hip[0])+","+r1(hip[1]))+
+    ln(sh[0],sh[1],ox-34,152)+ ln(hip[0],hip[1],ox+26,152)+
+    ln(ox+26,152,ox+40,152,'stroke-width="2.4" opacity=".5"')+
+    ln(sh[0],sh[1],sh[0]-32-6*t,sh[1]-2)+
+    ln(hip[0],hip[1],hip[0]+42,hip[1]+lg)+
+    ci(sh[0]-14,sh[1]+6,8.5,HEADF);
+}
+
+var ANIM = {
+ "Split-stance RDL":{f:aHinge, a:"Hinge · corretto", b:"Squat · sbagliato",
+   a2:"il bacino va indietro", b2:"il ginocchio va avanti"},
+ "Box Squat":{f:aBox, a:"Corretto", b:"Sbagliato",
+   a2:"anca indietro, tallone a terra", b2:"ginocchio avanti, tallone che si alza"},
+ "Floor Press manubri":{f:aPress, a:"Gomiti a 45°", b:"Gomiti a 90°",
+   a2:"vista dall'alto · protegge la spalla", b2:"lavora la spalla al posto del petto"},
+ "Floor Press (volume)":{f:aPress, a:"Gomiti a 45°", b:"Gomiti a 90°",
+   a2:"vista dall'alto · protegge la spalla", b2:"lavora la spalla al posto del petto"},
+ "Pullover manubrio":{f:aPullover, a:"Costole basse", b:"Lombare che si stacca",
+   a2:"espira portando il peso dietro", b2:"l'arco toglie il lavoro al dorso"},
+ "Dead bug":{f:aDead, a:"Lombare a terra", b:"Lombare che si alza",
+   a2:"è l'unica cosa che conta", b2:"qui l'esercizio ha smesso di funzionare"},
+ "Hip thrust con banda":{f:aThrust, a:"Sale il bacino", b:"Si inarca la lombare",
+   a2:"linea retta spalle-ginocchia", b2:"da protettivo diventa a rischio"},
+ "Side plank":{f:aPlank, a:"Linea retta", b:"Bacino che cala",
+   a2:"40s perfetti valgono più di 60", b2:"l'errore che rende inutile la tenuta"},
+ "Bird-dog con pausa 3s":{f:aBird, a:"Piede all'altezza dell'anca", b:"Piede più alto",
+   a2:"schiena neutra, bacino fermo", b2:"il lavoro passa alla lombare"}
+};
+
+var animRAF=null, animT0=0, animKey=null, animLast=0;
+function animBlock(n){
+  if(!ANIM[n]) return "";
+  return '<div class="card" id="animBox" style="margin-top:14px;padding:10px 10px 4px"></div>';
+}
+function animDraw(n,t){
+  var k=ANIM[n], box=document.getElementById("animBox"); if(!box||!k) return;
+  box.innerHTML='<svg viewBox="0 0 340 200" style="width:100%;height:auto;display:block">'+
+    '<line x1="170" y1="14" x2="170" y2="166" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 6"/>'+
+    '<g stroke="var(--glow)" color="var(--glow)" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round">'+k.f(88,t,false)+'</g>'+
+    '<g stroke="var(--alert)" color="var(--alert)" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round">'+k.f(252,t,true)+'</g>'+
+    '<text x="88" y="180" fill="var(--glow)" font-size="11" font-weight="700" text-anchor="middle">'+esc(k.a)+'</text>'+
+    '<text x="88" y="194" fill="var(--mut)" font-size="9.5" text-anchor="middle">'+esc(k.a2)+'</text>'+
+    '<text x="252" y="180" fill="var(--alert)" font-size="11" font-weight="700" text-anchor="middle">'+esc(k.b)+'</text>'+
+    '<text x="252" y="194" fill="var(--mut)" font-size="9.5" text-anchor="middle">'+esc(k.b2)+'</text>'+
+    '</svg>';
+}
+function startAnim(n){
+  stopAnim(); animKey=n;
+  var red = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(red){ animDraw(n,0.9); return; }
+  animT0=Date.now(); animLast=0;
+  (function loop(){
+    var now=Date.now();
+    if(now-animLast>42){ animLast=now;
+      animDraw(animKey,(1-Math.cos(((now-animT0)%3400)/3400*2*Math.PI))/2); }
+    animRAF=requestAnimationFrame(loop);
+  })();
+}
+function stopAnim(){ if(animRAF){ cancelAnimationFrame(animRAF); animRAF=null; } animKey=null; }
+/* ============================================================
+   COLLEGAMENTO AL FOGLIO
+   Il foglio è la memoria: si legge all'avvio, si scrive a fine
+   sessione. La memoria locale diventa solo una copia di comodo,
+   e se sparisce non succede niente.
+   Lettura via JSONP (aggira le restrizioni cross-origin di Apps
+   Script), scrittura via POST text/plain (richiesta "semplice",
+   quindi senza preflight).
+   ============================================================ */
+var SYNC = {
+  busy:false, last:null, state:"", err:"", pending:0,
+  cfg(){ return S.sync || {}; },
+  on(){ return !!(S.sync && S.sync.url); },
+
+  jsonp(url){
+    return new Promise(function(res,rej){
+      var cb="rch_"+Math.random().toString(36).slice(2), s=document.createElement("script");
+      var t=setTimeout(function(){ done(); rej(new Error("nessuna risposta entro 20s")); },20000);
+      function done(){ clearTimeout(t); try{ delete window[cb]; }catch(e){ window[cb]=undefined; }
+        if(s.parentNode) s.parentNode.removeChild(s); }
+      window[cb]=function(d){ done(); res(d); };
+      s.onerror=function(){ done(); rej(new Error("URL non raggiungibile")); };
+      s.src=url+(url.indexOf("?")<0?"?":"&")+"callback="+cb;
+      document.body.appendChild(s);
+    });
+  },
+  async pull(){
+    var c=this.cfg(), u=c.url+"?k="+encodeURIComponent(c.secret||"");
+    var d=null, e1="";
+    try{ var r=await fetch(u,{redirect:"follow"}); d=JSON.parse(await r.text()); }
+    catch(err){ e1=String(err.message||err); }
+    if(!d){ try{ d=await this.jsonp(u); }
+      catch(err2){ throw new Error(e1? (e1+" · "+(err2.message||err2)) : String(err2.message||err2)); } }
+    if(!d || !d.ok) throw new Error(d && d.err ? d.err : "risposta non valida");
+    return d;
+  },
+
+  /* diagnosi: quale strato si rompe */
+  async diagnose(){
+    var c=this.cfg(), out=[], u=(c.url||"")+"?k="+encodeURIComponent(c.secret||"");
+    var framed = (function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+    out.push({t:"Dove gira l'app", v: framed? "dentro un contenitore isolato (iframe)" : "pagina propria", bad:framed});
+    if(!c.url){ out.push({t:"URL", v:"non configurato", bad:true}); return out; }
+    out.push({t:"Forma dell'URL", v: /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(c.url)?
+      "corretta" : "sospetta: deve essere /macros/s/.../exec", bad: !/\/exec$/.test(c.url)});
+    try{ var r=await fetch(u,{redirect:"follow"}); var txt=await r.text();
+      try{ var j=JSON.parse(txt);
+        out.push({t:"Lettura via fetch", v: j.ok? "riuscita" : "il foglio risponde: "+j.err, bad:!j.ok});
+      }catch(e){ out.push({t:"Lettura via fetch", v:"risposta non è JSON (probabile pagina di login: accesso non impostato su Chiunque)", bad:true}); }
+    }catch(e){ out.push({t:"Lettura via fetch", v:"bloccata — "+String(e.message||e), bad:true}); }
+    try{ var j2=await this.jsonp(u);
+      out.push({t:"Lettura via script", v: (j2&&j2.ok)? "riuscita" : "il foglio risponde: "+((j2&&j2.err)||"esito negativo"), bad: !(j2&&j2.ok)});
+    }catch(e){ out.push({t:"Lettura via script", v:"bloccata — "+String(e.message||e), bad:true}); }
+    return out;
+  },
+  async push(payload){
+    var c=this.cfg();
+    payload.secret=c.secret||"";
+    var r=await fetch(c.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload), redirect:"follow"});
+    var t=await r.text();
+    var d=JSON.parse(t);
+    if(!d.ok) throw new Error(d.err||"scrittura rifiutata");
+    return d;
+  },
+
+  /* fonde due elenchi: il foglio ha ragione sulle righe che conosce,
+     ma quello che è nato in locale e non è ancora salito non si tocca */
+  fuse(remote, local, key){
+    var seen={}; remote.forEach(function(r){ seen[key(r)]=1; });
+    var extra = local.filter(function(r){ return !seen[key(r)]; });
+    this.pending += extra.length;
+    return remote.concat(extra).sort(function(a,b){ return s2d(a.date)-s2d(b.date); });
+  },
+  /* dal foglio allo stato dell'app */
+  adopt(d){
+    this.pending = 0;
+    var byId = function(r){ return String(r.id||""); }, byDate = function(r){ return String(r.date||""); };
+    if(d.log)  S.log  = this.fuse(d.log.map(function(r){
+      return {id:r.id||uid("l"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, ex:r.ex, side:r.side||"", band:r.band||"",
+        load:+r.load||0, reps:String(r.reps||"").split(".").filter(x=>x!=="").map(Number),
+        rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||""};
+    }), S.log, byId);
+    if(d.sess) S.sess = this.fuse(d.sess.map(function(r){
+      return {id:r.id||uid("s"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, sede:r.sede, mod:r.mod, min:+r.min||0,
+        en:+r.en||0, warm:r.warm===true||r.warm==="Sì", sig:r.sig===true||r.sig==="Sì", note:r.note||""};
+    }), S.sess, byId);
+    if(d.mis)  S.mis  = this.fuse(d.mis.map(function(r){
+      return {w:+r.w||weekOf(r.date), date:r.date, peso:num(r.peso), torace:num(r.torace),
+        bic:num(r.bic), coscia:num(r.coscia), vita:num(r.vita), note:r.note||""};
+    }), S.mis, byDate);
+    if(d.ben)  S.ben  = this.fuse(d.ben.map(function(r){
+      return {date:r.date, w:+r.w||weekOf(r.date), refl:num(r.refl), resp:r.resp===true||r.resp==="Sì",
+        camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
+        alc:r.alc===true||r.alc==="Sì", note:r.note||""};
+    }), S.ben, byDate);
+    this.last=new Date(); this.state="ok";
+  },
+  /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
+  payloadAll(){
+    return {
+      log: S.log.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,ex:r.ex,gruppo:meta(r.ex).g,side:r.side,band:r.band,
+        load:r.load,reps:r.reps.join("."),serie:r.reps.length,tot:r.reps.reduce((a,b)=>a+b,0),
+        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note})),
+      sess: S.sess.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,sede:r.sede,mod:r.mod,min:r.min,en:r.en,
+        warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",note:r.note})),
+      mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
+      ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
+        read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",note:r.note}))
+    };
+  }
+};
+function num(v){ if(v===""||v==null) return null; var n=+String(v).replace(",","."); return isNaN(n)?null:n; }
+/* ============================================================
+   INTERFACCIA
+   ============================================================ */
+var V="oggi", app=document.getElementById("app"), rest=null, tick=null;
+
+function toast(m){ var t=document.getElementById("toast"); t.textContent=m; t.classList.add("on");
+  clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"), 2200); }
+function sheet(html){ document.getElementById("sheetIn").innerHTML='<div class="handle"></div>'+html;
+  document.getElementById("sheet").classList.add("on"); }
+function closeSheet(){ stopAnim(); document.getElementById("sheet").classList.remove("on"); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+/* ---------- top bar ---------- */
+function topbar(title, sub){
+  var d=S.draft, clock="";
+  if(d){ var el=(Date.now()-d.t0)/60000; clock='<div class="clock'+(el>70?" warn":"")+'" id="sclock">'+Math.floor(el)+"′</div>"; }
+  return '<header class="top"><div class="wrap"><div class="toprow"><div>'+
+    '<div class="eyebrow">'+esc(sub)+'</div><h1>'+esc(title)+'</h1></div>'+clock+'</div></div></header>';
+}
+
+/* ---------- OGGI ---------- */
+function viewOggi(){
+  if(S.draft) return viewSession();
+  var w=weekOf(today()), done=S.sess.filter(s=>s.w===w);
+  var order=["A","B","C","D"], next=order.filter(d=>!done.some(s=>s.day===d))[0]||"A";
+  var h=topbar("Settimana "+w, dayName(today())+" "+today());
+  h+='<div class="wrap">';
+  if(Store.ok===false) h+=storageAlarm();
+  if(!S.log.length){ /* primo avvio su un dispositivo nuovo */
+    h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Prima cosa da fare</div>'+
+      '<h2 style="margin:4px 0 6px">Riporta il tuo storico</h2>'+
+      '<div class="sm mut">Questa copia è vuota. Apri il backup .json che hai scaricato dall\'altra versione: tornano log, sessioni, misure e modifiche al piano.</div>'+
+      '<button class="btn pri" style="margin-top:12px" data-a="imp">Ripristina il backup</button></div>'; }
+  var bk=backupState();
+  if(bk.due) h+='<div class="flag '+(bk.safe?"disc":"stop")+'" style="margin-top:12px"><b>⤓</b><div>'+
+    (bk.safe ? "Lo storico è nel foglio, ma piano e check simmetria vivono solo qui: un backup ogni due mesi li mette al sicuro."
+      : (bk.never? "Non hai ancora fatto un backup." : "Ultimo backup "+bk.days+" giorni fa")+
+        (bk.since? " · "+bk.since+" sessioni registrate da allora." : "."))+
+    ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scaricalo ora</button></div></div>';
+  h+='<div class="card"><div class="between"><div><div class="eyebrow">Fatte questa settimana</div>'+
+     '<div class="num" style="font-size:26px">'+done.length+'<span class="mut" style="font-size:16px;font-weight:500">/4</span></div></div>'+
+     '<div class="sets" style="max-width:190px">'+order.map(d=>'<div class="chip '+(done.some(s=>s.day===d)?"top":"")+'">'+d+'</div>').join("")+'</div></div></div>';
+
+  h+='<div class="eyebrow" style="margin:16px 0 6px">Apri una sessione</div>';
+  ["A","B","C","D","T1","T2"].forEach(function(d){
+    var p=PLAN[d], is=d===next;
+    h+='<button class="card" data-a="open" data-d="'+d+'" style="display:block;width:100%;text-align:left;'+
+      (is?"border-color:var(--glow)":"")+'">'+
+      '<div class="between"><div><div class="eyebrow '+(is?"glow":"")+'">'+d+(is?" · consigliata oggi":" · "+p.sede)+'</div>'+
+      '<h2 style="margin-top:3px">'+esc(p.name)+'</h2>'+
+      '<div class="sm mut" style="margin-top:3px">'+p.ex.length+' esercizi · '+p.min+' min · dischi '+esc(p.dischi)+'</div></div>'+
+      '<div style="font-size:22px;color:var(--dim)">›</div></div></button>';
+  });
+
+  var ups=[], seen={};
+  Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
+    if(seen[e.n]) return; seen[e.n]=1; var r=readiness(e); if(r.ready && !r.cap) ups.push(e.n+": "+r.why);
+  });});
+  if(ups.length){
+    h+='<div class="eyebrow" style="margin:18px 0 6px">Pronti per salire</div><div class="card">';
+    ups.forEach(u=>h+='<div class="flag up"><b>↑</b><div>'+esc(u)+'</div></div>');
+    h+='<div class="xs mut" style="margin-top:8px">Top del range su 3 serie su 4 per due sessioni consecutive.</div></div>';
+  }
+  var lastS=S.sess[S.sess.length-1];
+  if(lastS) h+='<div class="card flat"><div class="eyebrow">Ultima sessione</div><div class="sm" style="margin-top:4px">'+
+    lastS.day+" · "+lastS.date+" ("+ago(lastS.date)+") · "+lastS.min+" min · energia "+lastS.en+'</div></div>';
+  h+='</div>';
+  return h;
+}
+
+/* ---------- sessione in corso ---------- */
+function viewSession(){
+  var d=S.draft, p=PLAN[d.day];
+  var h=topbar(p.name, "Giorno "+d.day+" · settimana "+weekOf(d.date));
+  h+='<div class="wrap">';
+
+  /* riscaldamento */
+  var wdone=d.warm.filter(Boolean).length;
+  h+='<div class="card"><div class="between"><div class="eyebrow '+(wdone===WARM.length?"":"amb")+'">Riscaldamento · 6 minuti · '+wdone+"/"+WARM.length+'</div>'+
+     '<button class="btn sm ghost" data-a="wall">'+(wdone===WARM.length?"Azzera":"Tutti")+'</button></div>';
+  if(wdone<WARM.length) h+='<div class="xs mut" style="margin:6px 0 2px">È il blocco scoliosi. Se la sessione è corta, taglia un isolamento, non questo.</div>';
+  WARM.forEach(function(x,i){
+    var dd = x.var ? x.var[d.day] : x.d;
+    h+='<div class="check '+(d.warm[i]?"on":"")+'"><div class="box" data-a="warm" data-i="'+i+'" style="cursor:pointer">✓</div>'+
+       '<div class="t" data-a="warm" data-i="'+i+'" style="flex:1"><div style="font-weight:600;font-size:14.5px">'+esc(x.n)+'</div>'+
+       '<div class="xs mut">'+esc(dd)+'</div></div>'+
+       (G[x.n]?'<button class="btn sm ghost" data-a="gwarm" data-i="'+i+'" style="min-width:38px">?</button>':"")+'</div>';
+  });
+  h+='</div>';
+
+  if(p.dischi!=="solo bande") h+='<div class="flag disc"><b>Dischi</b><div>'+esc(p.dischi)+' — cambiali <b>dentro</b> il recupero, non dopo.</div></div>';
+
+  /* esercizi */
+  d.ex.forEach(function(e,i){ h+=exCard(e,i,p.ex[i]); });
+
+  h+='<div style="margin:18px 0 30px"><button class="btn pri" data-a="close">Chiudi la sessione</button>'+
+     '<button class="btn ghost" style="margin-top:8px" data-a="abort">Annulla</button></div>';
+  h+='</div>';
+  h+=restBar();
+  return h;
+}
+function restBar(){
+  if(!rest) return "";
+  return '<div style="position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));z-index:45">'+
+    '<div class="wrap"><div class="card" style="margin:0 0 8px;background:var(--surf2);border-color:var(--amb)">'+
+    '<div class="between"><div><div class="eyebrow amb">Recupero '+esc(rest.lbl)+'</div>'+
+    '<div class="num" style="font-size:26px" id="rclock">'+mmss((rest.end-Date.now())/1000)+'</div></div>'+
+    '<div class="row"><button class="btn sm ghost" data-a="rest+">+30s</button>'+
+    '<button class="btn sm" data-a="rest0">Stop</button></div></div></div></div></div>';
+}
+function exCard(e,i,def){
+  var m=meta(e.n), sets=e.sets, target=def.s+" × "+(def.lo===def.hi?def.lo:def.lo+"-"+def.hi)+(m.sec?"s":"");
+  var full=sets.length>=def.s;
+  var h='<div class="card" style="'+(full?"opacity:.62":"")+'">';
+  h+='<div class="between"><div style="flex:1"><h2>'+esc(e.n)+'</h2>'+
+     '<div class="xs mut" style="margin-top:2px">'+esc(m.g)+' · '+target+(def.u?" · per lato":"")+'</div></div>';
+  if(G[e.n]||def.tip) h+='<button class="btn sm ghost" data-a="tip" data-i="'+i+'" style="min-width:40px">?</button>';
+  h+='</div>';
+
+  var lt=lastTwo(e.n);
+  if(lt.length) h+='<div class="xs mut" style="margin-top:7px">'+lt.map(r=>r.date.slice(0,5)+" · "+(r.load?r.load+" kg · ":"")+r.reps.join("/")).join("  |  ")+'</div>';
+
+  var r=readiness(def);
+  if(r.ready && !full) h+='<div class="flag '+(r.cap?"info":"up")+'" style="margin-top:9px"><b>'+(r.cap?"Tetto":"↑")+'</b><div>'+esc(r.why)+'</div></div>';
+  if(def.swap) h+='<div class="flag disc" style="margin-top:9px"><b>⟳</b><div>'+esc(def.swap)+' mentre fai questo.</div></div>';
+
+  /* carico o banda */
+  if(def.b){
+    h+='<div class="pills" style="margin-top:10px">'+BANDS.map(b=>'<button class="pill '+(e.band===b?"on":"")+'" data-a="band" data-i="'+i+'" data-v="'+b+'">'+b+'</button>').join("")+'</div>';
+  } else if(!m.sec && (def.L || e.load)){
+    h+='<div class="row" style="margin-top:10px"><div class="eyebrow" style="width:52px">Carico</div>'+
+       '<div class="step" style="flex:1"><button data-a="load-" data-i="'+i+'">−</button>'+
+       '<div class="val">'+e.load+'<small>kg</small></div>'+
+       '<button data-a="load+" data-i="'+i+'">+</button></div></div>';
+  }
+
+  /* serie fatte */
+  if(sets.length){
+    h+='<div class="sets" style="margin-top:10px">'+sets.map(function(s,j){
+      var lab = def.u ? s.S+"·"+s.D : s.v;
+      var isTopS = def.u ? (s.S>=def.hi && s.D>=def.hi) : s.v>=def.hi;
+      return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'">'+lab+'</button>';
+    }).join("")+'</div>';
+  }
+
+  if(!full){
+    if(def.u){
+      h+='<div class="plumb"><div class="lbl"><span class="l">Sinistra</span><span class="r">Destra</span></div>';
+      h+='<div class="row" style="gap:8px;margin-top:6px">'+
+        '<div class="step" style="flex:1"><button data-a="l-" data-i="'+i+'">−</button><div class="val">'+e.cur.S+'</div><button data-a="l+" data-i="'+i+'">+</button></div>'+
+        '<div class="step" style="flex:1"><button data-a="r-" data-i="'+i+'">−</button><div class="val">'+e.cur.D+'</div><button data-a="r+" data-i="'+i+'">+</button></div></div>';
+      if(def.asym) h+='<div class="xs mut" style="margin-top:6px">Sinistra 60s · destra 40s. Convessità lombare a sinistra.</div>';
+      h+='</div>';
+    } else {
+      h+='<div class="row" style="margin-top:10px"><div class="eyebrow" style="width:52px">'+(m.sec?"Sec":"Rep")+'</div>'+
+        '<div class="step" style="flex:1"><button data-a="v-" data-i="'+i+'">−</button><div class="val">'+e.cur.v+'</div>'+
+        '<button data-a="v+" data-i="'+i+'">+</button></div></div>';
+    }
+    h+='<button class="btn amb" style="margin-top:10px" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+' fatta</button>';
+  } else {
+    h+='<div class="row" style="margin-top:10px"><div class="eyebrow" style="width:52px">RIR</div>'+
+      '<div class="pills" style="flex:1;padding:0">'+[0,1,2,3,4].map(v=>'<button class="pill '+(e.rir===v?"on":"")+'" data-a="rir" data-i="'+i+'" data-v="'+v+'">'+v+'</button>').join("")+'</div></div>';
+    h+='<input type="text" placeholder="Nota (sensazioni, tecnica, dolore…)" value="'+esc(e.note)+'" data-note="'+i+'" style="margin-top:9px">';
+  }
+  return h+'</div>';
+}
+
+/* ---------- PROGRESSI ---------- */
+function viewProg(){
+  var ws=weeks().slice(-8), h=topbar("Progressi","Storico dalla settimana 24");
+  h+='<div class="wrap">';
+  var ks=ws.map(kpi), last=ks[ks.length-1];
+  var maxT=Math.max.apply(null,ks.map(k=>k.ton||0))||1;
+  h+='<div class="card"><div class="eyebrow">Tonnellaggio settimanale</div>'+
+     '<div class="spark" style="margin-top:9px">'+ks.map(k=>'<i class="'+(k.ton?"on":"")+'" style="height:'+Math.max(2,(k.ton/maxT*100))+'%"></i>').join("")+'</div>'+
+     '<div class="row between xs mut" style="margin-top:5px"><span>sett. '+ws[0]+'</span><span>'+(last.ton||0).toLocaleString("it")+' kg · sett. '+last.w+'</span></div></div>';
+
+  h+='<div class="card"><div class="eyebrow">KPI per settimana</div><table style="margin-top:6px"><tr>'+
+     '<th>S.</th><th>Sess</th><th>Min</th><th>En.</th><th>%top</th><th>Asim</th></tr>'+
+     ks.slice().reverse().map(k=>'<tr><td>'+k.w+'</td><td class="n">'+k.n+'/4</td>'+
+     '<td class="n" style="color:'+(k.dur>75?"var(--alert)":"inherit")+'">'+(k.dur||"–")+'</td>'+
+     '<td class="n" style="color:'+(k.en&&k.en<4?"var(--amb)":"inherit")+'">'+(k.en||"–")+'</td>'+
+     '<td class="n">'+(k.top!==null?k.top+"%":"–")+'</td><td class="n">'+k.asim+'%</td></tr>').join("")+'</table></div>';
+
+  h+='<div class="card"><div class="eyebrow">Serie per gruppo · settimana '+last.w+'</div>';
+  Object.keys(TGT).forEach(function(g){
+    var v=last.grp[g]||0, t=TGT[g], col = v<t[0]?"var(--alert)":v>t[1]?"var(--amb)":"var(--ok)";
+    h+='<div style="margin-top:9px"><div class="between xs"><span>'+g+'</span><span class="mut">'+v+' / '+t[0]+'-'+t[1]+'</span></div>'+
+      '<div style="height:6px;background:var(--surf2);border-radius:3px;margin-top:4px;overflow:hidden">'+
+      '<div style="height:100%;width:'+Math.min(100,v/t[1]*100)+'%;background:'+col+'"></div></div></div>';
+  });
+  h+='</div>';
+
+  h+='<div class="card"><div class="eyebrow">Carichi chiave</div><table style="margin-top:6px"><tr><th>Esercizio</th><th>Oggi</th><th>Sett. 24</th></tr>';
+  ["Floor Press manubri","Rematore manubri","Box Squat","Split-stance RDL","Shoulder Press manubri","Bulgarian Split Squat manubri"].forEach(function(n){
+    var hh=hist(n).filter(r=>r.load>0); if(!hh.length) return;
+    h+='<tr><td>'+n.replace(" manubri","")+'</td><td class="n">'+hh[hh.length-1].load+' kg</td><td class="n mut">'+hh[0].load+' kg</td></tr>';
+  });
+  h+='</table></div>';
+
+  var dg=diagnose();
+  h+='<div class="eyebrow" style="margin:18px 0 6px">Diagnosi · '+dg.length+'</div>';
+  if(!dg.length) h+='<div class="card"><div class="sm mut">Nessuna anomalia nei carichi, nel volume o nei segnali.</div></div>';
+  dg.forEach(function(x){
+    var cls = x.k==="segnale"||x.k==="stallo"||x.k==="crollo" ? "stop" : x.k==="leggero"||x.k==="volume"?"disc":"info";
+    h+='<div class="flag '+cls+'"><b>'+esc(x.t)+'</b><div>'+esc(x.m)+'</div></div>';
+  });
+  h+='<div class="xs mut" style="margin:10px 0 30px">La diagnosi legge solo i numeri. Cambiare esercizio o ridistribuire il volume è una decisione da portare al coach.</div>';
+  h+='</div>';
+  return h;
+}
+
+/* ---------- CORPO ---------- */
+function viewCorpo(){
+  var h=topbar("Corpo","Misure · benessere · simmetria");
+  h+='<div class="wrap">';
+  var lastM=S.mis[S.mis.length-1], gap=lastM?Math.round((new Date()-s2d(lastM.date))/86400000):99;
+  h+='<div class="card"><div class="between"><div class="eyebrow">Misure · ogni 14 giorni</div>'+
+     '<button class="btn sm '+(gap>=14?"amb":"ghost")+'" data-a="mis">'+(gap>=14?"Da fare":"Aggiungi")+'</button></div>';
+  if(lastM){
+    h+='<div class="grid3" style="margin-top:10px">'+
+      mini("Peso",(lastM.peso||"–")+" kg")+mini("Vita/Torace", lastM.vita&&lastM.torace?(lastM.vita/lastM.torace).toFixed(3):"–")+
+      mini("Ultima", ago(lastM.date))+'</div>';
+    h+='<div class="xs mut" style="margin-top:8px">Al mattino a digiuno, dopo il bagno, stesso metro. Torace a fine espirazione normale.</div>';
+  }
+  h+='</div>';
+
+  var td=today(), b=S.ben.filter(x=>x.date===td)[0];
+  h+='<div class="card"><div class="between"><div class="eyebrow">Benessere di oggi</div>'+
+     '<button class="btn sm '+(b?"ghost":"amb")+'" data-a="ben">'+(b?"Modifica":"30 secondi")+'</button></div>';
+  if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl===null?"–":b.refl)+' · camminate '+(b.camm===null?"–":b.camm)+
+    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
+  else h+='<div class="xs mut" style="margin-top:8px">La sera, prima di dormire, tutto insieme.</div>';
+  h+='</div>';
+
+  var w=weekOf(today()), due=[31,35,39,43].indexOf(w)>=0;
+  h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · settimane 31 · 35 · 39 · 43</div>'+
+     (due?'<button class="btn sm amb" data-a="sim">Compila</button>':"")+'</div>';
+  h+='<div class="xs mut" style="margin-top:8px">Quattro domande, quattro volte l\'anno. Floor Press nel giorno A, Box Squat nel B, RDL nel D, bird-dog nel riscaldamento.</div>';
+  if(S.sim.length) h+='<div class="sm" style="margin-top:9px">Ultimo: '+S.sim[S.sim.length-1].date+'</div>';
+  h+='</div>';
+
+  h+='<div class="card flat"><div class="eyebrow">Riferimento clinico</div>'+
+     '<div class="sm mut" style="margin-top:6px">RX rachide in toto, 31/10/2008 — dorsale dx-convessa 20° Cobb, lombare sn-convessa 29° Cobb (curva maggiore), emibacino sn più basso di 1,3 cm. Referto non aggiornato.</div></div>';
+
+  h+='<div class="eyebrow" style="margin:16px 0 6px">I tre segnali che fermano la serie</div><div class="card">';
+  STOPS.forEach(s=>h+='<div class="flag stop">•<div>'+esc(s)+'</div></div>');
+  h+='</div><div style="height:24px"></div></div>';
+  return h;
+}
+function fallbackSheet(){
+  sheet('<div class="eyebrow amb">La sessione non è al sicuro</div>'+
+    '<div class="sm" style="margin-top:8px">Non è finita né sul foglio né nella memoria del dispositivo. '+
+    'Copiala adesso e incollala nel tracker: sono trenta secondi e non la perdi.</div>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="tsv">Copia le righe per Sheets</button>'+
+    '<button class="btn" style="margin-top:8px" data-a="dlj">Scarica il backup</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Chiudi</button>');
+}
+function storageAlarm(){
+  return '<div class="flag stop" style="margin-top:12px"><b>⚠</b><div>'+
+    '<b>I dati non si stanno salvando.</b> Quello che inserisci resta solo finché non chiudi. '+
+    'Scarica subito il backup e apri la scheda Coach per capire perché.'+
+    ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scarica ora</button></div></div>';
+}
+function mini(l,v){ return '<div><div class="eyebrow">'+l+'</div><div class="num" style="font-size:17px;margin-top:2px">'+v+'</div></div>'; }
+
+/* ---------- COACH ---------- */
+function viewCoach(){
+  var h=topbar("Coach","Il ponte verso la chat");
+  h+='<div class="wrap">';
+  h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
+     '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
+     'Quello che richiede un giudizio — cambiare esercizio, ridistribuire il volume, leggere un segnale — lo porti in chat con il briefing qui sotto.</div></div>';
+  var sy=SYNC.on();
+  h+='<div class="card" style="border-color:'+(sy?(SYNC.state==="ok"?"var(--ok)":"var(--amb)"):"var(--glow)")+'">'+
+     '<div class="between"><div class="eyebrow '+(sy?"":"glow")+'">Collegamento al foglio</div>'+
+     '<div class="xs" style="font-weight:700;color:'+(sy?(SYNC.state==="ok"?"var(--ok)":"var(--amb)"):"var(--glow)")+'">'+
+       (sy?(SYNC.state==="ok"?"ATTIVO":"DA VERIFICARE"):"NON CONFIGURATO")+'</div></div>';
+  if(sy){
+    h+='<div class="sm mut" style="margin-top:7px">Lo storico vive nel foglio. L\'app lo legge all\'avvio e ci scrive a fine sessione.</div>'+
+       (SYNC.last?'<div class="xs mut" style="margin-top:4px">Ultima sincronizzazione: '+SYNC.last.toLocaleTimeString("it")+'</div>':"")+
+       (SYNC.err?'<div class="flag stop" style="margin-top:8px">•<div>'+esc(SYNC.err)+'</div></div>':"")+
+       '<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="spull">Rileggi dal foglio</button>'+
+       '<button class="btn sm" data-a="spush">Invia tutto</button></div>'+
+       '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" data-a="scfg">Modifica</button>'+
+       '<button class="btn sm ghost" data-a="sdiag">Diagnostica</button></div>';
+  } else {
+    h+='<div class="sm" style="margin-top:7px">Senza collegamento i dati dipendono dalla memoria del browser, che qui dentro non è affidabile. Con il collegamento la memoria diventa il foglio.</div>'+
+       '<button class="btn pri" style="margin-top:10px" data-a="scfg">Collega il foglio</button>';
+  }
+  h+='</div>';
+  h+='<button class="btn pri" data-a="brief">Copia il briefing per il coach</button>';
+  h+='<div class="xs mut" style="margin:8px 0 16px">KPI delle ultime 4 settimane, esercizi pronti per salire, diagnosi, note libere e benessere. Incollalo in chat e chiedi cosa cambiare.</div>';
+
+  h+='<div class="eyebrow" style="margin:18px 0 6px">Dati</div>';
+  var bk=backupState();
+  h+='<div class="card" style="border-color:'+(bk.due?"var(--alert)":bk.soon?"var(--amb)":"var(--line)")+'">'+
+     '<div class="between"><div><div class="eyebrow '+(bk.due?"":"glow")+'">Ultimo backup</div>'+
+     '<div class="num" style="font-size:19px;margin-top:2px">'+(bk.never?"mai":bk.days+" giorni fa")+'</div>'+
+     '<div class="xs mut" style="margin-top:2px">'+bk.since+' sessioni da allora · promemoria a 30 giorni o 8 sessioni</div></div>'+
+     '<div style="font-size:26px;color:'+(bk.due?"var(--alert)":bk.soon?"var(--amb)":"var(--ok)")+'">'+(bk.due?"!":"✓")+'</div></div></div>';
+  h+='<div class="grid2"><button class="btn" data-a="tsv">Copia per Sheets</button><button class="btn '+(bk.due?"amb":"")+'" data-a="dlj">Backup .json</button></div>';
+  h+='<div class="xs mut" style="margin-top:8px">Il formato per Sheets usa la tabulazione: si incolla in colonne separate in Log_Esercizi. Il backup .json è l\'unica copia che sopravvive a tutto: fallo una volta al mese.</div>';
+  h+='<div class="grid2" style="margin-top:10px"><button class="btn ghost" data-a="imp">Ripristina backup</button><button class="btn ghost" data-a="dlt">Scarica .tsv</button></div>';
+
+  h+='<div class="eyebrow" style="margin:22px 0 6px">Aggiornamenti del piano</div>';
+  h+='<div class="card"><div class="sm">Quando in chat decidiamo di cambiare qualcosa — un carico, un range, un esercizio — ricevi un codice. Incollalo qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
+     '<textarea id="patchT" style="margin-top:10px" placeholder=\'{"nota":"…","ops":[…]}\'></textarea>'+
+     '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button></div>';
+  var ps=S.patches||[];
+  if(ps.length){
+    h+='<div class="card"><div class="between"><div class="eyebrow">Storico modifiche · '+ps.length+'</div>'+
+       '<button class="btn sm ghost" data-a="prev">Annulla ultima</button></div>';
+    ps.slice().reverse().forEach(function(p){
+      h+='<div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--line)">'+
+         '<div class="sm" style="font-weight:600">'+esc(p.nota||"senza nota")+'</div>'+
+         '<div class="xs mut">'+esc(p.ts)+' · '+(p.ops||[]).length+' modifiche</div></div>';
+    });
+    h+='</div>';
+  }
+  var st = Store.ok===false ? ["var(--alert)","non funziona"] : Store.ok===true ? ["var(--ok)","verificato"] : ["var(--mut)","non ancora testato"];
+  h+='<div class="card" style="margin-top:18px;border-color:'+(Store.ok===false?"var(--alert)":"var(--line)")+'">'+
+     '<div class="between"><div class="eyebrow">Salvataggio</div><div class="xs" style="color:'+st[0]+';font-weight:700">'+st[1].toUpperCase()+'</div></div>'+
+     '<table style="margin-top:8px"><tr><td>Dove</td><td class="n">'+
+       (Store.mode==="artifact"?"dentro Claude":Store.mode==="device"?"memoria del browser":"NESSUNO")+'</td></tr>'+
+     '<tr><td>Ultima scrittura</td><td class="n">'+(Store.last?Store.last.toLocaleTimeString("it"):"—")+'</td></tr>'+
+     '<tr><td>Dimensione</td><td class="n">'+(Store.bytes?Math.round(Store.bytes/1024)+" KB":"—")+'</td></tr>'+
+     '<tr><td>Contenuto</td><td class="n">'+S.sess.length+' sess · '+S.log.length+' log · '+S.mis.length+' mis</td></tr>'+
+     (S.savedAt?'<tr><td>Dati scritti il</td><td class="n">'+esc(new Date(S.savedAt).toLocaleString("it"))+'</td></tr>':"")+
+     (Store.err?'<tr><td>Errore</td><td class="n" style="color:var(--alert)">'+esc(Store.err)+'</td></tr>':"")+
+     '</table>'+
+     (Store.fallback?'<div class="flag disc" style="margin-top:10px"><b>!</b><div>Lo storage di Claude non ha risposto: sto usando la memoria del browser, che qui dentro può non sopravvivere alla chiusura. Scarica il backup a fine sessione.</div></div>':"")+
+     '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="stest">Verifica ora scrittura e rilettura</button></div>';
+  h+='<div style="height:30px"></div></div>';
+  return h;
+}
+
+/* ---------- nav ---------- */
+function nav(){
+  var items=[["oggi","▦","Oggi"],["prog","◐","Progressi"],["corpo","⌁","Corpo"],["coach","◈","Coach"]];
+  document.getElementById("nav").innerHTML = items.map(function(i){
+    var dot = (i[0]==="coach" && backupState().due) ?
+      '<span style="position:absolute;top:7px;margin-left:20px;width:7px;height:7px;border-radius:50%;background:var(--alert)"></span>' : "";
+    return '<button data-a="nav" data-v="'+i[0]+'" class="'+(V===i[0]?"on":"")+'" style="position:relative">'+
+      '<span class="ico">'+i[1]+'</span>'+dot+'<span class="lb">'+i[2]+'</span></button>';
+  }).join("");
+}
+function render(){
+  if(!PLAN) PLAN=buildPlan();
+  app.innerHTML = V==="oggi"?viewOggi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
+  nav();
+  window.scrollTo(0, window._sy||0);
+}
+
+/* ---------- azioni ---------- */
+document.addEventListener("click", function(ev){
+  var el=ev.target.closest("[data-a]"); if(!el) return;
+  var a=el.dataset.a, i=+el.dataset.i, j=+el.dataset.j, v=el.dataset.v, d=S.draft;
+  var def = d ? PLAN[d.day].ex[i] : null, e = d ? d.ex[i] : null;
+  window._sy = window.scrollY;
+
+  if(a==="nav"){ V=v; window._sy=0; render(); return; }
+  if(a==="open"){ startSession(el.dataset.d); return; }
+  if(a==="warm"){ d.warm[i]=!d.warm[i]; render(); return; }
+  if(a==="wall"){ var all=d.warm.every(Boolean); d.warm=d.warm.map(()=>!all); render(); return; }
+  if(a==="tip"){ guideSheet(def.n, def.tip); return; }
+  if(a==="gwarm"){ guideSheet(WARM[i].n, ""); return; }
+  if(a==="full"){ var f=document.getElementById("gfull"); if(f) f.style.display = f.style.display==="none"?"block":"none"; return; }
+  if(a==="x"){ closeSheet(); return; }
+  if(a==="band"){ e.band=v; save(); render(); return; }
+  if(a==="load+"||a==="load-"){
+    var m=meta(e.n), st=m.step||2, nv=e.load+(a==="load+"?st:-st);
+    if(m.cap && nv>m.cap){ toast("Tetto "+m.cap+" kg. Progredisci con il tempo."); return; }
+    e.load=Math.max(0,nv); save(); render(); return;
+  }
+  if(a==="v+"||a==="v-"){ e.cur.v=Math.max(0,e.cur.v+(a==="v+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
+  if(a==="l+"||a==="l-"){ e.cur.S=Math.max(0,e.cur.S+(a==="l+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
+  if(a==="r+"||a==="r-"){ e.cur.D=Math.max(0,e.cur.D+(a==="r+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
+  if(a==="set"){
+    e.sets.push(def.u ? {S:e.cur.S, D:e.cur.D} : {v:e.cur.v});
+    startRest(meta(e.n).t, e.n); save(); render(); return;
+  }
+  if(a==="undo"){ e.sets.splice(j,1); save(); render(); return; }
+  if(a==="rir"){ e.rir=+v; save(); render(); return; }
+  if(a==="rest+"){ rest.end+=30000; return; }
+  if(a==="rest0"){ stopRest(); render(); return; }
+  if(a==="abort"){ if(confirm("Annullare la sessione? I dati non vengono salvati.")){ S.draft=null; stopRest(); save(); render(); } return; }
+  if(a==="close"){ closeSession(); return; }
+  if(a==="savesess"){ commitSession(); return; }
+  if(a==="mis"){ formMis(); return; }
+  if(a==="savemis"){ saveMis(); return; }
+  if(a==="ben"){ formBen(); return; }
+  if(a==="saveben"){ saveBen(); return; }
+  if(a==="sim"){ formSim(); return; }
+  if(a==="savesim"){ saveSim(); return; }
+  if(a==="brief"){ copy(briefing(),"Briefing copiato. Incollalo in chat."); return; }
+  if(a==="tsv"){ copy(tsv(),"Righe copiate. Incolla in Log_Esercizi."); return; }
+  if(a==="dlj"){
+    download("rachide-"+today().replace(/\//g,"-")+".json", JSON.stringify(S), "application/json");
+    S.lastBackup=today(); save(); closeSheet(); render();
+    toast("Backup scaricato. Spostalo su Drive."); return; }
+  if(a==="dlt"){ download("log-"+today().replace(/\//g,"-")+".tsv", tsv(), "text/tab-separated-values"); return; }
+  if(a==="imp"){ importer(); return; }
+  if(a==="stest"){ storageTest(); return; }
+  if(a==="scfg"){ syncForm(); return; }
+  if(a==="ssave"){ syncSave(); return; }
+  if(a==="sdiag"){ syncDiag(); return; }
+  if(a==="spull"){ doPull(true); return; }
+  if(a==="spush"){ doPush(true); return; }
+  if(a==="pprev"){ patchPreview(); return; }
+  if(a==="papply"){ patchApply(); return; }
+  if(a==="prev"){ if(confirm("Annullare l'ultima modifica al piano?")){ S.patches.pop(); PLAN=buildPlan(); save(); render(); toast("Modifica annullata"); } return; }
+});
+/* selezione singola dentro i pannelli: un solo gestore per tutti i form */
+document.addEventListener("click", function(ev){
+  var keys=["en","sig","r","c","p","x","q","s"];
+  for(var i=0;i<keys.length;i++){
+    var b=ev.target.closest("[data-"+keys[i]+"]");
+    if(b && b.classList.contains("pill")){
+      [].forEach.call(b.parentNode.children, p=>p.classList.remove("on"));
+      b.classList.add("on"); return;
+    }
+  }
+});
+document.addEventListener("input", function(ev){
+  var t=ev.target;
+  if(t.dataset.note!==undefined && S.draft){ S.draft.ex[+t.dataset.note].note=t.value; save(); }
+});
+
+/* ---------- sessione ---------- */
+function guideSheet(n, tip){
+  var g=G[n];
+  var h='<div class="eyebrow amb">Guida tecnica</div><h2 style="margin:3px 0 12px">'+esc(n)+'</h2>';
+  if(tip) h+='<div class="flag info"><b>Piano</b><div>'+esc(tip)+'</div></div>';
+  if(ANIM[n]) h+=animBlock(n);
+  if(g){
+    h+='<div style="margin-top:14px"><div class="eyebrow" style="color:var(--ok)">Devi sentire</div>'+
+       '<div class="sm" style="margin-top:4px">'+esc(g.f)+'</div></div>';
+    h+='<div style="margin-top:14px"><div class="eyebrow" style="color:var(--alert)">Stai sbagliando se</div>'+
+       '<div class="sm" style="margin-top:4px">'+esc(g.e)+'</div></div>';
+    h+='<div style="margin-top:14px"><div class="eyebrow amb">Correzione</div>'+
+       '<div class="sm" style="margin-top:4px">'+esc(g.c)+'</div></div>';
+    h+='<button class="btn ghost sm" style="width:100%;margin-top:16px" data-a="full">Setup ed esecuzione</button>'+
+       '<div id="gfull" style="display:none;margin-top:10px"><div class="sm mut">'+esc(g.p)+'</div></div>';
+  } else if(!tip){ h+='<div class="sm mut">Nessuna scheda tecnica per questo esercizio.</div>'; }
+  h+='<button class="btn" style="margin-top:16px" data-a="x">Chiudi</button>';
+  sheet(h);
+  if(ANIM[n]) startAnim(n);
+}
+function startSession(day){
+  var p=PLAN[day];
+  S.draft={day:day, date:today(), t0:Date.now(), warm:WARM.map(()=>false),
+    ex:p.ex.map(function(x){
+      var m=meta(x.n);
+      return {n:x.n, load: x.b?0:suggestLoad(x), band: x.b?lastBand(x.n,x.b):"",
+        sets:[], rir:null, note:"",
+        cur: x.u ? {S:(m.sec?x.hi:x.lo), D:(m.sec?x.lo:x.lo)} : {v:(m.sec?x.hi:x.lo)}};
+    })};
+  V="oggi"; window._sy=0; save(); render();
+}
+function startRest(t, n){ var sec=REST[t]||60; rest={end:Date.now()+sec*1000, lbl:sec+"s · "+n}; }
+function stopRest(){ rest=null; }
+function closeSession(){
+  var d=S.draft, min=Math.max(1,Math.round((Date.now()-d.t0)/60000));
+  var logged=d.ex.filter(e=>e.sets.length).length;
+  sheet('<div class="eyebrow">Chiudi la sessione</div><h2 style="margin:4px 0 12px">Giorno '+d.day+' · '+logged+'/'+d.ex.length+' esercizi</h2>'+
+    '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
+    '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
+      [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Segnale articolare</span><div class="pills" id="fSig">'+
+      '<button class="pill on" data-sig="0">No</button><button class="pill" data-sig="1">Sì</button></div></label>'+
+    '<label class="fld"><span class="eyebrow">Note</span><textarea id="fNote" placeholder="Cosa è successo oggi"></textarea></label>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="savesess">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Torna indietro</button>');
+}
+async function commitSession(){
+  var d=S.draft, p=PLAN[d.day], w=weekOf(d.date);
+  var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on");
+  d.ex.forEach(function(e,i){
+    var def=p.ex[i]; if(!e.sets.length) return;
+    if(def.u){
+      ["S","D"].forEach(function(sd){
+        var reps=e.sets.map(s=>s[sd]);
+        S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
+          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note});
+      });
+    } else {
+      var reps=e.sets.map(s=>s.v);
+      S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
+        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note});
+    }
+  });
+  S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede, mod:(p.sede==="Casa"?"Pesi":"Bande"),
+    min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
+    warm:d.warm.every(Boolean), sig: sg? sg.dataset.sig==="1":false,
+    note:document.getElementById("fNote").value});
+  S.draft=null; stopRest(); var okS=await save(); closeSheet(); V="prog"; window._sy=0; render();
+  if(SYNC.on()){
+    var sent=await doPush(false);
+    toast(sent? "Sessione salvata sul foglio" : "Foglio non raggiunto: usa Coach → Invia tutto");
+    if(!sent) setTimeout(fallbackSheet, 700);
+  } else {
+    toast(okS?"Sessione salvata":"Sessione NON salvata");
+    if(!okS) setTimeout(fallbackSheet, 700);
+  }
+  var bk=backupState();
+  if(bk.due) setTimeout(function(){
+    sheet('<div class="eyebrow amb">Prima di chiudere</div><h2 style="margin:4px 0 10px">Fai il backup</h2>'+
+      '<div class="sm">'+(bk.never? "Non ne hai ancora fatto uno. " : "L'ultimo è di "+bk.days+" giorni fa. ")+
+      'Da allora hai registrato <b>'+bk.since+' sessioni</b>: è quello che perderesti se il telefono cancellasse i dati del sito.</div>'+
+      '<button class="btn pri" style="margin-top:14px" data-a="dlj">Scarica il backup</button>'+
+      '<button class="btn ghost" style="margin-top:8px" data-a="x">Più tardi</button>');
+  }, 900);
+}
+
+/* ---------- form misure / benessere / simmetria ---------- */
+function formMis(){
+  sheet('<div class="eyebrow">Misure</div><h2 style="margin:4px 0 10px">'+today()+'</h2>'+
+    ["peso|Peso (kg)","torace|Torace (cm)","bic|Bicipite (cm)","coscia|Coscia (cm)","vita|Vita (cm)"].map(function(f){
+      var a=f.split("|"); return '<label class="fld"><span class="eyebrow">'+a[1]+'</span><input type="number" step="0.1" id="m_'+a[0]+'"></label>';
+    }).join("")+
+    '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="m_note"></label>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="savemis">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function saveMis(){
+  var g=id=>{ var v=document.getElementById(id).value; return v===""?null:+v; };
+  S.mis.push({w:weekOf(today()), date:today(), peso:g("m_peso"), torace:g("m_torace"),
+    bic:g("m_bic"), coscia:g("m_coscia"), vita:g("m_vita"), note:document.getElementById("m_note").value});
+  var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Misure salvate":"NON salvate: il dispositivo rifiuta la scrittura");
+}
+function formBen(){
+  var b=S.ben.filter(x=>x.date===today())[0]||{};
+  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+today()+'</h2>'+
+    '<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato</span><div class="pills" id="bRefl">'+
+      [0,1,2,3].map(v=>'<button class="pill '+(b.refl===v?"on":"")+'" data-r="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Camminate post-pasto · target 2</span><div class="pills" id="bCam">'+
+      [0,1,2].map(v=>'<button class="pill '+(b.camm===v?"on":"")+'" data-c="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Respirazione 4-7</span><div class="pills" id="bResp">'+
+      '<button class="pill '+(b.resp?"":"on")+'" data-p="0">No</button><button class="pill '+(b.resp?"on":"")+'" data-p="1">Sì</button></div></label>'+
+    '<label class="fld"><span class="eyebrow">Alcol sera precedente</span><div class="pills" id="bAlc">'+
+      '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
+    '<div class="grid3" style="margin-top:10px">'+
+      '<label class="fld"><span class="eyebrow">HRV</span><input type="number" id="bHrv" value="'+(b.hrv||"")+'"></label>'+
+      '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" id="bRead" value="'+(b.read||"")+'"></label>'+
+      '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" id="bSonno" value="'+(b.sonno||"")+'"></label></div>'+
+    '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="saveben">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function saveBen(){
+  var pick=(sel,at)=>{ var e=document.querySelector(sel+" .pill.on"); return e?+e.dataset[at]:null; };
+  var g=id=>{ var v=document.getElementById(id).value; return v===""?null:+v; };
+  var rec={date:today(), w:weekOf(today()), refl:pick("#bRefl","r"), camm:pick("#bCam","c"),
+    resp:pick("#bResp","p")===1, alc:pick("#bAlc","x")===1, hrv:g("bHrv"), read:g("bRead"),
+    sonno:g("bSonno"), note:document.getElementById("bNote").value};
+  S.ben = S.ben.filter(x=>x.date!==today()); S.ben.push(rec);
+  var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Benessere salvato":"NON salvato: vedi la scheda Coach");
+}
+var SIMQ=[["Floor Press","I due manubri arrivano in alto insieme?"],["Box Squat","Il peso è uguale sui due piedi? (5 squat a occhi chiusi)"],
+  ["Split-stance RDL","I due lati scendono alla stessa profondità?"],["Bird-dog","I due lati sono ugualmente stabili?"]];
+function formSim(){
+  sheet('<div class="eyebrow">Check simmetria · settimana '+weekOf(today())+'</div>'+
+    SIMQ.map(function(q,i){
+      return '<div style="margin-top:14px"><div style="font-weight:650">'+q[0]+'</div><div class="sm mut">'+q[1]+'</div>'+
+        '<div class="pills" id="q'+i+'" style="margin-top:6px">'+["Sì","No","Non verificato"].map(o=>'<button class="pill" data-q="'+o+'">'+o+'</button>').join("")+'</div>'+
+        '<div class="pills" id="s'+i+'"><button class="pill" data-s="Sinistro">Limita sx</button><button class="pill" data-s="Destro">Limita dx</button><button class="pill" data-s="Uguale">Uguale</button></div></div>';
+    }).join("")+
+    '<button class="btn pri" style="margin-top:16px" data-a="savesim">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function saveSim(){
+  SIMQ.forEach(function(q,i){
+    var a=document.querySelector("#q"+i+" .pill.on"), s=document.querySelector("#s"+i+" .pill.on");
+    S.sim.push({date:today(), w:weekOf(today()), ex:q[0], q:q[1], a:a?a.dataset.q:"", side:s?s.dataset.s:""});
+  });
+  var okS=await save(); closeSheet(); render(); toast(okS?"Check salvato":"NON salvato: vedi la scheda Coach");
+}
+async function storageTest(){
+  var n=S.log.length, canary="rachide:test:"+Date.now();
+  var lines=[], pass=true;
+  var m=await Store.detect(); lines.push("Supporto rilevato: "+(m==="artifact"?"storage di Claude":m==="device"?"memoria del browser":"NESSUNO"));
+  if(m==="none"){ pass=false; lines.push("Nessun meccanismo di salvataggio disponibile."); }
+  else{
+    try{ var v=await Store.probe(canary,"prova-"+n);
+      lines.push(v==="prova-"+n ? "Scrittura e rilettura di prova: riuscite" : "Rilettura di prova: FALLITA");
+      if(v!=="prova-"+n) pass=false;
+    }catch(e){ pass=false; lines.push("Errore in scrittura: "+(e&&e.message||e)); }
+  }
+  var okS=await save();
+  lines.push(okS ? "Salvataggio reale dei tuoi dati: riuscito ("+Math.round(Store.bytes/1024)+" KB)" : "Salvataggio reale: FALLITO");
+  if(!okS) pass=false;
+  sheet('<div class="eyebrow '+(pass?"glow":"amb")+'">Verifica salvataggio</div>'+
+    '<h2 style="margin:4px 0 10px">'+(pass?"Funziona":"Non funziona")+'</h2>'+
+    lines.map(l=>'<div class="flag '+(/FALLIT|NESSUN|Errore/.test(l)?"stop":"info")+'">•<div>'+esc(l)+'</div></div>').join("")+
+    (pass?'<div class="sm mut" style="margin-top:10px">Chiudi e riapri l\'app: il contenuto deve restare '+S.sess.length+' sessioni e '+S.log.length+' righe di log.</div>'
+        :'<div class="sm" style="margin-top:10px">Finché è così, l\'unico archivio affidabile è il backup .json. Scaricalo prima di chiudere.</div>')+
+    '<button class="btn pri" style="margin-top:14px" data-a="dlj">Scarica il backup</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Chiudi</button>');
+  render();
+}
+async function syncDiag(){
+  sheet('<div class="eyebrow amb">Diagnostica collegamento</div><div class="sm mut" style="margin-top:8px">Sto provando…</div>');
+  var res=await SYNC.diagnose();
+  var framed=res[0] && res[0].bad;
+  var netKo=res.filter(r=>/bloccat/.test(r.v)).length>=1;
+  var segretoKo=res.filter(r=>/segreto non valido/.test(r.v)).length>=1;
+  var tuttoOk=res.filter(r=>r.bad).length===0;
+  var verdetto = segretoKo
+    ? "Il foglio risponde, quindi rete e distribuzione funzionano. Rifiuta solo la frase segreta: quella nell'app non coincide con quella nella distribuzione attiva. Se l'hai cambiata nel codice, ricordati di ridistribuire con una VERSIONE NUOVA, altrimenti online resta il segreto vecchio."
+    : (framed && netKo)
+    ? "Questo contenitore impedisce all'app di contattare Google. Non è un problema del tuo foglio: è l'ambiente. Serve pubblicare l'app su un indirizzo proprio."
+    : netKo ? "La rete verso Google non passa. Controlla che la distribuzione sia attiva e l'accesso impostato su Chiunque."
+    : tuttoOk ? "Il collegamento funziona."
+    : "Qualcosa non torna: guarda le righe rosse qui sopra.";
+  sheet('<div class="eyebrow amb">Diagnostica collegamento</div>'+
+    res.map(r=>'<div class="flag '+(r.bad?"stop":"info")+'"><b>'+esc(r.t)+'</b><div>'+esc(r.v)+'</div></div>').join("")+
+    '<div class="flag disc" style="margin-top:10px"><b>Verdetto</b><div>'+esc(verdetto)+'</div></div>'+
+    '<div class="sm mut" style="margin-top:10px">Controprova decisiva: apri lo stesso indirizzo in Safari. Se lì vedi i dati in JSON, il foglio è a posto e il problema è solo dove gira l\'app.</div>'+
+    '<button class="btn ghost" style="margin-top:12px" data-a="x">Chiudi</button>');
+}
+function syncForm(){
+  var c=S.sync||{};
+  sheet('<div class="eyebrow glow">Collegamento al foglio</div><h2 style="margin:4px 0 10px">Due valori</h2>'+
+    '<div class="sm mut">Li ottieni installando lo script nel foglio: Estensioni → Apps Script, incolli il codice, Distribuisci come app web.</div>'+
+    '<div class="flag info" style="margin-top:8px">•<div>Puoi incollare qui sotto direttamente il link di prova completo di <b>?k=</b> stampato da <i>verifica</i>: l\'app separa da sola indirizzo e segreto, così non c\'è niente da ricopiare a mano.</div></div>'+
+    '<label class="fld"><span class="eyebrow">URL della distribuzione (finisce con /exec)</span>'+
+    '<input type="text" id="syU" value="'+esc(c.url||"")+'" placeholder="https://script.google.com/macros/s/…/exec"></label>'+
+    '<label class="fld"><span class="eyebrow">Frase segreta (la stessa dello script)</span>'+
+    '<input type="text" id="syK" value="'+esc(c.secret||"")+'"></label>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="ssave">Salva e prova</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function syncSave(){
+  var u=document.getElementById("syU").value.trim(), k=document.getElementById("syK").value.trim();
+  /* se hanno incollato il link completo, estraggo il segreto e pulisco l'URL */
+  var m=u.match(/[?&]k=([^&#\s]*)/);
+  if(m){ k=decodeURIComponent(m[1]); u=u.split("?")[0]; }
+  u=u.replace(/\s+/g,""); k=k.trim();
+  if(!/^https:\/\/script\.google\.com\/.*\/exec$/.test(u)){ toast("L'URL deve iniziare con https://script.google.com e finire con /exec"); return; }
+  S.sync={url:u, secret:k}; await save(); closeSheet(); render();
+  doPull(true);
+}
+async function doPull(loud){
+  if(!SYNC.on()) return;
+  SYNC.busy=true; SYNC.err=""; if(loud) toast("Leggo dal foglio…");
+  try{
+    var d=await SYNC.pull();
+    var vuoto = !(d.log&&d.log.length) && !(d.sess&&d.sess.length);
+    if(vuoto && S.log.length){
+      SYNC.state="vuoto"; SYNC.busy=false;
+      if(loud) sheet('<div class="eyebrow amb">Il foglio è vuoto</div>'+
+        '<div class="sm" style="margin-top:8px">Nel foglio non c\'è ancora niente, ma in memoria hai '+S.log.length+' righe. Le mando su prima di rendere il foglio la fonte dei dati?</div>'+
+        '<button class="btn pri" style="margin-top:14px" data-a="spush">Invia tutto al foglio</button>'+
+        '<button class="btn ghost" style="margin-top:8px" data-a="x">Non ora</button>');
+      return;
+    }
+    SYNC.adopt(d); PLAN=buildPlan(); await save(); render();
+    if(SYNC.pending>0){ await doPush(false); if(loud) toast("Allineato: "+SYNC.pending+" righe locali mandate al foglio"); }
+    else if(loud) toast("Letto dal foglio: "+S.log.length+" righe, "+S.sess.length+" sessioni");
+  }catch(e){ SYNC.state="errore"; SYNC.err=String(e.message||e); render();
+    if(loud){ toast("Lettura fallita"); setTimeout(syncDiag, 500); } }
+  SYNC.busy=false;
+}
+async function doPush(loud){
+  if(!SYNC.on()) return false;
+  SYNC.busy=true; SYNC.err=""; if(loud) toast("Scrivo sul foglio…");
+  try{
+    var r=await SYNC.push(SYNC.payloadAll());
+    SYNC.state="ok"; SYNC.last=new Date(); SYNC.busy=false; render();
+    var n=r.added? Object.keys(r.added).reduce((a,k)=>a+(r.added[k]||0),0) : 0;
+    if(loud){ closeSheet(); toast(n? "Aggiunte "+n+" righe nuove al foglio" : "Il foglio era già aggiornato"); }
+    return true;
+  }catch(e){
+    SYNC.state="errore"; SYNC.err=String(e.message||e); SYNC.busy=false; render();
+    if(loud) toast("Scrittura fallita: "+SYNC.err);
+    return false;
+  }
+}
+var _pend=null;
+function patchPreview(){
+  var raw=document.getElementById("patchT").value.trim();
+  if(!raw){ toast("Incolla prima il codice"); return; }
+  try{
+    var p=JSON.parse(raw);
+    if(!p.ops || !p.ops.length) throw 0;
+    var bad=p.ops.filter(o=>!PLAN[o.d]);
+    if(bad.length) throw 0;
+    _pend=p;
+    sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
+      previewPatch(p).map(l=>'<div class="flag info">•<div>'+esc(l)+'</div></div>').join("")+
+      '<div class="xs mut" style="margin-top:10px">Puoi annullarla in qualsiasi momento dallo storico. I dati già registrati non vengono toccati.</div>'+
+      '<button class="btn pri" style="margin-top:14px" data-a="papply">Applica</button>'+
+      '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+  }catch(e){ toast("Codice non valido. Copialo per intero, dalla graffa aperta a quella chiusa."); }
+}
+function patchApply(){
+  if(!_pend) return;
+  S.patches = S.patches||[];
+  S.patches.push({ts:today(), nota:_pend.nota||"", ops:_pend.ops});
+  PLAN=buildPlan(); _pend=null; save(); closeSheet(); render();
+  toast("Piano aggiornato");
+}
+function importer(){
+  sheet('<div class="eyebrow">Ripristina backup</div>'+
+    '<div class="sm mut" style="margin:8px 0 12px">Sostituisce tutto quello che c\'è ora: log, sessioni, misure, benessere e modifiche al piano.</div>'+
+    '<label class="fld"><span class="eyebrow">Scegli il file .json</span>'+
+    '<input type="file" accept=".json,application/json" id="impF" style="padding:10px"></label>'+
+    '<div class="eyebrow" style="margin:14px 0 5px">oppure incolla il contenuto</div>'+
+    '<textarea id="impT" style="min-height:110px" placeholder=\'{"log":[…]}\'></textarea>'+
+    '<button class="btn pri" style="margin-top:12px" onclick="doImport()">Ripristina</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+  importer2();
+}
+function importer2(){
+  var f=document.getElementById("impF");
+  if(f) f.addEventListener("change", function(){
+    var file=this.files[0]; if(!file) return;
+    var r=new FileReader();
+    r.onload=function(){ document.getElementById("impT").value=r.result; toast("File letto: premi Ripristina"); };
+    r.readAsText(file);
+  });
+}
+function doImport(){
+  try{
+    var o=JSON.parse(document.getElementById("impT").value);
+    if(!o.log||!o.sess) throw 0;
+    S=Object.assign({log:[],sess:[],mis:[],ben:[],sim:[],patches:[],draft:null,seeded:true}, o);
+    S.lastBackup=today(); S.installed=S.installed||today();
+    PLAN=buildPlan(); save(); closeSheet(); render(); toast("Backup ripristinato");
+  }catch(e){ toast("File non valido: controlla di aver incollato tutto il .json"); }
+}
+
+/* ---------- clock ---------- */
+setInterval(function(){
+  var c=document.getElementById("sclock");
+  if(c && S.draft){ var el=(Date.now()-S.draft.t0)/60000; c.textContent=Math.floor(el)+"′"; c.classList.toggle("warn", el>70); }
+  if(rest){
+    var left=(rest.end-Date.now())/1000, r=document.getElementById("rclock");
+    if(left<=0){ stopRest(); if(V==="oggi"&&S.draft) render(); if(navigator.vibrate) navigator.vibrate(200); toast("Recupero finito"); }
+    else if(r) r.textContent=mmss(left);
+    else if(V==="oggi"&&S.draft) render();
+  }
+}, 1000);
+
+/* ---------- boot ---------- */
+(async function(){
+  await Store.detect();
+  var saved = await Store.get();
+  if(saved && saved.log && saved.log.length){ S=Object.assign(S, saved); }
+  else { seed(); S.installed=today(); await save(); }
+  if(!S.patches) S.patches=[];
+  if(!S.installed) S.installed=today();
+  PLAN = buildPlan();
+  render();
+  if(SYNC.on()) doPull(false);
+})();
+
+</script></body></html>
