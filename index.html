@@ -148,6 +148,25 @@ th.n{text-align:right}
 td{padding:8px 4px;border-bottom:1px solid var(--line)}
 td.n{text-align:right;font-weight:600}
 
+/* ---------- griglia della settimana ---------- */
+.wk{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.slot{border:1px solid var(--line);border-radius:11px;padding:9px 3px 7px;text-align:center;background:var(--surf2)}
+.slot .l{font-size:15px;font-weight:700;color:var(--dim);letter-spacing:-.02em}
+.slot .d{font-size:9.5px;color:var(--dim);margin-top:3px;font-weight:600}
+.slot.on{border-color:var(--glow);background:rgba(111,179,196,.09)}
+.slot.on .l{color:var(--glow)}
+.slot.on .d{color:var(--mut)}
+
+/* ---------- elenco compatto delle sessioni ---------- */
+.item{display:flex;align-items:center;gap:11px;padding:13px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.item:last-child{border-bottom:0}
+.badge{width:32px;height:32px;border-radius:9px;background:var(--surf2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--mut);flex:none}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .ch{color:var(--dim);font-size:19px;flex:none}
+
 /* ---------- istogramma tonnellaggio ---------- */
 .bars{display:flex;align-items:flex-end;gap:5px;height:66px}
 .bars i{flex:1;border-radius:3px 3px 0 0;background:var(--surf2);min-height:3px;transition:none}
@@ -1237,12 +1256,15 @@ function topbar(title, sub){
 /* ---------- OGGI ---------- */
 function viewOggi(){
   if(S.draft) return viewSession();
-  var w=weekOf(today()), done=S.sess.filter(s=>s.w===w);
-  var order=["A","B","C","D"], next=order.filter(d=>!done.some(s=>s.day===d))[0]||"A";
+  var w=weekOf(today()), fatte=S.sess.filter(function(s){ return s.w===w; });
+  var giorni=["A","B","C","D"];
+  var next=giorni.filter(function(d){ return !fatte.some(function(s){ return s.day===d; }); })[0];
+  var completa=!next;
   var h=topbar("Settimana "+w, dayName(today())+" "+today());
   h+='<div class="wrap">';
+
   if(Store.ok===false) h+=storageAlarm();
-  if(!S.log.length){ /* primo avvio su un dispositivo nuovo */
+  if(!S.log.length){
     h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Prima cosa da fare</div>'+
       '<h2 style="margin:4px 0 6px">Riporta il tuo storico</h2>'+
       '<div class="sm mut">Questa copia è vuota. Apri il backup .json che hai scaricato dall\'altra versione: tornano log, sessioni, misure e modifiche al piano.</div>'+
@@ -1253,34 +1275,77 @@ function viewOggi(){
       : (bk.never? "Non hai ancora fatto un backup." : "Ultimo backup "+bk.days+" giorni fa")+
         (bk.since? " · "+bk.since+" sessioni registrate da allora." : "."))+
     ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scaricalo ora</button></div></div>';
-  h+='<div class="card"><div class="between"><div><div class="eyebrow">Fatte questa settimana</div>'+
-     '<div class="num" style="font-size:26px">'+done.length+'<span class="mut" style="font-size:16px;font-weight:500">/4</span></div></div>'+
-     '<div class="sets" style="max-width:190px">'+order.map(d=>'<div class="chip '+(done.some(s=>s.day===d)?"top":"")+'">'+d+'</div>').join("")+'</div></div></div>';
 
-  h+='<div class="eyebrow" style="margin:16px 0 6px">Apri una sessione</div>';
-  ["A","B","C","D","T1","T2"].forEach(function(d){
-    var p=PLAN[d], is=d===next;
-    h+='<button class="card" data-a="open" data-d="'+d+'" style="display:block;width:100%;text-align:left;'+
-      (is?"border-color:var(--glow)":"")+'">'+
-      '<div class="between"><div><div class="eyebrow '+(is?"glow":"")+'">'+d+(is?" · consigliata oggi":" · "+p.sede)+'</div>'+
-      '<h2 style="margin-top:3px">'+esc(p.name)+'</h2>'+
-      '<div class="sm mut" style="margin-top:3px">'+p.ex.length+' esercizi · '+p.min+' min · dischi '+esc(p.dischi)+'</div></div>'+
-      '<div style="font-size:22px;color:var(--dim)">›</div></div></button>';
+  /* la settimana in quattro caselle, senza andare a capo */
+  h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
+     '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
+     fatte.length+' su 4</div></div><div class="wk">';
+  giorni.forEach(function(d){
+    var s=fatte.filter(function(x){ return x.day===d; })[0];
+    h+='<div class="slot'+(s?" on":"")+'"><div class="l">'+d+'</div>'+
+       '<div class="d">'+(s? s.date.slice(0,5) : "—")+'</div></div>';
   });
+  h+='</div>';
+  var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
+  if(extra.length) h+='<div class="xs mut" style="margin-top:8px">In trasferta: '+
+    extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';
+  h+='</div>';
 
-  var ups=[], seen={};
+  /* la prossima sessione, in evidenza */
+  if(completa){
+    h+='<div class="card" style="border-color:var(--ok)"><div class="eyebrow" style="color:var(--ok)">Settimana completa</div>'+
+       '<h2 style="margin:5px 0 6px">Quattro su quattro</h2>'+
+       '<div class="sm mut">Il recupero fa parte del programma quanto le sessioni. Se vuoi allenarti lo stesso, scegli qui sotto.</div></div>';
+  } else {
+    var p=PLAN[next];
+    h+='<button class="card" data-a="open" data-d="'+next+'" style="display:block;width:100%;text-align:left;border-color:var(--glow);background:rgba(111,179,196,.06)">'+
+       '<div class="eyebrow glow">Prossima · giorno '+next+'</div>'+
+       '<h2 style="margin:5px 0 5px;font-size:18px">'+esc(p.name)+'</h2>'+
+       '<div class="sm mut">'+p.ex.length+' esercizi · '+p.min+' minuti</div>'+
+       (p.dischi!=="solo bande"? '<div class="xs" style="color:var(--amb);margin-top:7px">Dischi '+esc(p.dischi)+'</div>':"")+
+       '<div class="btn pri" style="margin-top:12px">Inizia</div></button>';
+  }
+
+  /* le altre, in righe sottili */
+  var altre=giorni.filter(function(d){ return d!==next; });
+  h+='<div class="eyebrow" style="margin:18px 0 4px">'+(completa?"Sessioni":"Le altre")+'</div><div class="card">';
+  altre.forEach(function(d){
+    var p=PLAN[d];
+    h+='<button class="item" data-a="open" data-d="'+d+'"><div class="badge">'+d+'</div>'+
+       '<div class="t"><b>'+esc(p.name)+'</b><span class="xs mut">'+p.ex.length+' esercizi · '+p.min+' min</span></div>'+
+       '<div class="ch">›</div></button>';
+  });
+  h+='</div>';
+
+  h+='<div class="eyebrow" style="margin:18px 0 4px">In trasferta</div><div class="card">';
+  ["T1","T2"].forEach(function(d){
+    var p=PLAN[d];
+    h+='<button class="item" data-a="open" data-d="'+d+'"><div class="badge">'+d+'</div>'+
+       '<div class="t"><b>'+esc(p.name.replace("Trasferta · ",""))+'</b><span class="xs mut">solo bande · '+p.min+' min</span></div>'+
+       '<div class="ch">›</div></button>';
+  });
+  h+='</div>';
+
+  /* progressioni pronte */
+  var ups=[], visti={};
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
-    if(seen[e.n]) return; seen[e.n]=1; var r=readiness(e); if(r.ready && !r.cap) ups.push(e.n+": "+r.why);
+    if(visti[e.n]) return; visti[e.n]=1;
+    var r=readiness(e); if(r.ready && !r.cap) ups.push([e.n, r.why]);
   });});
   if(ups.length){
-    h+='<div class="eyebrow" style="margin:18px 0 6px">Pronti per salire</div><div class="card">';
-    ups.forEach(u=>h+='<div class="flag up"><b>↑</b><div>'+esc(u)+'</div></div>');
-    h+='<div class="xs mut" style="margin-top:8px">Top del range su 3 serie su 4 per due sessioni consecutive.</div></div>';
+    h+='<div class="eyebrow" style="margin:18px 0 4px">Pronti per salire</div><div class="card">';
+    ups.forEach(function(u){
+      h+='<div class="item" style="padding:10px 2px"><div class="badge" style="color:var(--ok);border-color:rgba(127,176,105,.5)">↑</div>'+
+         '<div class="t"><b>'+esc(u[0])+'</b><span class="xs" style="color:var(--ok)">'+esc(u[1])+'</span></div></div>';
+    });
+    h+='<div class="xs mut" style="margin-top:9px">Top del range su 3 serie su 4, per due sessioni consecutive.</div></div>';
   }
-  var lastS=S.sess[S.sess.length-1];
-  if(lastS) h+='<div class="card flat"><div class="eyebrow">Ultima sessione</div><div class="sm" style="margin-top:4px">'+
-    lastS.day+" · "+lastS.date+" ("+ago(lastS.date)+") · "+lastS.min+" min · energia "+lastS.en+'</div></div>';
-  h+='</div>';
+
+  var ls=S.sess[S.sess.length-1];
+  if(ls) h+='<div class="card flat"><div class="between"><div><div class="eyebrow">Ultima sessione</div>'+
+    '<div class="sm" style="margin-top:3px">Giorno '+ls.day+' · '+ago(ls.date)+'</div></div>'+
+    '<div class="xs mut" style="text-align:right">'+ls.min+' min<br>energia '+ls.en+'</div></div></div>';
+  h+='<div style="height:24px"></div></div>';
   return h;
 }
 
