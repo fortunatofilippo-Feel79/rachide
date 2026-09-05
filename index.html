@@ -763,9 +763,9 @@ function diagnose(){
       if(v<t[0]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sotto il minimo di "+t[0]+"."});
       if(v>t[1]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sopra il massimo di "+t[1]+". Toglile da qui, non aggiungerle altrove."});
     });
-    if(k.dur && k.dur>75) out.push({k:"durata", t:"Durata media "+k.dur+" min",
+    if(k.dur && k.dur>75) out.push({k:"durata", t:"Durata media "+k.dur+" min · settimana "+lastFull,
       m:"Oltre i 75 minuti è il principale fattore di abbandono. Cambia i dischi dentro il recupero, non dopo."});
-    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"%", m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
+    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
   }
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
@@ -778,11 +778,14 @@ function diagnose(){
     if(b>a+0.005 && m2[1].peso>=m2[0].peso) out.push({k:"comp", t:"Vita/Torace "+b.toFixed(3),
       m:"Salito da "+a.toFixed(3)+" mentre il peso non scendeva. Se si conferma alla prossima misura, il surplus è troppo aggressivo."});
   }
-  /* 5. riscaldamento */
-  if(lastFull){
-    var kk=kpi(lastFull);
-    if(kk.warm<kk.n) out.push({k:"warm", t:"Riscaldamenti "+kk.warm+"/"+kk.n,
-      m:"Il riscaldamento contiene il blocco scoliosi. Se scende, lo perdi senza accorgertene."});
+  /* 5. riscaldamento — sull'ultima settimana con sessioni, non sull'ultima completa,
+     e sempre dicendo di quale settimana si parla */
+  var wLast = ws.length ? ws[ws.length-1] : null;
+  if(wLast){
+    var kk=kpi(wLast);
+    if(kk.warm<kk.n) out.push({k:"warm", t:"Riscaldamenti "+kk.warm+"/"+kk.n+" · settimana "+wLast,
+      m: wLast<31 ? "Le sessioni prima della settimana 31 vengono dal vecchio tracker, dove il riscaldamento non era tracciato: probabilmente l'hai fatto, non risulta soltanto."
+                  : "Il riscaldamento contiene il blocco scoliosi. Se scende, lo perdi senza accorgertene."});
   }
   return out;
 }
