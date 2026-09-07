@@ -156,6 +156,9 @@ td.n{text-align:right;font-weight:600}
 .slot.on{border-color:var(--glow);background:rgba(111,179,196,.09)}
 .slot.on .l{color:var(--glow)}
 .slot.on .d{color:var(--mut)}
+.slot.rest{border-color:var(--amb);border-style:dashed;background:rgba(224,164,88,.07)}
+.slot.rest .l{color:var(--amb)}
+.slot.rest .d{color:var(--amb);opacity:.8}
 
 /* ---------- elenco compatto delle sessioni ---------- */
 .item{display:flex;align-items:center;gap:11px;padding:13px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
@@ -698,9 +701,14 @@ function readiness(exDef){
 }
 
 /* ---------- KPI settimanali ---------- */
+/* un riposo programmato è una sessione con mod "Riposo": non conta come
+   allenamento fatto, ma abbassa il bersaglio settimanale da 4 a 4-riposi */
+function isRest(s){ return s && s.mod==="Riposo"; }
 function weeks(){ return [...new Set(S.sess.map(s=>s.w))].sort((a,b)=>a-b); }
 function kpi(w){
-  var ss=S.sess.filter(s=>s.w===w), ls=S.log.filter(r=>r.w===w);
+  var ss=S.sess.filter(s=>s.w===w && !isRest(s)), ls=S.log.filter(r=>r.w===w);
+  var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
+  var target=Math.max(1, 4-rest);
   var dur=ss.filter(s=>s.min).map(s=>s.min), en=ss.filter(s=>s.en).map(s=>s.en);
   var ton=ls.reduce((a,r)=>a + r.load*(r.reps.reduce((x,y)=>x+y,0)), 0);
   var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
@@ -716,7 +724,7 @@ function kpi(w){
   var asim = (sx+dx)? Math.round(Math.abs(sx-dx)/((sx+dx)/2)*100) : 0;
   var b=S.ben.filter(x=>x.w===w && x.refl!==null);
   var m=S.mis.filter(x=>x.w===w)[0];
-  return {w:w, n:ss.length, ader:Math.round(ss.length/4*100),
+  return {w:w, n:ss.length, rest:rest, target:target, ader:Math.round(ss.length/target*100),
     dur:dur.length?Math.round(dur.reduce((a,b)=>a+b,0)/dur.length):null,
     en:en.length?+(en.reduce((a,b)=>a+b,0)/en.length).toFixed(1):null,
     top: tot? Math.round(top/tot*100):null, ton:Math.round(ton), grp:grp, asim:asim,
@@ -728,7 +736,11 @@ function kpi(w){
 /* ---------- diagnosi: adeguatezza di carichi ed esercizi ---------- */
 var TGT={Petto:[10,16],Dorso:[10,16],Spalle:[10,16],Bicipiti:[10,16],Tricipiti:[10,16],Gambe:[10,18],Core:[6,12]};
 function diagnose(){
-  var out=[], ws=weeks(), lastFull = ws.filter(w=>w>=PLAN_W0 && S.sess.filter(s=>s.w===w).length>=4).pop();
+  var out=[], ws=weeks(), lastFull = ws.filter(function(w){
+    if(w<PLAN_W0) return false;
+    var real=S.sess.filter(s=>s.w===w && !isRest(s)).length;
+    var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
+    return real+rest>=4; }).pop();
   /* 1. stallo o carico troppo alto */
   var seen={};
   Object.keys(PLAN).forEach(function(d){
@@ -810,7 +822,7 @@ function briefing(){
   L.push("KPI ultime 4 settimane");
   L.push("Sett | Sess | Durata | Energia | %top | Tonn. | Asim | Segn.");
   ws.forEach(function(w){ var k=kpi(w);
-    L.push(w+" | "+k.n+"/4 | "+(k.dur||"-")+" | "+(k.en||"-")+" | "+(k.top!==null?k.top+"%":"-")+" | "+k.ton+" | "+k.asim+"% | "+k.sig);
+    L.push(w+" | "+k.n+"/"+k.target+(k.rest?"(+"+k.rest+"R)":"")+" | "+(k.dur||"-")+" | "+(k.en||"-")+" | "+(k.top!==null?k.top+"%":"-")+" | "+k.ton+" | "+k.asim+"% | "+k.sig);
   });
   var lw=ws[ws.length-1], k=kpi(lw);
   L.push("");
@@ -1259,9 +1271,12 @@ function topbar(title, sub){
 /* ---------- OGGI ---------- */
 function viewOggi(){
   if(S.draft) return viewSession();
-  var w=weekOf(today()), fatte=S.sess.filter(function(s){ return s.w===w; });
+  var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
+  var fatte=tutte.filter(function(s){ return !isRest(s); });
+  var riposi=tutte.filter(isRest);
   var giorni=["A","B","C","D"];
-  var next=giorni.filter(function(d){ return !fatte.some(function(s){ return s.day===d; }); })[0];
+  /* un giorno è "coperto" se allenato o segnato come riposo */
+  var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
   var completa=!next;
   var h=topbar("Settimana "+w, dayName(today())+" "+today());
   h+='<div class="wrap">';
@@ -1280,18 +1295,21 @@ function viewOggi(){
     ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scaricalo ora</button></div></div>';
 
   /* la settimana in quattro caselle, senza andare a capo */
+  var target=Math.max(1, 4-riposi.length);
   h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
      '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
-     fatte.length+' su 4</div></div><div class="wk">';
+     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div><div class="wk">';
   giorni.forEach(function(d){
-    var s=fatte.filter(function(x){ return x.day===d; })[0];
-    h+='<div class="slot'+(s?" on":"")+'"><div class="l">'+d+'</div>'+
-       '<div class="d">'+(s? s.date.slice(0,5) : "—")+'</div></div>';
+    var s=tutte.filter(function(x){ return x.day===d; })[0];
+    var rp=s&&isRest(s);
+    h+='<div class="slot'+(s?(rp?" rest":" on"):"")+'"><div class="l">'+d+'</div>'+
+       '<div class="d">'+(s? (rp?"riposo":s.date.slice(0,5)) : "—")+'</div></div>';
   });
   h+='</div>';
   var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
   if(extra.length) h+='<div class="xs mut" style="margin-top:8px">In trasferta: '+
     extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';
+  if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='</div>';
 
   /* la prossima sessione, in evidenza */
@@ -1344,7 +1362,8 @@ function viewOggi(){
     h+='<div class="xs mut" style="margin-top:9px">Top del range su 3 serie su 4, per due sessioni consecutive.</div></div>';
   }
 
-  var ls=S.sess[S.sess.length-1];
+  var reali=S.sess.filter(function(s){ return !isRest(s); });
+  var ls=reali[reali.length-1];
   if(ls) h+='<div class="card flat"><div class="between"><div><div class="eyebrow">Ultima sessione</div>'+
     '<div class="sm" style="margin-top:3px">Giorno '+ls.day+' · '+ago(ls.date)+'</div></div>'+
     '<div class="xs mut" style="text-align:right">'+ls.min+' min<br>energia '+ls.en+'</div></div></div>';
@@ -1466,7 +1485,7 @@ function viewProg(){
   /* riepilogo della settimana corrente */
   h+='<div class="card"><div class="eyebrow glow">Settimana '+last.w+'</div>'+
      '<div class="grid2" style="margin-top:9px;row-gap:15px">'+
-     stat("Sessioni", last.n+"/4","", last.n>=4?"var(--ok)":"var(--amb)")+
+     stat("Sessioni", last.n+"/"+last.target+(last.rest?" +"+last.rest+"R":""),"", last.n>=last.target?"var(--ok)":"var(--amb)")+
      stat("Durata media", (last.dur||"–"),"min", last.dur>75?"var(--alert)":"")+
      stat("Energia", dec(last.en),"su 5", (last.en&&last.en<4)?"var(--amb)":"")+
      stat("Top range", (last.top!==null?last.top+"%":"–"),"", (last.top!==null&&last.top>=70)?"var(--ok)":"")+
@@ -1511,7 +1530,7 @@ function viewProg(){
      '<th>Sett.</th><th class="n">Sess</th><th class="n">Min</th><th class="n">Energia</th><th class="n">Top</th><th class="n">Asim</th></tr>'+
      ks.slice().reverse().map(function(k){
        return '<tr><td style="font-weight:700">'+k.w+'</td>'+
-       '<td class="n">'+k.n+'/4</td>'+
+       '<td class="n">'+k.n+'/'+k.target+'</td>'+
        '<td class="n" style="color:'+(k.dur>75?"var(--alert)":"inherit")+'">'+(k.dur||"–")+'</td>'+
        '<td class="n" style="color:'+((k.en&&k.en<4)?"var(--amb)":"inherit")+'">'+dec(k.en)+'</td>'+
        '<td class="n">'+(k.top!==null?k.top+"%":"–")+'</td>'+
@@ -1726,6 +1745,8 @@ document.addEventListener("click", function(ev){
   if(a==="abort"){ if(confirm("Annullare la sessione? I dati non vengono salvati.")){ S.draft=null; stopRest(); save(); render(); } return; }
   if(a==="close"){ closeSession(); return; }
   if(a==="savesess"){ commitSession(); return; }
+  if(a==="restday"){ restForm(); return; }
+  if(a==="saverest"){ saveRest(); return; }
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(); return; }
@@ -1785,6 +1806,32 @@ function guideSheet(n, tip){
   h+='<button class="btn" style="margin-top:16px" data-a="x">Chiudi</button>';
   sheet(h);
   if(ANIM[n]) startAnim(n);
+}
+function restForm(){
+  var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
+  var liberi=["A","B","C","D"].filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); });
+  if(!liberi.length){ toast("La settimana è già coperta."); return; }
+  sheet('<div class="eyebrow amb">Riposo programmato</div><h2 style="margin:4px 0 8px">Un giorno deciso a tavolino</h2>'+
+    '<div class="sm mut">Non è una sessione saltata: è recupero previsto. Non conta come mancata e abbassa il bersaglio della settimana. Così l\'aderenza resta onesta.</div>'+
+    '<label class="fld"><span class="eyebrow">Quale giorno copri</span><div class="pills" id="rDay">'+
+      liberi.map(function(d,i){ return '<button class="pill'+(i===0?" on":"")+'" data-q="'+d+'">'+d+'</button>'; }).join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Motivo (per te, fra un mese)</span><textarea id="rNote" placeholder="Es. trasferta Brescia, HRV bassa, scelta a monte"></textarea></label>'+
+    '<button class="btn amb" style="margin-top:14px" data-a="saverest">Segna riposo</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function saveRest(){
+  var w=weekOf(today());
+  var dsel=document.querySelector("#rDay .pill.on");
+  var day=dsel?dsel.dataset.q:null;
+  if(!day){ toast("Scegli il giorno."); return; }
+  S.sess.push({id:uid("s"), w:w, date:today(), day:day, sede:"—", mod:"Riposo",
+    min:0, en:0, warm:false, sig:false,
+    note:document.getElementById("rNote").value||"Riposo programmato"});
+  var okS=await save(); closeSheet(); window._sy=0; render();
+  if(SYNC.on()){
+    var sent=await doPush(false);
+    toast(sent? "Riposo registrato sul foglio" : "Riposo salvato: usa Coach → Invia tutto");
+  } else toast(okS?"Riposo registrato":"Riposo NON salvato");
 }
 function startSession(day){
   var p=PLAN[day];
