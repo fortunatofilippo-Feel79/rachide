@@ -733,6 +733,41 @@ function kpi(w){
     peso: m?m.peso:null, vt: (m&&m.vita&&m.torace)? +(m.vita/m.torace).toFixed(3):null};
 }
 
+/* ============================================================
+   BENESSERE → DECISIONI
+   I dati del wearable non servono a niente se restano un elenco.
+   Qui diventano contesto: un calo di ripetizioni su un giorno con
+   HRV a terra, poco sonno o alcol è recupero, non carico da tagliare.
+   ============================================================ */
+function benOn(date){ return S.ben.filter(function(b){ return b.date===date; })[0] || null; }
+/* mediana HRV di riferimento: gli altri giorni con HRV, esclusa la data in esame,
+   così un giorno storto non abbassa la propria soglia */
+function hrvBase(exclDate){
+  var v=S.ben.filter(function(b){ return b.hrv && b.date!==exclDate; }).map(function(b){ return b.hrv; });
+  if(v.length<3) return null;
+  v.sort(function(a,b){ return a-b; });
+  var m=Math.floor(v.length/2);
+  return v.length%2 ? v[m] : Math.round((v[m-1]+v[m])/2);
+}
+/* stringa breve se il recupero su quella data era compromesso, altrimenti "" */
+function recoveryNote(date){
+  var b=benOn(date); if(!b) return "";
+  var parts=[], base=hrvBase(date);
+  if(b.alc) parts.push("alcol la sera prima");
+  if(b.hrv && base && b.hrv < base*0.80) parts.push("HRV "+b.hrv+" (norma ~"+base+")");
+  if(b.read!==null && b.read!==undefined && b.read<70) parts.push("readiness "+b.read);
+  if(b.sonno!==null && b.sonno!==undefined && b.sonno<6) parts.push("sonno "+b.sonno+"h");
+  return parts.join(" · ");
+}
+
+/* ============================================================
+   CARICHI CONGELATI
+   Durante una fase di stabilizzazione (deficit, recupero, rientro
+   da infortunio) i suggerimenti di aumento sono rumore. Il freeze
+   li spegne fino a una settimana scelta, senza toccare i dati.
+   ============================================================ */
+function frozen(){ return !!(S.freeze && S.freeze.until && weekOf(today())<=S.freeze.until); }
+
 /* ---------- diagnosi: adeguatezza di carichi ed esercizi ---------- */
 var TGT={Petto:[10,16],Dorso:[10,16],Spalle:[10,16],Bicipiti:[10,16],Tricipiti:[10,16],Gambe:[10,18],Core:[6,12]};
 function diagnose(){
@@ -752,8 +787,10 @@ function diagnose(){
       var rows=dates.map(d2=>h.filter(r=>r.date===d2)[0]);
       var sameLoad = rows.every(r=>r.load===rows[0].load) && rows[0].load>0;
       var neverTop = rows.every(r=>!r.top);
+      var lastDate = dates[dates.length-1], rec = recoveryNote(lastDate);
       if(sameLoad && neverTop) out.push({k:"stallo", t:e.n,
-        m:"Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."});
+        m:"Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."
+          + (rec? " ⚠ Recupero l'ultima volta: "+rec+". Il calo può venire da lì, non dal carico — verifica su un giorno riposato prima di scendere." : "")});
       var hiRir = rows.filter(r=>r.rir!==null && r.rir>=3).length;
       if(hiRir>=2) out.push({k:"leggero", t:e.n,
         m:"RIR 3 o più su due sessioni: non è allenante. Sali di carico o passa alla variante successiva."});
@@ -761,7 +798,8 @@ function diagnose(){
       if(last.reps.length>=3){
         var drop = last.reps[0]-last.reps[last.reps.length-1];
         if(drop>=3) out.push({k:"crollo", t:e.n,
-          m:"Ultima sessione "+last.reps.join("-")+": perdi "+drop+" ripetizioni dalla prima all'ultima serie. Prima allunga il recupero, poi valuta il carico."});
+          m:"Ultima sessione "+last.reps.join("-")+": perdi "+drop+" ripetizioni dalla prima all'ultima serie. Prima allunga il recupero, poi valuta il carico."
+            + (rec? " ⚠ Quel giorno: "+rec+". Prima di toccare il carico, rifai la seduta su un giorno con recupero pieno." : "")});
       }
     });
   });
@@ -831,11 +869,11 @@ function briefing(){
   if(m) L.push("Misure "+m.date+": peso "+(m.peso||"-")+" · torace "+(m.torace||"-")+" · vita "+(m.vita||"-")+
     ((m.vita&&m.torace)?" · V/T "+(m.vita/m.torace).toFixed(3):""));
   L.push("");
-  L.push("Pronti per salire");
+  L.push(frozen()? "Pronti per salire (CARICHI CONGELATI fino a settimana "+S.freeze.until+(S.freeze.note?" — "+S.freeze.note:"")+")" : "Pronti per salire");
   var seen={}, any=false;
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
     if(seen[e.n]) return; seen[e.n]=1;
-    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why); }
+    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":"")); }
   });});
   if(!any) L.push("- nessuno");
   L.push("");
@@ -1130,7 +1168,7 @@ function stopAnim(){ if(animRAF){ cancelAnimationFrame(animRAF); animRAF=null; }
    quindi senza preflight).
    ============================================================ */
 var SYNC = {
-  busy:false, last:null, state:"", err:"", pending:0, repaired:0,
+  busy:false, last:null, state:"", err:"", pending:0, repaired:0, ver:1,
   cfg(){ return S.sync || {}; },
   on(){ return !!(S.sync && S.sync.url); },
 
@@ -1185,6 +1223,15 @@ var SYNC = {
     if(!d.ok) throw new Error(d.err||"scrittura rifiutata");
     return d;
   },
+  /* chiede al foglio di rimuovere righe: {sess:[id…], ben:[data…]} */
+  async pushDelete(map){
+    var c=this.cfg();
+    var r=await fetch(c.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({secret:c.secret||"", del:map}), redirect:"follow"});
+    var d=JSON.parse(await r.text());
+    if(!d.ok) throw new Error(d.err||"cancellazione rifiutata");
+    return d;
+  },
 
   /* riconosce una riga che Sheets ha convertito in data o durata */
   parseReps(v){
@@ -1205,6 +1252,7 @@ var SYNC = {
   /* dal foglio allo stato dell'app */
   adopt(d){
     this.pending = 0; this.repaired = 0;
+    this.ver = +d.ver || 1;   /* 2 = lo script del foglio sa modificare e cancellare */
     var self=this;
     var byId = function(r){ return String(r.id||""); }, byDate = function(r){ return String(r.date||""); };
     var locale = {}; S.log.forEach(function(r){ if(r.id) locale[r.id]=r; });
@@ -1312,6 +1360,19 @@ function viewOggi(){
   if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='</div>';
 
+  /* fotografia del recupero: oggi o, al mattino, il dato più fresco entro 2 giorni */
+  var recB=benOn(today());
+  if(!recB){ for(var rb=1;rb<=2 && !recB;rb++){ var dd=new Date(); dd.setDate(dd.getDate()-rb); recB=benOn(d2s(dd)); } }
+  if(recB && !completa){
+    var rn=recoveryNote(recB.date), oggi=recB.date===today();
+    h+='<div class="card" style="border-color:'+(rn?"var(--amb)":"var(--line)")+'">'+
+       '<div class="between"><div class="eyebrow '+(rn?"amb":"")+'">Recupero'+(oggi?" · oggi":" · "+recB.date.slice(0,5))+'</div>'+
+       (rn?'<div class="xs" style="font-weight:700;color:var(--amb)">SOTTO LA NORMA</div>':'<div class="xs" style="font-weight:700;color:var(--ok)">ok</div>')+'</div>'+
+       '<div class="sm" style="margin-top:8px">HRV '+(recB.hrv||"–")+' · readiness '+(recB.read||"–")+' · sonno '+(recB.sonno||"–")+'h · alcol '+(recB.alc?"sì":"no")+'</div>'+
+       (rn?'<div class="flag disc" style="margin-top:10px">⚠<div><b>'+esc(rn)+'</b><br>Se ti alleni, scendi un gradino sulla scala e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.</div></div>':"")+
+       '</div>';
+  }
+
   /* la prossima sessione, in evidenza */
   if(completa){
     h+='<div class="card" style="border-color:var(--ok)"><div class="eyebrow" style="color:var(--ok)">Settimana completa</div>'+
@@ -1353,7 +1414,16 @@ function viewOggi(){
     if(visti[e.n]) return; visti[e.n]=1;
     var r=readiness(e); if(r.ready && !r.cap) ups.push([e.n, r.why]);
   });});
-  if(ups.length){
+  if(frozen()){
+    h+='<div class="eyebrow amb" style="margin:18px 0 4px">Carichi congelati</div>'+
+       '<div class="card" style="border-color:var(--amb);border-style:dashed;background:rgba(224,164,88,.06)">'+
+       '<div class="between"><div class="sm" style="font-weight:600;color:var(--amb)">Fino alla settimana '+S.freeze.until+'</div>'+
+       '<button class="btn sm ghost" data-a="unfreeze">Sblocca</button></div>'+
+       (S.freeze.note?'<div class="xs mut" style="margin-top:6px">'+esc(S.freeze.note)+'</div>':"")+
+       (ups.length?'<div class="xs mut" style="margin-top:8px">'+ups.length+' progression'+(ups.length>1?'i':'e')+' in attesa: '+esc(ups.map(function(u){return u[0];}).join(", "))+'. Restano ferme finché non sblocchi.</div>'
+                  :'<div class="xs mut" style="margin-top:8px">Nessuna progressione in coda al momento.</div>')+
+       '</div>';
+  } else if(ups.length){
     h+='<div class="eyebrow" style="margin:18px 0 4px">Pronti per salire</div><div class="card">';
     ups.forEach(function(u){
       h+='<div class="item" style="padding:10px 2px"><div class="badge" style="color:var(--ok);border-color:rgba(127,176,105,.5)">↑</div>'+
@@ -1550,6 +1620,19 @@ function viewProg(){
   });
   h+='</table></div>';
 
+  /* sessioni recenti — tocca per correggere data, durata, energia, note o cancellare */
+  var recent=S.sess.slice().sort(function(a,b){ return s2d(b.date)-s2d(a.date); }).slice(0,8);
+  if(recent.length){
+    h+='<div class="between" style="margin:20px 0 6px"><div class="eyebrow">Sessioni recenti</div><div class="xs mut">tocca per correggere</div></div><div class="card">';
+    recent.forEach(function(s){
+      var rp=isRest(s);
+      h+='<button class="item" data-a="esess" data-id="'+esc(s.id)+'"><div class="badge"'+(rp?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+s.day+'</div>'+
+         '<div class="t"><b>'+s.date+(rp?' · riposo':'')+'</b><span class="xs mut">'+(rp?esc(s.note||"riposo programmato"):(s.min||"–")+' min · energia '+(s.en||"–")+(s.sig?' · segnale':''))+'</span></div>'+
+         '<div class="ch">›</div></button>';
+    });
+    h+='</div>';
+  }
+
   /* diagnosi */
   var dg=diagnose();
   h+='<div class="between" style="margin:20px 0 6px"><div class="eyebrow">Diagnosi</div>'+
@@ -1586,6 +1669,19 @@ function viewCorpo(){
     ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
   else h+='<div class="xs mut" style="margin-top:8px">La sera, prima di dormire, tutto insieme.</div>';
   h+='</div>';
+
+  /* giorni registrati — tocca per correggere un giorno passato (es. un valore finito sulla data sbagliata) */
+  var recentB=S.ben.slice().sort(function(a,b){ return s2d(b.date)-s2d(a.date); }).slice(0,7);
+  if(recentB.length){
+    h+='<div class="between" style="margin:14px 0 6px"><div class="eyebrow">Giorni registrati</div><div class="xs mut">tocca per correggere</div></div><div class="card">';
+    recentB.forEach(function(x){
+      var rn=recoveryNote(x.date);
+      h+='<button class="item" data-a="ben" data-d="'+esc(x.date)+'"><div class="badge"'+(rn?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+x.date.slice(0,5)+'</div>'+
+         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+(x.sonno||"–")+'h · reflusso '+(x.refl===null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
+         '<div class="ch">›</div></button>';
+    });
+    h+='</div>';
+  }
 
   var w=weekOf(today()), due=[31,35,39,43].indexOf(w)>=0;
   h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · settimane 31 · 35 · 39 · 43</div>'+
@@ -1637,6 +1733,8 @@ function viewCoach(){
   if(sy){
     h+='<div class="sm mut" style="margin-top:7px">Lo storico vive nel foglio. L\'app lo legge all\'avvio e ci scrive a fine sessione.</div>'+
        (SYNC.last?'<div class="xs mut" style="margin-top:4px">Ultima sincronizzazione: '+SYNC.last.toLocaleTimeString("it")+'</div>':"")+
+       '<div class="xs" style="margin-top:6px;color:'+((SYNC.ver||1)>=2?"var(--ok)":"var(--amb)")+'">'+
+       ((SYNC.ver||1)>=2? "Script v2: modifiche e cancellazioni dei giorni passati attive." : "Script v1: puoi solo aggiungere. Per modificare/cancellare i giorni passati aggiorna lo script (te l\'ho dato).")+'</div>'+
        (SYNC.err?'<div class="flag stop" style="margin-top:8px">•<div>'+esc(SYNC.err)+'</div></div>':"")+
        '<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="spull">Rileggi dal foglio</button>'+
        '<button class="btn sm" data-a="spush">Invia tutto</button></div>'+
@@ -1649,6 +1747,24 @@ function viewCoach(){
   h+='</div>';
   h+='<button class="btn pri" data-a="brief">Copia il briefing per il coach</button>';
   h+='<div class="xs mut" style="margin:8px 0 16px">KPI delle ultime 4 settimane, esercizi pronti per salire, diagnosi, note libere e benessere. Incollalo in chat e chiedi cosa cambiare.</div>';
+
+  /* congelamento carichi */
+  var fz=frozen();
+  h+='<div class="eyebrow" style="margin:18px 0 6px">Carichi</div>'+
+     '<div class="card" style="border-color:'+(fz?"var(--amb)":"var(--line)")+'">'+
+     '<div class="between"><div><div class="eyebrow '+(fz?"amb":"")+'">Congelamento</div>'+
+     '<div class="sm" style="margin-top:4px">'+(fz? "Attivo fino alla settimana <b>"+S.freeze.until+"</b>. I suggerimenti di aumento sono sospesi." : "Spento. L\'app propone gli aumenti appena maturano.")+'</div>'+
+     (fz&&S.freeze.note?'<div class="xs mut" style="margin-top:4px">'+esc(S.freeze.note)+'</div>':"")+'</div></div>';
+  if(fz){
+    h+='<button class="btn sm ghost" style="width:100%;margin-top:12px" data-a="unfreeze">Sblocca ora</button>';
+  } else {
+    h+='<div class="sm mut" style="margin-top:10px">Blocca gli aumenti per una fase di stabilizzazione (deficit, rientro, recupero). I dati continuano a essere registrati; solo i suggerimenti tacciono.</div>'+
+       '<div class="grid3" style="margin-top:10px">'+
+       '<button class="btn sm" data-a="freeze" data-w="2">+2 sett.</button>'+
+       '<button class="btn sm" data-a="freeze" data-w="3">+3 sett.</button>'+
+       '<button class="btn sm" data-a="freeze" data-w="4">+4 sett.</button></div>';
+  }
+  h+='</div>';
 
   h+='<div class="eyebrow" style="margin:18px 0 6px">Dati</div>';
   var bk=backupState();
@@ -1747,10 +1863,16 @@ document.addEventListener("click", function(ev){
   if(a==="savesess"){ commitSession(); return; }
   if(a==="restday"){ restForm(); return; }
   if(a==="saverest"){ saveRest(); return; }
+  if(a==="freeze"){ var n=+el.dataset.w||3; S.freeze={until:weekOf(today())+n-1, note:"Fase di stabilizzazione"}; save(); render(); toast("Carichi congelati fino alla settimana "+S.freeze.until); return; }
+  if(a==="unfreeze"){ S.freeze=null; save(); render(); toast("Congelamento rimosso"); return; }
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
-  if(a==="ben"){ formBen(); return; }
-  if(a==="saveben"){ saveBen(); return; }
+  if(a==="ben"){ formBen(el.dataset.d||null); return; }
+  if(a==="saveben"){ saveBen(el.dataset.d||null); return; }
+  if(a==="bendel"){ delBen(el.dataset.d); return; }
+  if(a==="esess"){ editSess(el.dataset.id); return; }
+  if(a==="esesssave"){ saveSessEdit(el.dataset.id); return; }
+  if(a==="esessdel"){ delSess(el.dataset.id); return; }
   if(a==="sim"){ formSim(); return; }
   if(a==="savesim"){ saveSim(); return; }
   if(a==="brief"){ copy(briefing(),"Briefing copiato. Incollalo in chat."); return; }
@@ -1833,6 +1955,82 @@ async function saveRest(){
     toast(sent? "Riposo registrato sul foglio" : "Riposo salvato: usa Coach → Invia tutto");
   } else toast(okS?"Riposo registrato":"Riposo NON salvato");
 }
+
+/* ============================================================
+   MODIFICA DEI GIORNI PASSATI
+   Correggere o cancellare una sessione / un giorno di benessere.
+   Perché una modifica sopravviva alla sincronizzazione serve lo
+   script del foglio v2 (sa modificare e cancellare, non solo aggiungere).
+   ============================================================ */
+function verWarn(){
+  if(!SYNC.on()) return "";
+  if((SYNC.ver||1)>=2) return "";
+  return '<div class="flag stop" style="margin-top:10px">⚠<div><b>Script del foglio non aggiornato.</b> Questa modifica resta solo nell\'app e sparisce alla prossima sincronizzazione. Aggiorna lo script (te l\'ho dato) perché diventi definitiva.</div></div>';
+}
+function isoDay(s){ /* "gg/mm/aaaa" → "aaaa-mm-gg" per input date */
+  var m=String(s||"").match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m? m[3]+"-"+m[2]+"-"+m[1] : "";
+}
+function fromIso(s){ /* "aaaa-mm-gg" → "gg/mm/aaaa" */
+  var m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m? m[3]+"/"+m[2]+"/"+m[1] : s;
+}
+function editSess(id){
+  var s=S.sess.filter(function(x){ return x.id===id; })[0]; if(!s){ toast("Sessione non trovata"); return; }
+  var rest=isRest(s);
+  sheet('<div class="eyebrow amb">Modifica sessione</div><h2 style="margin:4px 0 10px">Giorno '+s.day+' · '+s.date+'</h2>'+
+    '<label class="fld"><span class="eyebrow">Data</span><input type="date" id="eDate" value="'+isoDay(s.date)+'"></label>'+
+    (rest? '<div class="sm mut" style="margin-top:10px">Questo è un riposo programmato. Puoi cambiarne la data, la nota, o cancellarlo.</div>'
+         : '<div class="grid2" style="margin-top:10px">'+
+           '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="eMin" value="'+(s.min||"")+'"></label>'+
+           '<label class="fld"><span class="eyebrow">Energia 1-5</span><input type="number" id="eEn" value="'+(s.en||"")+'"></label></div>'+
+           '<label class="fld"><span class="eyebrow">Segnale articolare</span><div class="pills" id="eSig">'+
+             '<button class="pill '+(s.sig?"":"on")+'" data-sig="0">No</button><button class="pill '+(s.sig?"on":"")+'" data-sig="1">Sì</button></div></label>')+
+    '<label class="fld"><span class="eyebrow">Note</span><textarea id="eNote">'+esc(s.note||"")+'</textarea></label>'+
+    verWarn()+
+    '<button class="btn pri" style="margin-top:14px" data-a="esesssave" data-id="'+id+'">Salva le modifiche</button>'+
+    '<button class="btn ghost" style="margin-top:8px;color:var(--alert)" data-a="esessdel" data-id="'+id+'">Cancella la sessione</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Chiudi</button>'+
+    (rest?"":'<div class="xs mut" style="margin-top:10px">Le ripetizioni e i carichi dei singoli esercizi non si modificano da qui: dimmelo se ti serve e lo aggiungo.</div>'));
+}
+async function saveSessEdit(id){
+  var s=S.sess.filter(function(x){ return x.id===id; })[0]; if(!s) return;
+  var nd=fromIso(document.getElementById("eDate").value); if(!/^\d{2}\/\d{2}\/\d{4}$/.test(nd)){ toast("Data non valida"); return; }
+  var oldDate=s.date;
+  s.date=nd; s.w=weekOf(nd);
+  if(!isRest(s)){
+    var mn=document.getElementById("eMin").value, en=document.getElementById("eEn").value;
+    var sg=document.querySelector("#eSig .pill.on");
+    s.min=mn===""?0:+mn; s.en=en===""?0:+en; s.sig= sg? sg.dataset.sig==="1":false;
+  }
+  s.note=document.getElementById("eNote").value;
+  /* se ho spostato la data, riallineo anche le righe di log di quella sessione */
+  if(nd!==oldDate){
+    S.log.forEach(function(r){ if(r.date===oldDate && r.day===s.day){ r.date=nd; r.w=weekOf(nd); } });
+  }
+  var okS=await save(); closeSheet(); render();
+  if(SYNC.on()) doPush(false);
+  toast(okS?"Sessione aggiornata":"NON salvato: vedi Coach");
+}
+async function delSess(id){
+  var s=S.sess.filter(function(x){ return x.id===id; })[0]; if(!s) return;
+  if(!confirm("Cancellare la sessione del "+s.date+" (giorno "+s.day+")? Anche le righe di esercizio di quel giorno verranno rimosse.")) return;
+  var logIds=S.log.filter(function(r){ return r.date===s.date && r.day===s.day; }).map(function(r){ return r.id; });
+  S.sess=S.sess.filter(function(x){ return x.id!==id; });
+  S.log =S.log.filter(function(r){ return !(r.date===s.date && r.day===s.day); });
+  await save(); closeSheet(); render();
+  if(SYNC.on()){
+    try{ await SYNC.pushDelete({sess:[id], log:logIds}); toast("Sessione cancellata dal foglio"); }
+    catch(e){ toast("Cancellata qui. Sul foglio serve lo script aggiornato."); }
+  } else toast("Sessione cancellata");
+}
+async function delBen(date){
+  if(!confirm("Cancellare il benessere del "+date+"?")) return;
+  S.ben=S.ben.filter(function(x){ return x.date!==date; });
+  await save(); closeSheet(); render();
+  if(SYNC.on()){
+    try{ await SYNC.pushDelete({ben:[date]}); toast("Giorno cancellato dal foglio"); }
+    catch(e){ toast("Cancellato qui. Sul foglio serve lo script aggiornato."); }
+  } else toast("Giorno cancellato");
+}
 function startSession(day){
   var p=PLAN[day];
   S.draft={day:day, date:today(), t0:Date.now(), warm:WARM.map(()=>false),
@@ -1850,6 +2048,7 @@ function closeSession(){
   var d=S.draft, min=Math.max(1,Math.round((Date.now()-d.t0)/60000));
   var logged=d.ex.filter(e=>e.sets.length).length;
   sheet('<div class="eyebrow">Chiudi la sessione</div><h2 style="margin:4px 0 12px">Giorno '+d.day+' · '+logged+'/'+d.ex.length+' esercizi</h2>'+
+    '<label class="fld"><span class="eyebrow">Data</span><input type="date" id="fDate" value="'+isoDay(d.date)+'"></label>'+
     '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
     '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
       [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
@@ -1860,7 +2059,9 @@ function closeSession(){
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Torna indietro</button>');
 }
 async function commitSession(){
-  var d=S.draft, p=PLAN[d.day], w=weekOf(d.date);
+  var d=S.draft, p=PLAN[d.day];
+  var de=document.getElementById("fDate"); if(de){ var nd=fromIso(de.value); if(/^\d{2}\/\d{2}\/\d{4}$/.test(nd)) d.date=nd; }
+  var w=weekOf(d.date);
   var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on");
   d.ex.forEach(function(e,i){
     var def=p.ex[i]; if(!e.sets.length) return;
@@ -1915,9 +2116,11 @@ async function saveMis(){
     bic:g("m_bic"), coscia:g("m_coscia"), vita:g("m_vita"), note:document.getElementById("m_note").value});
   var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Misure salvate":"NON salvate: il dispositivo rifiuta la scrittura");
 }
-function formBen(){
-  var b=S.ben.filter(x=>x.date===today())[0]||{};
-  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+today()+'</h2>'+
+function formBen(date){
+  var dt=date||today(), past=dt!==today();
+  var b=S.ben.filter(x=>x.date===dt)[0]||{};
+  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+(past?"Modifica · "+dt:dt)+'</h2>'+
+    (past?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">')+
     '<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato</span><div class="pills" id="bRefl">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.refl===v?"on":"")+'" data-r="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<label class="fld"><span class="eyebrow">Camminate post-pasto · target 2</span><div class="pills" id="bCam">'+
@@ -1931,17 +2134,24 @@ function formBen(){
       '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" id="bRead" value="'+(b.read||"")+'"></label>'+
       '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" id="bSonno" value="'+(b.sonno||"")+'"></label></div>'+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>'+
-    '<button class="btn pri" style="margin-top:14px" data-a="saveben">Salva</button>'+
+    (past?verWarn():"")+
+    '<button class="btn pri" style="margin-top:14px" data-a="saveben" data-d="'+esc(dt)+'">Salva</button>'+
+    (past?'<button class="btn ghost" style="margin-top:8px" data-a="bendel" data-d="'+esc(dt)+'">Cancella questo giorno</button>':"")+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
-async function saveBen(){
+async function saveBen(origDate){
   var pick=(sel,at)=>{ var e=document.querySelector(sel+" .pill.on"); return e?+e.dataset[at]:null; };
   var g=id=>{ var v=document.getElementById(id).value; return v===""?null:+v; };
-  var rec={date:today(), w:weekOf(today()), refl:pick("#bRefl","r"), camm:pick("#bCam","c"),
+  var de=document.getElementById("bDate"), dt=de? fromIso(de.value) : today();
+  if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dt)){ toast("Data non valida"); return; }
+  var rec={date:dt, w:weekOf(dt), refl:pick("#bRefl","r"), camm:pick("#bCam","c"),
     resp:pick("#bResp","p")===1, alc:pick("#bAlc","x")===1, hrv:g("bHrv"), read:g("bRead"),
     sonno:g("bSonno"), note:document.getElementById("bNote").value};
-  S.ben = S.ben.filter(x=>x.date!==today()); S.ben.push(rec);
-  var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Benessere salvato":"NON salvato: vedi la scheda Coach");
+  var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
+  S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
+  var okS=await save(); closeSheet(); render();
+  if(SYNC.on()){ doPush(false); if(delDate){ try{ await SYNC.pushDelete({ben:[delDate]}); }catch(e){} } }
+  toast(okS?"Benessere salvato":"NON salvato: vedi la scheda Coach");
 }
 var SIMQ=[["Floor Press","I due manubri arrivano in alto insieme?"],["Box Squat","Il peso è uguale sui due piedi? (5 squat a occhi chiusi)"],
   ["Split-stance RDL","I due lati scendono alla stessa profondità?"],["Bird-dog","I due lati sono ugualmente stabili?"]];
