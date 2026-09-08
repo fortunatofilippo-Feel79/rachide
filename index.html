@@ -1668,6 +1668,7 @@ function viewCorpo(){
   if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl===null?"–":b.refl)+' · camminate '+(b.camm===null?"–":b.camm)+
     ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
   else h+='<div class="xs mut" style="margin-top:8px">La sera, prima di dormire, tutto insieme.</div>';
+  h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="benadd">＋ Aggiungi un giorno saltato</button>';
   h+='</div>';
 
   /* giorni registrati — tocca per correggere un giorno passato (es. un valore finito sulla data sbagliata) */
@@ -1868,6 +1869,7 @@ document.addEventListener("click", function(ev){
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(el.dataset.d||null); return; }
+  if(a==="benadd"){ var y=new Date(); y.setDate(y.getDate()-1); formBen(d2s(y), true); return; }
   if(a==="saveben"){ saveBen(el.dataset.d||null); return; }
   if(a==="bendel"){ delBen(el.dataset.d); return; }
   if(a==="esess"){ editSess(el.dataset.id); return; }
@@ -2116,11 +2118,13 @@ async function saveMis(){
     bic:g("m_bic"), coscia:g("m_coscia"), vita:g("m_vita"), note:document.getElementById("m_note").value});
   var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Misure salvate":"NON salvate: il dispositivo rifiuta la scrittura");
 }
-function formBen(date){
-  var dt=date||today(), past=dt!==today();
-  var b=S.ben.filter(x=>x.date===dt)[0]||{};
-  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+(past?"Modifica · "+dt:dt)+'</h2>'+
-    (past?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">')+
+function formBen(date, isAdd){
+  var dt=date||today(), editDate = isAdd || dt!==today();
+  var b = isAdd ? {} : (S.ben.filter(x=>x.date===dt)[0]||{});
+  var titolo = isAdd ? "Aggiungi un giorno" : (dt!==today()? "Modifica · "+dt : dt);
+  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+titolo+'</h2>'+
+    (isAdd?'<div class="sm mut" style="margin-bottom:8px">Un giorno saltato: scegli la data e compila. È un dato nuovo, si aggiunge al foglio senza problemi.</div>':"")+
+    (editDate?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">')+
     '<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato</span><div class="pills" id="bRefl">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.refl===v?"on":"")+'" data-r="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<label class="fld"><span class="eyebrow">Camminate post-pasto · target 2</span><div class="pills" id="bCam">'+
@@ -2134,9 +2138,9 @@ function formBen(date){
       '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" id="bRead" value="'+(b.read||"")+'"></label>'+
       '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" id="bSonno" value="'+(b.sonno||"")+'"></label></div>'+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>'+
-    (past?verWarn():"")+
-    '<button class="btn pri" style="margin-top:14px" data-a="saveben" data-d="'+esc(dt)+'">Salva</button>'+
-    (past?'<button class="btn ghost" style="margin-top:8px" data-a="bendel" data-d="'+esc(dt)+'">Cancella questo giorno</button>':"")+
+    ((!isAdd && dt!==today())?verWarn():"")+
+    '<button class="btn pri" style="margin-top:14px" data-a="saveben"'+((!isAdd && dt!==today())?' data-d="'+esc(dt)+'"':'')+'>Salva</button>'+
+    ((!isAdd && dt!==today())?'<button class="btn ghost" style="margin-top:8px" data-a="bendel" data-d="'+esc(dt)+'">Cancella questo giorno</button>':"")+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
 async function saveBen(origDate){
