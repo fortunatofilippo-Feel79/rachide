@@ -1455,7 +1455,7 @@ function stopAnim(){ if(animRAF){ cancelAnimationFrame(animRAF); animRAF=null; }
    quindi senza preflight).
    ============================================================ */
 var SYNC = {
-  busy:false, last:null, state:"", err:"", pending:0, repaired:0, scartate:0, ver:1,
+  busy:false, last:null, state:"", err:"", pending:0, repaired:0, scartate:0, scartatePer:{}, esempioData:"", ver:1,
   cfg(){ return S.sync || {}; },
   on(){ return !!(S.sync && S.sync.url); },
 
@@ -1542,10 +1542,20 @@ var SYNC = {
     /* JS accetta il 31 febbraio e lo sposta al 3 marzo: qui si smaschera */
     return t.getDate()===g && t.getMonth()===m-1 && t.getFullYear()===y;
   },
-  fuse(remote, local, key){
+  fuse(remote, local, key, etichetta){
     var self=this;
     var buone = remote.filter(function(r){ return self.dataValida(r.date); });
-    this.scartate += (remote.length - buone.length);
+    var perse = remote.length - buone.length;
+    if(perse){
+      this.scartate += perse;
+      if(etichetta){
+        this.scartatePer[etichetta] = (this.scartatePer[etichetta]||0) + perse;
+        if(!this.esempioData){
+          var cattiva = remote.filter(function(r){ return !self.dataValida(r.date); })[0];
+          if(cattiva) this.esempioData = String(cattiva.date===""||cattiva.date===undefined ? "(vuota)" : cattiva.date).slice(0,24);
+        }
+      }
+    }
     var seen={}; buone.forEach(function(r){ seen[key(r)]=1; });
     var extra = local.filter(function(r){ return !seen[key(r)]; });
     this.pending += extra.length;
@@ -1554,6 +1564,7 @@ var SYNC = {
   /* dal foglio allo stato dell'app */
   adopt(d){
     this.pending = 0; this.repaired = 0; this.scartate = 0;
+    this.scartatePer = {}; this.esempioData = "";
     this.ver = +d.ver || 1;   /* 2 = lo script del foglio sa modificare e cancellare */
     var self=this;
     var byId = function(r){ return String(r.id||""); }, byDate = function(r){ return String(r.date||""); };
@@ -1566,15 +1577,15 @@ var SYNC = {
       return {id:r.id||uid("l"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, ex:r.ex, side:r.side||"", band:r.band||"",
         load:+r.load||0, reps:rp,
         rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||""};
-    }), S.log, byId);
+    }), S.log, byId, "App_Log");
     if(d.sess) S.sess = this.fuse(d.sess.map(function(r){
       return {id:r.id||uid("s"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, sede:r.sede, mod:r.mod, min:+r.min||0,
         en:+r.en||0, warm:r.warm===true||r.warm==="Sì", sig:r.sig===true||r.sig==="Sì", note:r.note||""};
-    }), S.sess, byId);
+    }), S.sess, byId, "App_Sessioni");
     if(d.mis)  S.mis  = this.fuse(d.mis.map(function(r){
       return {w:+r.w||weekOf(r.date), date:r.date, peso:num(r.peso), torace:num(r.torace),
         bic:num(r.bic), coscia:num(r.coscia), vita:num(r.vita), note:r.note||""};
-    }), S.mis, byDate);
+    }), S.mis, byDate, "App_Misure");
     /* difesa: i campi introdotti in v2 possono non esistere ancora sul foglio.
        Se la colonna manca del tutto, il valore locale resta. Se c'è ed è vuota,
        vince il foglio come per tutto il resto. */
@@ -1587,10 +1598,10 @@ var SYNC = {
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
         mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo")};
-    }), S.ben, byDate);
+    }), S.ben, byDate, "App_Benessere");
     if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
       return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
-    }), S.sim||[], function(r){ return String(r.date||"")+"|"+String(r.ex||"")+"|"+String(r.q||""); });
+    }), S.sim||[], function(r){ return String(r.date||"")+"|"+String(r.ex||"")+"|"+String(r.q||""); }, "App_Simmetria");
     /* mobilità: se il foglio non ha ancora la scheda, resta il locale. */
     if(d.mob) S.mob = this.fuse(d.mob.map(function(r){
       var out={date:r.date, w:+r.w||weekOf(r.date), note:r.note||""};
@@ -1599,7 +1610,7 @@ var SYNC = {
         else out[t.k]=num(r[t.k]);
       });
       return out;
-    }), S.mob||[], byDate);
+    }), S.mob||[], byDate, "App_Mobilita");
     this.last=new Date(); this.state="ok";
   },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
@@ -2186,9 +2197,11 @@ function viewCoach(){
        (sy?(SYNC.state==="ok"?"ATTIVO":"DA VERIFICARE"):"NON CONFIGURATO")+'</div></div>';
   if(sy && SYNC.scartate>0){
     h+='<div class="flag stop" style="margin-top:8px"><b>!</b><div><b>'+SYNC.scartate+
-       ' righe del foglio hanno una data illeggibile</b> e sono state ignorate per non sporcare lo storico. '+
-       'Succede se una colonna data viene spostata o riformattata a mano. '+
-       'Lancia <b>diagnosiSchede</b> dall\'editor Apps Script e controlla la colonna date.</div></div>';
+       ' righe del foglio hanno una data illeggibile</b> e sono state ignorate per non sporcare lo storico.'+
+       (Object.keys(SYNC.scartatePer).length?
+         '<br>Schede: '+Object.keys(SYNC.scartatePer).map(function(k){ return k+" ("+SYNC.scartatePer[k]+")"; }).join(", ")+'.':'')+
+       (SYNC.esempioData?'<br>Esempio di valore trovato: <b>'+esc(SYNC.esempioData)+'</b>':'')+
+       '<br>Lancia <b>diagnosiSchede</b> dall\'editor Apps Script: ti dice quante date non sono leggibili e in che formato sono.</div></div>';
   }
   if(sy && SYNC.repaired>0){
     h+='<div class="flag stop" style="margin-top:8px"><b>!</b><div><b>'+SYNC.repaired+' righe nel foglio sono in formato vecchio</b> e le ripetizioni non sono leggibili. '+
