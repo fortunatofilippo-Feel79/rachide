@@ -2208,6 +2208,13 @@ function viewCoach(){
        'Cancella la scheda App_Log dal foglio, poi premi Invia tutto: verrà riscritta nel formato corretto.</div></div>';
   }
   if(sy){
+    h+='<div class="grid3" style="margin-top:10px">'+
+       [["Serie",S.log.length],["Sessioni",S.sess.length],["Misure",S.mis.length],
+        ["Benessere",S.ben.length],["Simmetria",(S.sim||[]).length],["Mobilit\u00e0",(S.mob||[]).length]]
+       .map(function(x){ return '<div><div class="eyebrow">'+x[0]+'</div>'+
+         '<div class="sm" style="font-weight:700;margin-top:2px">'+x[1]+'</div></div>'; }).join("")+
+       '</div>'+
+       '<div class="xs mut" style="margin-top:6px">Record presenti nell\'app. Confrontali col foglio prima di premere Invia tutto: l\'invio riscrive le schede App_ con questi.</div>';
     h+='<div class="sm mut" style="margin-top:7px">Lo storico vive nel foglio. L\'app lo legge all\'avvio e ci scrive a fine sessione.</div>'+
        (SYNC.last?'<div class="xs mut" style="margin-top:4px">Ultima sincronizzazione: '+SYNC.last.toLocaleTimeString("it")+'</div>':"")+
        '<div class="xs" style="margin-top:6px;color:'+((SYNC.ver||1)>=2?"var(--ok)":"var(--amb)")+'">'+
