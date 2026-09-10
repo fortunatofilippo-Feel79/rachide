@@ -627,6 +627,36 @@ async function save(){ var r=await Store.set(S);
 var W0 = new Date(2026,6,13); /* lunedì della settimana 24 */
 function d2s(d){ var p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear(); }
 function s2d(s){ var a=String(s).split("/"); return new Date(+a[2],+a[1]-1,+a[0]); }
+/* Una data non valida rendeva NaN ogni confronto: l'ordinamento diventava
+   imprevedibile e la riga rotta poteva finire in fondo, mascherando quella
+   buona. Qui le righe rotte vengono spinte sempre all'inizio, mai in coda. */
+function dataOk(v){
+  var a=String(v||"").split("/");
+  if(a.length!==3) return false;
+  var g=+a[0], m=+a[1], y=+a[2];
+  if(!(g>=1&&g<=31&&m>=1&&m<=12&&y>=2000&&y<=2100)) return false;
+  var t=new Date(y,m-1,g);
+  return !isNaN(t.getTime()) && t.getDate()===g && t.getMonth()===m-1 && t.getFullYear()===y;
+}
+function ordinaData(arr){
+  return arr.slice().sort(function(a,b){
+    var A=dataOk(a.date)?s2d(a.date).getTime():-Infinity;
+    var B=dataOk(b.date)?s2d(b.date).getTime():-Infinity;
+    return A-B;
+  });
+}
+function ultimoValido(arr){
+  if(!arr || !arr.length) return null;
+  for(var i=arr.length-1;i>=0;i--) if(dataOk(arr[i].date)) return arr[i];
+  return null;
+}
+function conteggiaRotte(){
+  var n=0;
+  [S.log,S.sess,S.mis,S.ben,S.sim,S.mob].forEach(function(a){
+    (a||[]).forEach(function(r){ if(!dataOk(r.date)) n++; });
+  });
+  return n;
+}
 function weekOf(s){ return 24 + Math.floor((s2d(s)-W0)/604800000); }
 function today(){ return d2s(new Date()); }
 function dayName(s){ return ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"][s2d(s).getDay()]; }
@@ -842,7 +872,7 @@ var PESO_MINPT=6, PESO_WMAX=28;
    a settimana restava zero. Il confronto e' sempre con l'ultima pesata
    accettata, non con quella precedente che potrebbe essere gia' scartata. */
 function weightPoints(){
-  var pts=S.ben.filter(function(b){ return b.peso>0; })
+  var pts=S.ben.filter(function(b){ return b.peso>0 && dataOk(b.date); })
     .map(function(b){ return {date:b.date, t:s2d(b.date).getTime(), kg:b.peso}; })
     .sort(function(a,b){ return a.t-b.t; });
   var ref=null;
@@ -910,7 +940,7 @@ var MOB=[
   {k:"cat", n:"Catena posteriore", u:"cm", bi:false, up:true,
    how:"Seduto a terra, gambe tese, ginocchia bloccate. Misura quanto arrivano le dita rispetto alla pianta dei piedi: negativo se non ci arrivi, positivo se le superi."}
 ];
-function mobLast(){ return S.mob && S.mob.length ? S.mob[S.mob.length-1] : null; }
+function mobLast(){ return ultimoValido(S.mob); }
 function mobDue(){
   var l=mobLast(); if(!l) return true;
   return Math.round((new Date().setHours(0,0,0,0)-s2d(l.date))/86400000) >= 28;
@@ -1077,7 +1107,7 @@ function briefing(){
   var lw=ws[ws.length-1], k=kpi(lw);
   L.push("");
   L.push("Serie per gruppo, settimana "+lw+": "+Object.keys(k.grp).map(g=>g+" "+k.grp[g]).join(" · "));
-  var m=S.mis[S.mis.length-1];
+  var m=ultimoValido(S.mis);
   if(m) L.push("Misure "+m.date+": peso "+(m.peso||"-")+" · torace "+(m.torace||"-")+" · vita "+(m.vita||"-")+
     ((m.vita&&m.torace)?" · V/T "+(m.vita/m.torace).toFixed(3):""));
   L.push("");
@@ -1532,16 +1562,7 @@ var SYNC = {
      ma quello che è nato in locale e non è ancora salito non si tocca */
   /* una riga con data illeggibile mandava in tilt l'ordinamento e spariva
      dagli elenchi trascinandosi dietro le altre: qui viene scartata e contata */
-  dataValida(v){
-    var a=String(v||"").split("/");
-    if(a.length!==3) return false;
-    var g=+a[0], m=+a[1], y=+a[2];
-    if(!(g>=1&&g<=31&&m>=1&&m<=12&&y>=2000&&y<=2100)) return false;
-    var t=new Date(y,m-1,g);
-    if(isNaN(t.getTime())) return false;
-    /* JS accetta il 31 febbraio e lo sposta al 3 marzo: qui si smaschera */
-    return t.getDate()===g && t.getMonth()===m-1 && t.getFullYear()===y;
-  },
+  dataValida(v){ return dataOk(v); },
   fuse(remote, local, key, etichetta){
     var self=this;
     var buone = remote.filter(function(r){ return self.dataValida(r.date); });
@@ -1559,7 +1580,7 @@ var SYNC = {
     var seen={}; buone.forEach(function(r){ seen[key(r)]=1; });
     var extra = local.filter(function(r){ return !seen[key(r)]; });
     this.pending += extra.length;
-    return buone.concat(extra).sort(function(a,b){ return s2d(a.date)-s2d(b.date); });
+    return ordinaData(buone.concat(extra));
   },
   /* dal foglio allo stato dell'app */
   adopt(d){
@@ -2060,7 +2081,7 @@ function viewProg(){
 function viewCorpo(){
   var h=topbar("Corpo","Misure · benessere · simmetria");
   h+='<div class="wrap">';
-  var lastM=S.mis[S.mis.length-1], gap=lastM?Math.round((new Date()-s2d(lastM.date))/86400000):99;
+  var lastM=ultimoValido(S.mis), gap=lastM?Math.round((new Date().setHours(0,0,0,0)-s2d(lastM.date))/86400000):99;
   h+='<div class="card"><div class="between"><div class="eyebrow">Misure · ogni 14 giorni</div>'+
      '<button class="btn sm '+(gap>=14?"amb":"ghost")+'" data-a="mis">'+(gap>=14?"Da fare":"Aggiungi")+'</button></div>';
   if(lastM){
@@ -2156,7 +2177,8 @@ function viewCorpo(){
   h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · settimane 31 · 35 · 39 · 43</div>'+
      (due?'<button class="btn sm amb" data-a="sim">Compila</button>':"")+'</div>';
   h+='<div class="xs mut" style="margin-top:8px">Quattro domande, quattro volte l\'anno. Floor Press nel giorno A, Box Squat nel B, RDL nel D, bird-dog nel riscaldamento.</div>';
-  if(S.sim.length) h+='<div class="sm" style="margin-top:9px">Ultimo: '+S.sim[S.sim.length-1].date+'</div>';
+  var uSim=ultimoValido(S.sim);
+  if(uSim) h+='<div class="sm" style="margin-top:9px">Ultimo: '+esc(uSim.date)+'</div>';
   h+='</div>';
 
   h+='<div class="card flat"><div class="eyebrow">Riferimento clinico</div>'+
@@ -2195,6 +2217,15 @@ function viewCoach(){
      '<div class="between"><div class="eyebrow '+(sy?"":"glow")+'">Collegamento al foglio</div>'+
      '<div class="xs" style="font-weight:700;color:'+(sy?(SYNC.state==="ok"?"var(--ok)":"var(--amb)"):"var(--glow)")+'">'+
        (sy?(SYNC.state==="ok"?"ATTIVO":"DA VERIFICARE"):"NON CONFIGURATO")+'</div></div>';
+  var rotte=conteggiaRotte();
+  if(rotte>0){
+    h+='<div class="card" style="border-color:var(--alert)"><div class="eyebrow amb">Righe da sistemare</div>'+
+       '<div class="sm" style="margin-top:8px"><b>'+rotte+' record salvati nell\'app hanno una data non valida.</b> '+
+       'Non compaiono negli elenchi e non entrano nei calcoli, ma verrebbero rispediti al foglio al prossimo invio.</div>'+
+       '<div class="xs mut" style="margin-top:6px">Sono i resti del disallineamento delle colonne. Scarica il backup prima, poi rimuovili.</div>'+
+       '<button class="btn amb" style="margin-top:11px" data-a="purga">Rimuovi le '+rotte+' righe rotte</button>'+
+       '</div>';
+  }
   if(sy && SYNC.scartate>0){
     h+='<div class="flag stop" style="margin-top:8px"><b>!</b><div><b>'+SYNC.scartate+
        ' righe del foglio hanno una data illeggibile</b> e sono state ignorate per non sporcare lo storico.'+
@@ -2358,6 +2389,8 @@ document.addEventListener("click", function(ev){
   if(a==="esess"){ editSess(el.dataset.id); return; }
   if(a==="esesssave"){ saveSessEdit(el.dataset.id); return; }
   if(a==="esessdel"){ delSess(el.dataset.id); return; }
+  if(a==="purga"){ purgaSheet(); return; }
+  if(a==="purgago"){ purgaVai(); return; }
   if(a==="sett"){ formSett(); return; }
   if(a==="savesett"){ saveSett(); return; }
   if(a==="mob"){ formMob(); return; }
@@ -2680,6 +2713,29 @@ var SIMQ=[["Floor Press","I due manubri arrivano in alto insieme?"],["Box Squat"
 /* riepilogo settimanale: due numeri, una volta a settimana.
    Vivono sulla riga benessere del giorno in cui li scrivi, così non
    serve una tabella nuova sul foglio. */
+function purgaSheet(){
+  var n=conteggiaRotte();
+  sheet('<div class="eyebrow amb">Conferma</div><h2 style="margin:4px 0 8px">Rimuovere '+n+' righe?</h2>'+
+    '<div class="sm">Hanno la data mancante o illeggibile: l\'app non pu\u00f2 collocarle in nessuna settimana, '+
+    'quindi non sono gi\u00e0 visibili da nessuna parte.</div>'+
+    '<div class="sm mut" style="margin-top:8px">L\'operazione tocca solo la copia sul telefono. '+
+    'Il foglio cambia solo quando premi Invia tutto.</div>'+
+    '<div class="flag disc" style="margin-top:10px">\u26a0<div>Se non hai ancora scaricato il backup, annulla e fallo prima.</div></div>'+
+    '<button class="btn amb" style="margin-top:14px" data-a="purgago">S\u00ec, rimuovile</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function purgaVai(){
+  var tolte=0;
+  ["log","sess","mis","ben","sim","mob"].forEach(function(k){
+    if(!Array.isArray(S[k])) return;
+    var prima=S[k].length;
+    S[k]=S[k].filter(function(r){ return dataOk(r.date); });
+    tolte += prima - S[k].length;
+  });
+  var okS=await save();
+  closeSheet(); render();
+  toast(okS? tolte+" righe rimosse" : "NON salvato: vedi la scheda Coach");
+}
 function formSett(){
   var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0]||{};
   sheet('<div class="eyebrow">Riepilogo settimanale</div><h2 style="margin:4px 0 4px">Settimana '+weekOf(dt)+'</h2>'+
