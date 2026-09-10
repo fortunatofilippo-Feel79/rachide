@@ -2228,11 +2228,15 @@ function viewCoach(){
   }
   if(sy && SYNC.scartate>0){
     h+='<div class="flag stop" style="margin-top:8px"><b>!</b><div><b>'+SYNC.scartate+
-       ' righe del foglio hanno una data illeggibile</b> e sono state ignorate per non sporcare lo storico.'+
+       ' righe del foglio hanno una data illeggibile</b>: l\'app le ha ignorate e ha tenuto quelle buone.'+
        (Object.keys(SYNC.scartatePer).length?
          '<br>Schede: '+Object.keys(SYNC.scartatePer).map(function(k){ return k+" ("+SYNC.scartatePer[k]+")"; }).join(", ")+'.':'')+
-       (SYNC.esempioData?'<br>Esempio di valore trovato: <b>'+esc(SYNC.esempioData)+'</b>':'')+
-       '<br>Lancia <b>diagnosiSchede</b> dall\'editor Apps Script: ti dice quante date non sono leggibili e in che formato sono.</div></div>';
+       (SYNC.esempioData?'<br>Valore trovato al posto della data: <b>'+esc(SYNC.esempioData)+'</b>':'')+
+       (conteggiaRotte()===0?
+         '<br><br><b>Cosa fare:</b> premi <b>Invia tutto</b>. Le schede App_ vengono riscritte con i record dell\'app '+
+         '(vedi i numeri qui sotto) e le righe rotte spariscono dal foglio. Scarica prima il backup.'
+        : '<br><br>Prima rimuovi le righe rotte dall\'app con il pulsante qui sopra, poi premi Invia tutto.')+
+       '</div></div>';
   }
   if(sy && SYNC.repaired>0){
     h+='<div class="flag stop" style="margin-top:8px"><b>!</b><div><b>'+SYNC.repaired+' righe nel foglio sono in formato vecchio</b> e le ripetizioni non sono leggibili. '+
