@@ -173,6 +173,43 @@ td.n{text-align:right;font-weight:600}
 /* ---------- istogramma tonnellaggio ---------- */
 .bars{display:flex;align-items:flex-end;gap:5px;height:66px}
 .bars i{flex:1;border-radius:3px 3px 0 0;background:var(--surf2);min-height:3px;transition:none}
+
+/* ---------- v2: grafico peso ---------- */
+.chart{width:100%;display:block}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .zone{fill:rgba(127,176,105,.13)}
+.chart .fit{stroke-width:2;fill:none;stroke-linecap:round}
+.chart .pt{fill:var(--bone)}
+.chart .pt.out{fill:none;stroke:var(--dim);stroke-width:1.5}
+.chart .lab{fill:var(--dim);font-size:9px;font-weight:700;letter-spacing:.1em}
+
+/* ---------- v2: hero progressi ---------- */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:10px 0}
+.hero .cel{background:var(--surf);padding:13px 12px}
+.hero .cel .k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.hero .cel .v{font-size:23px;font-weight:700;letter-spacing:-.03em;margin-top:3px;line-height:1.1}
+.hero .cel .v small{font-size:11px;font-weight:600;color:var(--mut);letter-spacing:0;margin-left:3px}
+.hero .cel .s{font-size:11px;font-weight:600;margin-top:2px;color:var(--mut)}
+
+/* ---------- v2: riga per gruppo, compatta ---------- */
+.gr{display:flex;align-items:center;gap:9px;margin-top:11px}
+.gr .nm{font-size:13px;font-weight:600;width:66px;flex:none}
+.gr .tr{flex:1;position:relative;height:9px;border-radius:5px;background:var(--surf2);overflow:hidden}
+.gr .zn{position:absolute;top:0;bottom:0;background:rgba(127,176,105,.22)}
+.gr .fl{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
+.gr .vl{font-size:12px;font-weight:700;width:52px;text-align:right;flex:none}
+.gr .vl span{color:var(--dim);font-weight:600;font-size:10.5px}
+
+/* ---------- v2: timer recupero, distanza di lettura ---------- */
+.rclk{font-size:40px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--amb)}
+
+/* ---------- v2: streak ---------- */
+.stk{display:flex;gap:4px;margin-top:9px}
+.stk i{flex:1;height:5px;border-radius:3px;background:var(--surf2)}
+.stk i.on{background:var(--ok)}
+.stk i.cur{background:var(--glow)}
+
 .bars i.on{background:linear-gradient(180deg,var(--glow) 0%,rgba(111,179,196,.28) 100%)}
 .bars i.cur{background:linear-gradient(180deg,var(--amb) 0%,rgba(224,164,88,.3) 100%)}
 .barlab{display:flex;gap:5px;margin-top:6px}
@@ -535,8 +572,8 @@ var G = {
    MOTORE
    ============================================================ */
 var KEY = "rachide:v1";
-var S = {log:[], sess:[], mis:[], ben:[], sim:[], patches:[], draft:null, seeded:false,
-         lastBackup:null, installed:null};
+var S = {log:[], sess:[], mis:[], ben:[], sim:[], mob:[], patches:[], draft:null, seeded:false,
+         lastBackup:null, installed:null, intent:null};
 
 /* ---------- storage ----------
    Regola: non fidarsi mai della scrittura. Ogni salvataggio viene
@@ -749,15 +786,159 @@ function hrvBase(exclDate){
   var m=Math.floor(v.length/2);
   return v.length%2 ? v[m] : Math.round((v[m-1]+v[m])/2);
 }
-/* stringa breve se il recupero su quella data era compromesso, altrimenti "" */
-function recoveryNote(date){
-  var b=benOn(date); if(!b) return "";
-  var parts=[], base=hrvBase(date);
-  if(b.alc) parts.push("alcol la sera prima");
-  if(b.hrv && base && b.hrv < base*0.80) parts.push("HRV "+b.hrv+" (norma ~"+base+")");
-  if(b.read!==null && b.read!==undefined && b.read<70) parts.push("readiness "+b.read);
-  if(b.sonno!==null && b.sonno!==undefined && b.sonno<6) parts.push("sonno "+b.sonno+"h");
-  return parts.join(" · ");
+/* mediana di riferimento per un campo qualsiasi, esclusa la data in esame */
+function medBase(field, exclDate){
+  var v=S.ben.filter(function(b){ return b[field] && b.date!==exclDate; }).map(function(b){ return b[field]; });
+  if(v.length<3) return null;
+  v.sort(function(a,b){ return a-b; });
+  var m=Math.floor(v.length/2);
+  return v.length%2 ? v[m] : Math.round((v[m-1]+v[m])/2);
+}
+function rhrBase(exclDate){ return medBase("rhr", exclDate); }
+
+/* ============================================================
+   RECUPERO — HRV notturna incrociata con FC a riposo
+   Da sola l'HRV è ambigua. Con la FC a riposo non lo è più:
+   HRV giù + FC su = carico sistemico vero.
+   HRV giù + FC normale = probabile rumore di misura.
+   ============================================================ */
+function recovery(date){
+  var b=benOn(date); if(!b) return {lvl:0, parts:[], hint:""};
+  var parts=[], lvl=0, hb=hrvBase(date), rb=rhrBase(date);
+  var hrvLow  = !!(b.hrv && hb && b.hrv < hb*0.80);
+  var rhrHigh = !!(b.rhr && rb && b.rhr > rb*1.07);
+  var rhrOk   = !!(b.rhr && rb && !rhrHigh);
+  if(b.alc){ parts.push("alcol la sera prima"); lvl=Math.max(lvl,1); }
+  if(hrvLow){ parts.push("HRV "+b.hrv+" (norma ~"+hb+")"); lvl=Math.max(lvl,1); }
+  if(rhrHigh){ parts.push("FC riposo "+b.rhr+" (norma ~"+rb+")"); lvl=Math.max(lvl,1); }
+  if(b.read!=null && b.read<70){ parts.push("readiness "+b.read); lvl=Math.max(lvl,1); }
+  if(b.sonno!=null && b.sonno<6){ parts.push("sonno "+b.sonno+"h"); lvl=Math.max(lvl,1); }
+  if(b.stress!=null && b.stress>=3){ parts.push("stress 3"); lvl=Math.max(lvl,1); }
+  var hint="";
+  if(hrvLow && rhrHigh){ lvl=2;
+    hint="HRV giù e FC a riposo su insieme: è carico sistemico, non rumore di misura. Scendi di un gradino e non cercare i massimali."; }
+  else if(hrvLow && rhrOk){
+    hint="HRV giù ma FC a riposo nella norma: probabilmente è rumore di misura. Allenati normale e rileggi domani."; }
+  else if(b.stress!=null && b.stress>=2 && b.sonno && b.sonno<6){ lvl=2;
+    hint="Stress alto e sonno corto nello stesso giorno: accorcia la seduta, non tagliare il carico. Il volume si recupera, l'abitudine no."; }
+  else if(rhrHigh && !hrvLow){
+    hint="FC a riposo sopra la norma con HRV tenuta: spesso precede un malanno. Tieni i carichi fermi per una seduta."; }
+  return {lvl:lvl, parts:parts, hint:hint};
+}
+function recoveryNote(date){ return recovery(date).parts.join(" · "); }
+
+/* ============================================================
+   MODULO A — PESO E SPINTA
+   Poche mattine a settimana per via delle trasferte: niente media
+   mobile, che si rompe sui buchi. Regressione sui punti reali con
+   finestra che si allarga finché non ha abbastanza dati.
+   La prima pesata dopo 2+ notti fuori non entra: è sodio, non massa.
+   ============================================================ */
+var PESO_TGT=[150,250];   /* g a settimana */
+var PESO_MINPT=6, PESO_WMAX=28;
+/* Un rientro non e' semplicemente "dopo un buco": e' un buco PIU' un salto
+   di peso che il trend non giustifica. Escludere ogni pesata preceduta da
+   tre giorni di silenzio buttava via anche i punti buoni, e con tre pesate
+   a settimana restava zero. Il confronto e' sempre con l'ultima pesata
+   accettata, non con quella precedente che potrebbe essere gia' scartata. */
+function weightPoints(){
+  var pts=S.ben.filter(function(b){ return b.peso>0; })
+    .map(function(b){ return {date:b.date, t:s2d(b.date).getTime(), kg:b.peso}; })
+    .sort(function(a,b){ return a.t-b.t; });
+  var ref=null;
+  pts.forEach(function(p){
+    if(!ref){ p.skip=false; ref=p; return; }
+    var gap=Math.round((p.t-ref.t)/86400000);
+    var atteso=0.35 + 0.03*gap;              /* ritenzione plausibile, non crescita */
+    p.skip = gap>=3 && (p.kg-ref.kg) >= atteso;
+    p.gap=gap;
+    if(!p.skip) ref=p;
+  });
+  return pts;
+}
+function fitLine(sel){
+  var n=sel.length, t0=sel[0].t, sx=0,sy=0,sxx=0,sxy=0;
+  sel.forEach(function(p){ var x=(p.t-t0)/86400000, y=p.kg; sx+=x; sy+=y; sxx+=x*x; sxy+=x*y; });
+  var den=n*sxx-sx*sx;
+  if(!den) return null;
+  var m=(n*sxy-sx*sy)/den, q=(sy-m*sx)/n;
+  return {m:m, q:q, t0:t0};
+}
+function weightSlope(){
+  var all=weightPoints(), now=new Date().setHours(23,59,59,999);
+  if(!all.length) return {ok:false, n:0, days:0, all:all, why:"nessuna pesata registrata"};
+  for(var win=14; win<=PESO_WMAX; win+=7){
+    var sel=all.filter(function(p){ return !p.skip && (now-p.t)/86400000 <= win; });
+    var last = win>=PESO_WMAX;
+    /* ultima spiaggia: se i soli punti puliti non bastano ma con i rientri si
+       arriva al minimo, calcola comunque e dichiaralo. Un numero dichiarato
+       sporco e' piu' utile di un "dato insufficiente" che non arriva mai. */
+    var noisy=false;
+    if(last && sel.length<PESO_MINPT){
+      var tutti=all.filter(function(p){ return (now-p.t)/86400000 <= win; });
+      if(tutti.length>=PESO_MINPT){ sel=tutti; noisy=true; }
+    }
+    if(sel.length>=PESO_MINPT || last){
+      if(sel.length<PESO_MINPT)
+        return {ok:false, n:sel.length, days:win, all:all,
+                why:sel.length+" pesat"+(sel.length===1?"a":"e")+" valid"+(sel.length===1?"a":"e")+" in "+win+" giorni: ne servono "+PESO_MINPT};
+      var f=fitLine(sel);
+      if(!f) return {ok:false, n:sel.length, days:win, all:all, why:"pesate tutte lo stesso giorno"};
+      var days=Math.round((sel[sel.length-1].t-sel[0].t)/86400000)+1;
+      var g=Math.round(f.m*7*1000);
+      var st = g<PESO_TGT[0] ? "sotto" : g>PESO_TGT[1] ? "sopra" : "dentro";
+      return {ok:true, g:g, n:sel.length, days:days, win:win, sel:sel, all:all, fit:f, stato:st, noisy:noisy,
+              skipped: all.filter(function(p){ return p.skip && (now-p.t)/86400000<=win; }).length};
+    }
+  }
+  return {ok:false, n:0, days:0, all:all, why:"dati insufficienti"};
+}
+
+/* ============================================================
+   MODULO B — MOBILITÀ
+   Quattro test ripetibili, ogni 28 giorni. I due bilaterali sono
+   separati sx/dx: su una curva a S la differenza fra i lati dice
+   più del valore assoluto.
+   ============================================================ */
+var MOB=[
+  {k:"cav", n:"Dorsiflessione caviglia", u:"cm", bi:true, up:true,
+   how:"In piedi davanti al muro, piede perpendicolare. Avvicina il ginocchio al muro tenendo il tallone a terra. Misura la distanza alluce-muro alla massima flessione ancora pulita."},
+  {k:"tor", n:"Rotazione toracica", u:"°", bi:true, up:true,
+   how:"Sdraiato sul fianco, anche e ginocchia a 90° bloccate, braccia tese davanti. Apri il braccio alto verso il pavimento opposto senza staccare le ginocchia. Stima i gradi raggiunti dal braccio."},
+  {k:"spa", n:"Mani dietro la schiena", u:"cm", bi:true, up:false,
+   how:"Una mano sopra la spalla, l'altra dal basso. Misura la distanza fra le punte delle dita. Il lato indicato è quello del braccio ALTO. Meno centimetri = meglio."},
+  {k:"cat", n:"Catena posteriore", u:"cm", bi:false, up:true,
+   how:"Seduto a terra, gambe tese, ginocchia bloccate. Misura quanto arrivano le dita rispetto alla pianta dei piedi: negativo se non ci arrivi, positivo se le superi."}
+];
+function mobLast(){ return S.mob && S.mob.length ? S.mob[S.mob.length-1] : null; }
+function mobDue(){
+  var l=mobLast(); if(!l) return true;
+  return Math.round((new Date().setHours(0,0,0,0)-s2d(l.date))/86400000) >= 28;
+}
+function mobAsym(rec, k){
+  if(!rec) return null;
+  var a=rec[k+"_s"], b=rec[k+"_d"];
+  if(a===null||a===undefined||b===null||b===undefined) return null;
+  return +(a-b).toFixed(1);
+}
+
+/* ============================================================
+   MODULO D — ADERENZA
+   La catena è settimanale, non giornaliera: una giornata saltata
+   non rompe niente, così non scatta l'effetto "tanto ho già rotto".
+   ============================================================ */
+function weekDone(w){
+  var ss=S.sess.filter(function(s){ return s.w===w; });
+  var real=ss.filter(function(s){ return !isRest(s); }).length;
+  var rp=ss.filter(isRest).length;
+  return {real:real, target:Math.max(1,4-rp), ok:real>=Math.max(1,4-rp)};
+}
+function streak(){
+  var wNow=weekOf(today()), c=0, cur=weekDone(wNow).ok;
+  for(var w=(cur?wNow:wNow-1); w>=PLAN_W0-12; w--){
+    if(weekDone(w).ok) c++; else break;
+  }
+  return {n:c, curOpen:!cur};
 }
 
 /* ============================================================
@@ -837,6 +1018,37 @@ function diagnose(){
       m: wLast<31 ? "Le sessioni prima della settimana 31 vengono dal vecchio tracker, dove il riscaldamento non era tracciato: probabilmente l'hai fatto, non risulta soltanto."
                   : "Il riscaldamento contiene il blocco scoliosi. Se scende, lo perdi senza accorgertene."});
   }
+  /* 6. spinta: uno stallo su un corpo in deficit non e' un problema di carico */
+  var sl=weightSlope();
+  if(sl.ok){
+    var stalli=out.filter(function(x){ return x.k==="stallo"||x.k==="crollo"; }).length;
+    if(sl.stato==="sotto" && !sl.noisy){
+      out.unshift({k:"spinta", t:"Spinta "+(sl.g>0?"+":"")+sl.g+" g/sett \u00b7 sotto il corridoio",
+        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico: alza le calorie e rileggi fra due settimane prima di scendere di peso sui manubri."
+                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Alza le calorie adesso.")
+           + " Calcolata su "+sl.n+" pesate in "+sl.days+" giorni."});
+    }
+    if(sl.stato==="sopra" && !sl.noisy) out.push({k:"spinta", t:"Spinta +"+sl.g+" g/sett \u00b7 sopra il corridoio",
+      m:"Oltre "+PESO_TGT[1]+" g/sett la quota di grasso sale. Controlla vita/torace alla prossima misura: se e' salito anche quello, taglia il surplus."});
+  }
+  /* 7. mobilita': la differenza fra i lati, non il valore assoluto */
+  var ml=mobLast();
+  if(ml){
+    MOB.filter(function(t){ return t.bi; }).forEach(function(t){
+      var d=mobAsym(ml,t.k);
+      if(d!==null && Math.abs(d)>=2) out.push({k:"mob", t:t.n+" \u00b7 differenza "+(d>0?"+":"")+dec(d)+" "+t.u,
+        m:"Sinistra "+dec(ml[t.k+"_s"])+", destra "+dec(ml[t.k+"_d"])+". Su una curva a S l'asimmetria conta piu' del valore assoluto: portala al fisioterapista invece di cercare di pareggiarla da solo."});
+    });
+  }
+  if(mobDue() && S.mob && S.mob.length) out.push({k:"attesa", t:"Test di mobilita' scaduti",
+    m:"Sono passati almeno 28 giorni dall'ultima rilevazione."});
+  /* 8. stress: il carico che il sensore non vede */
+  var bs=S.ben.filter(function(b){ return b.stress!=null; }).slice(-14);
+  if(bs.length>=7){
+    var alti=bs.filter(function(b){ return b.stress>=2; }).length;
+    if(alti >= bs.length*0.5) out.push({k:"stress", t:"Stress \u2265 2 su "+alti+" giorni su "+bs.length,
+      m:"Meta' o piu' delle giornate registrate. In questa condizione il recupero fra le sedute e' piu' lento a parita' di carico: e' il momento di tenere i carichi fermi, non di aggiungere volume."});
+  }
   return out;
 }
 
@@ -849,7 +1061,7 @@ function tsv(){
     return [r.w, r.date, r.day, r.ex, meta(r.ex).g,
       r.side==="S"?"Sinistra":r.side==="D"?"Destra":"N/A", r.band||"", r.load||"",
       r.reps[0]||"", r.reps[1]||"", r.reps[2]||"", r.reps[3]||"",
-      r.reps.length, t, r.load*t, r.rir===null?"":r.rir, r.top?"Sì":"No", r.note||""].join("\t");
+      r.reps.length, t, r.load*t, r.rir==null?"":r.rir, r.top?"Sì":"No", r.note||""].join("\t");
   });
   return [h.join("\t")].concat(rows).join("\n");
 }
@@ -883,9 +1095,38 @@ function briefing(){
   dg.forEach(d=>L.push("- ["+d.k+"] "+d.t+": "+d.m));
   var notes=S.log.filter(r=>r.note && ws.indexOf(r.w)>=0).slice(-12);
   if(notes.length){ L.push(""); L.push("Note libere recenti"); notes.forEach(n=>L.push("- "+n.date+" "+n.ex+": "+n.note)); }
-  var bn=S.ben.filter(b=>b.refl!==null||b.hrv).slice(-7);
+  var sl2=weightSlope();
+  L.push("");
+  L.push("Spinta (modulo peso)");
+  if(sl2.ok) L.push("- pendenza "+(sl2.g>0?"+":"")+sl2.g+" g/sett ("+sl2.stato+" il corridoio "+PESO_TGT[0]+"-"+PESO_TGT[1]+
+    ") su "+sl2.n+" pesate in "+sl2.days+" giorni"+(sl2.skipped?", "+sl2.skipped+" rientro escluso":"")+
+    (sl2.noisy?" — ATTENZIONE: include i rientri da trasferta, dato indicativo":""));
+  else L.push("- non calcolabile: "+(sl2.why||"dati insufficienti"));
+  var wb2=S.ben.filter(function(x){ return x.passi||x.ipo; }).slice(-1)[0];
+  if(wb2) L.push("- ultimo riepilogo settimanale: passi "+(wb2.passi||"-")+"/giorno, ipopnea "+(wb2.ipo==null?"-":wb2.ipo)+"/h ("+wb2.date+")");
+  var stk2=streak();
+  L.push("- catena: "+stk2.n+" settimane consecutive a bersaglio"+(stk2.curOpen?" (quella in corso e' ancora aperta)":""));
+  var ml2=mobLast();
+  L.push("");
+  L.push("Mobilita'");
+  if(ml2){
+    MOB.forEach(function(t){
+      if(t.bi){ var d=mobAsym(ml2,t.k);
+        L.push("- "+t.n+" ("+t.u+"): sx "+(ml2[t.k+"_s"]==null?"-":ml2[t.k+"_s"])+" | dx "+(ml2[t.k+"_d"]==null?"-":ml2[t.k+"_d"])+
+               (d===null?"":" | delta "+(d>0?"+":"")+d)); }
+      else L.push("- "+t.n+" ("+t.u+"): "+(ml2[t.k]==null?"-":ml2[t.k]));
+    });
+    L.push("  rilevazione del "+ml2.date+(mobDue()?" — SCADUTA":""));
+  } else L.push("- nessuna rilevazione ancora");
+  var bn=S.ben.filter(b=>b.refl!==null||b.hrv||b.peso||b.stress!==null).slice(-7);
   if(bn.length){ L.push(""); L.push("Benessere ultimi giorni");
-    bn.forEach(b=>L.push("- "+b.date+": reflusso "+(b.refl===null?"-":b.refl)+" · HRV "+(b.hrv||"-")+" · readiness "+(b.read||"-")+" · sonno "+(b.sonno||"-")+" · alcol "+(b.alc?"sì":"no"))); }
+    bn.forEach(function(b){
+      var rc=recovery(b.date);
+      L.push("- "+b.date+": peso "+(b.peso||"-")+" | HRV "+(b.hrv||"-")+" | FC rip "+(b.rhr||"-")+
+        " | read "+(b.read||"-")+" | sonno "+(b.sonno||"-")+" | stress "+(b.stress==null?"-":b.stress)+
+        " | testa "+(b.mente==null?"-":b.mente)+" | reflusso "+(b.refl==null?"-":b.refl)+
+        " | alcol "+(b.alc?"si":"no")+(rc.hint?"  >> "+rc.hint:""));
+    }); }
   return L.join("\n");
 }
 function copy(txt, msg){
@@ -1129,6 +1370,52 @@ var ANIM = {
 };
 
 var animRAF=null, animT0=0, animKey=null, animLast=0;
+/* ---------- grafico della pendenza del peso ----------
+   Punti pieni = pesate che entrano nel calcolo. Cerchi vuoti = rientri
+   da trasferta, esclusi. La fascia verde e' il corridoio 150-250 g/sett
+   ancorato alla prima pesata utile: se la retta ci sta dentro, la spinta
+   e' quella giusta. */
+function pesoChart(sl){
+  var W=320,H=112,L=34,R=6,T=10,B=20;
+  var win=sl.win||28, now=new Date().setHours(23,59,59,999);
+  var pts=(sl.all||[]).filter(function(p){ return (now-p.t)/86400000<=win; });
+  if(pts.length<2) return "";
+  var t0=pts[0].t, t1=pts[pts.length-1].t;
+  if(t1<=t0) return "";
+  var vals=pts.map(function(p){ return p.kg; });
+  var fit=sl.fit;
+  if(fit){ [t0,t1].forEach(function(t){ vals.push(fit.q+fit.m*(t-fit.t0)/86400000); }); }
+  var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), sp=hi-lo;
+  if(sp<0.6){ var c=(hi+lo)/2; lo=c-0.35; hi=c+0.35; sp=0.7; }
+  else { lo-=sp*0.18; hi+=sp*0.18; sp=hi-lo; }
+  var X=function(t){ return L+(t-t0)/(t1-t0)*(W-L-R); };
+  var Y=function(v){ return T+(hi-v)/sp*(H-T-B); };
+  var g='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img">';
+  if(fit){
+    var used=sl.sel||[], a0=used.length?used[0].t:t0;
+    var base=fit.q+fit.m*(a0-fit.t0)/86400000;
+    var dd=(t1-a0)/86400000;
+    if(dd>0){
+      var loK=PESO_TGT[0]/1000/7, hiK=PESO_TGT[1]/1000/7;
+      g+='<polygon class="zone" points="'+
+         [[X(a0),Y(base)],[X(t1),Y(base+hiK*dd)],[X(t1),Y(base+loK*dd)]]
+           .map(function(q){ return r1(q[0])+","+r1(q[1]); }).join(" ")+'"/>';
+    }
+  }
+  g+='<text class="lab" x="2" y="'+r1(Y(hi)+4)+'">'+hi.toFixed(1)+'</text>';
+  g+='<text class="lab" x="2" y="'+r1(Y(lo)+4)+'">'+lo.toFixed(1)+'</text>';
+  if(fit){
+    var col = sl.stato==="dentro" ? "var(--ok)" : "var(--amb)";
+    g+=ln(X(t0),Y(fit.q+fit.m*(t0-fit.t0)/86400000),X(t1),Y(fit.q+fit.m*(t1-fit.t0)/86400000),
+          'class="fit" stroke="'+col+'"');
+  }
+  pts.forEach(function(pt){
+    g+=ci(X(pt.t),Y(pt.kg),3.2,'class="pt'+(pt.skip?" out":"")+'"');
+  });
+  g+='<text class="lab" x="'+L+'" y="'+(H-5)+'">'+pts[0].date.slice(0,5)+'</text>';
+  g+='<text class="lab" x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end">'+pts[pts.length-1].date.slice(0,5)+'</text>';
+  return g+'</svg>';
+}
 function animBlock(n){
   if(!ANIM[n]) return "";
   return '<div class="card" id="animBox" style="margin-top:14px;padding:10px 10px 4px"></div>';
@@ -1273,11 +1560,28 @@ var SYNC = {
       return {w:+r.w||weekOf(r.date), date:r.date, peso:num(r.peso), torace:num(r.torace),
         bic:num(r.bic), coscia:num(r.coscia), vita:num(r.vita), note:r.note||""};
     }), S.mis, byDate);
+    /* difesa: i campi introdotti in v2 possono non esistere ancora sul foglio.
+       Se la colonna manca del tutto, il valore locale resta. Se c'è ed è vuota,
+       vince il foglio come per tutto il resto. */
+    var lben={}; S.ben.forEach(function(b){ lben[b.date]=b; });
+    var keep=function(r, loc, k){ return (r[k]===undefined) ? (loc?loc[k]:undefined) : num(r[k]); };
     if(d.ben)  S.ben  = this.fuse(d.ben.map(function(r){
+      var loc=lben[r.date];
       return {date:r.date, w:+r.w||weekOf(r.date), refl:num(r.refl), resp:r.resp===true||r.resp==="Sì",
         camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
-        alc:r.alc===true||r.alc==="Sì", note:r.note||""};
+        alc:r.alc===true||r.alc==="Sì", note:r.note||"",
+        peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
+        mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo")};
     }), S.ben, byDate);
+    /* mobilità: tab non ancora presente sul foglio. Se non arriva, resta il locale. */
+    if(d.mob) S.mob = this.fuse(d.mob.map(function(r){
+      var out={date:r.date, w:+r.w||weekOf(r.date), note:r.note||""};
+      MOB.forEach(function(t){
+        if(t.bi){ out[t.k+"_s"]=num(r[t.k+"_s"]); out[t.k+"_d"]=num(r[t.k+"_d"]); }
+        else out[t.k]=num(r[t.k]);
+      });
+      return out;
+    }), S.mob||[], byDate);
     this.last=new Date(); this.state="ok";
   },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
@@ -1290,7 +1594,15 @@ var SYNC = {
         warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",note:r.note})),
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
       ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
-        read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",note:r.note}))
+        read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
+        mente:r.mente,passi:r.passi,ipo:r.ipo,note:r.note})),
+      mob: (S.mob||[]).map(function(r){
+        var o={date:r.date,w:r.w};
+        MOB.forEach(function(t){
+          if(t.bi){ o[t.k+"_s"]=r[t.k+"_s"]; o[t.k+"_d"]=r[t.k+"_d"]; } else o[t.k]=r[t.k];
+        });
+        o.note=r.note; return o;
+      })
     };
   }
 };
@@ -1357,6 +1669,17 @@ function viewOggi(){
   var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
   if(extra.length) h+='<div class="xs mut" style="margin-top:8px">In trasferta: '+
     extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';
+  var stk=streak();
+  if(stk.n>0 || !completa){
+    var wN=weekOf(today()), cells="";
+    for(var si=5;si>=0;si--){ var ww=wN-si, wd=weekDone(ww);
+      cells+='<i class="'+(ww===wN?(wd.ok?"on":"cur"):(wd.ok?"on":""))+'"></i>'; }
+    h+='<div class="stk">'+cells+'</div>'+
+       '<div class="xs mut" style="margin-top:6px">'+
+       (stk.n>0? '<b style="color:var(--ok)">'+stk.n+' settiman'+(stk.n>1?'e':'a')+' di fila</b> chiuse a bersaglio.'
+               : 'La catena si conta a settimane, non a giorni: un giorno saltato non rompe niente.')+
+       (stk.curOpen&&!completa?' Questa \u00e8 ancora aperta.':'')+'</div>';
+  }
   if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='</div>';
 
@@ -1364,12 +1687,19 @@ function viewOggi(){
   var recB=benOn(today());
   if(!recB){ for(var rb=1;rb<=2 && !recB;rb++){ var dd=new Date(); dd.setDate(dd.getDate()-rb); recB=benOn(d2s(dd)); } }
   if(recB && !completa){
-    var rn=recoveryNote(recB.date), oggi=recB.date===today();
-    h+='<div class="card" style="border-color:'+(rn?"var(--amb)":"var(--line)")+'">'+
-       '<div class="between"><div class="eyebrow '+(rn?"amb":"")+'">Recupero'+(oggi?" · oggi":" · "+recB.date.slice(0,5))+'</div>'+
-       (rn?'<div class="xs" style="font-weight:700;color:var(--amb)">SOTTO LA NORMA</div>':'<div class="xs" style="font-weight:700;color:var(--ok)">ok</div>')+'</div>'+
-       '<div class="sm" style="margin-top:8px">HRV '+(recB.hrv||"–")+' · readiness '+(recB.read||"–")+' · sonno '+(recB.sonno||"–")+'h · alcol '+(recB.alc?"sì":"no")+'</div>'+
-       (rn?'<div class="flag disc" style="margin-top:10px">⚠<div><b>'+esc(rn)+'</b><br>Se ti alleni, scendi un gradino sulla scala e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.</div></div>':"")+
+    var rc=recovery(recB.date), rn=rc.parts.join(" \u00b7 "), oggi=recB.date===today();
+    var bc = rc.lvl>=2 ? "var(--alert)" : rc.lvl===1 ? "var(--amb)" : "var(--line)";
+    var bl = rc.lvl>=2 ? "TAGLIA LA SEDUTA" : rc.lvl===1 ? "SOTTO LA NORMA" : "ok";
+    h+='<div class="card" style="border-color:'+bc+'">'+
+       '<div class="between"><div class="eyebrow '+(rc.lvl?"amb":"")+'">Recupero'+(oggi?" \u00b7 oggi":" \u00b7 "+recB.date.slice(0,5))+'</div>'+
+       '<div class="xs" style="font-weight:700;color:'+(rc.lvl?bc:"var(--ok)")+'">'+bl+'</div></div>'+
+       '<div class="sm" style="margin-top:8px">HRV '+(recB.hrv||"\u2013")+' \u00b7 FC '+(recB.rhr||"\u2013")+
+       ' \u00b7 readiness '+(recB.read||"\u2013")+' \u00b7 sonno '+(recB.sonno||"\u2013")+'h'+
+       ((recB.stress!=null)?' \u00b7 stress '+recB.stress:'')+
+       ' \u00b7 alcol '+(recB.alc?"s\u00ec":"no")+'</div>'+
+       (rn?'<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">\u26a0<div><b>'+esc(rn)+'</b>'+
+           (rc.hint?'<br>'+esc(rc.hint):'<br>Se ti alleni, scendi un gradino sulla scala e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.')+
+           '</div></div>':"")+
        '</div>';
   }
 
@@ -1386,6 +1716,7 @@ function viewOggi(){
        '<div class="sm mut">'+p.ex.length+' esercizi · '+p.min+' minuti</div>'+
        (p.dischi!=="solo bande"? '<div class="xs" style="color:var(--amb);margin-top:7px">Dischi '+esc(p.dischi)+'</div>':"")+
        '<div class="btn pri" style="margin-top:12px">Inizia</div></button>';
+    h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="mini" data-d="'+next+'">Giornata storta \u00b7 sessione minima</button>';
   }
 
   /* le altre, in righe sottili */
@@ -1477,7 +1808,7 @@ function restBar(){
   return '<div style="position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));z-index:45">'+
     '<div class="wrap"><div class="card" style="margin:0 0 8px;background:var(--surf2);border-color:var(--amb)">'+
     '<div class="between"><div><div class="eyebrow amb">Recupero '+esc(rest.lbl)+'</div>'+
-    '<div class="num" style="font-size:26px" id="rclock">'+mmss((rest.end-Date.now())/1000)+'</div></div>'+
+    '<div class="rclk" id="rclock">'+mmss((rest.end-Date.now())/1000)+'</div></div>'+
     '<div class="row"><button class="btn sm ghost" data-a="rest+">+30s</button>'+
     '<button class="btn sm" data-a="rest0">Stop</button></div></div></div></div></div>';
 }
@@ -1549,27 +1880,62 @@ function stat(l,v,u,c){
 function viewProg(){
   var ws=weeks().slice(-8), ks=ws.map(kpi), last=ks[ks.length-1];
   var prev=null; for(var i=ks.length-2;i>=0;i--){ if(ks[i].ton){ prev=ks[i]; break; } }
+  var d = (prev&&prev.ton) ? Math.round((last.ton-prev.ton)/prev.ton*100) : null;
   var h=topbar("Progressi","Storico dalla settimana 24");
   h+='<div class="wrap">';
+  /* stato vuoto: senza nemmeno una sessione non c'e' niente da riassumere,
+     e ogni riga sotto darebbe errore. Prima si importa, poi si guarda. */
+  if(!ks.length || !last){
+    h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Ancora niente da mostrare</div>'+
+       '<h2 style="margin:5px 0 6px">Nessuna sessione registrata</h2>'+
+       '<div class="sm mut">I progressi compaiono da soli dopo il primo allenamento chiuso. '+
+       'Se invece questa copia dovrebbe gia\' avere lo storico, ripristina il backup.</div>'+
+       '<button class="btn pri" style="margin-top:12px" data-a="imp">Ripristina il backup</button></div>';
+    var sl0=weightSlope();
+    if(sl0.ok){
+      h+='<div class="card"><div class="between"><div class="eyebrow">Spinta \u00b7 peso</div>'+
+         '<div class="xs" style="font-weight:700;color:'+(sl0.stato==="dentro"?"var(--ok)":"var(--amb)")+'">'+
+         (sl0.g>0?"+":"")+kfmt(sl0.g)+' g/sett</div></div>'+
+         '<div style="margin-top:8px">'+pesoChart(sl0)+'</div>'+
+         '<div class="xs mut">'+sl0.n+' pesate su '+sl0.days+' giorni</div></div>';
+    }
+    h+='<div style="height:24px"></div></div>';
+    return h;
+  }
 
-  /* riepilogo della settimana corrente */
-  h+='<div class="card"><div class="eyebrow glow">Settimana '+last.w+'</div>'+
-     '<div class="grid2" style="margin-top:9px;row-gap:15px">'+
-     stat("Sessioni", last.n+"/"+last.target+(last.rest?" +"+last.rest+"R":""),"", last.n>=last.target?"var(--ok)":"var(--amb)")+
-     stat("Durata media", (last.dur||"–"),"min", last.dur>75?"var(--alert)":"")+
-     stat("Energia", dec(last.en),"su 5", (last.en&&last.en<4)?"var(--amb)":"")+
-     stat("Top range", (last.top!==null?last.top+"%":"–"),"", (last.top!==null&&last.top>=70)?"var(--ok)":"")+
+  /* --- intestazione: la settimana in quattro celle leggibili a colpo d'occhio --- */
+  var stk=streak(), slp=weightSlope();
+  var cell=function(k,v,u,sub,col){
+    return '<div class="cel"><div class="k">'+k+'</div>'+
+      '<div class="v"'+(col?' style="color:'+col+'"':'')+'>'+v+(u?'<small>'+u+'</small>':'')+'</div>'+
+      (sub?'<div class="s">'+sub+'</div>':'')+'</div>';
+  };
+  h+='<div class="between" style="margin:14px 0 0"><div class="eyebrow glow">Settimana '+last.w+'</div>'+
+     '<div class="xs mut">'+(stk.n>0? stk.n+' settimane di fila' : 'catena da riavviare')+'</div></div>';
+  h+='<div class="hero">'+
+     cell("Sessioni", last.n+"/"+last.target, last.rest?" +"+last.rest+"R":"", null,
+          last.n>=last.target?"var(--ok)":"var(--amb)")+
+     cell("Tonnellaggio", kfmt(last.ton), " kg",
+          (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : null),
+          d!==null? (d>=0?"var(--ok)":"var(--amb)") : null)+
+     cell("Top del range", (last.top!==null?last.top:"\u2013"), last.top!==null?"%":"",
+          "bersaglio 70%", (last.top!==null&&last.top>=70)?"var(--ok)":null)+
+     cell("Spinta", slp.ok?((slp.g>0?"+":"")+kfmt(slp.g)):"\u2013", slp.ok?" g/s":"",
+          slp.ok? slp.n+" pesate \u00b7 "+slp.days+"gg" : "dati insufficienti",
+          slp.ok?(slp.stato==="dentro"?"var(--ok)":"var(--amb)"):null)+
+     '</div>';
+  h+='<div class="card" style="padding:12px"><div class="grid3">'+
+     '<div><div class="eyebrow">Durata media</div><div class="sm" style="font-weight:700;margin-top:3px;color:'+
+       (last.dur>75?"var(--alert)":"inherit")+'">'+(last.dur||"\u2013")+' min</div></div>'+
+     '<div><div class="eyebrow">Energia</div><div class="sm" style="font-weight:700;margin-top:3px;color:'+
+       ((last.en&&last.en<4)?"var(--amb)":"inherit")+'">'+dec(last.en)+' / 5</div></div>'+
+     '<div><div class="eyebrow">Asimmetria</div><div class="sm" style="font-weight:700;margin-top:3px;color:'+
+       (last.asim>10?"var(--amb)":"inherit")+'">'+last.asim+'%</div></div>'+
      '</div></div>';
 
   /* tonnellaggio */
   var maxT=Math.max.apply(null,ks.map(function(k){return k.ton||0;}))||1;
-  var d = (prev&&prev.ton) ? Math.round((last.ton-prev.ton)/prev.ton*100) : null;
-  h+='<div class="card"><div class="between" style="align-items:flex-start">'+
-     '<div><div class="eyebrow">Tonnellaggio</div><div class="stat"><div class="v">'+
-     (last.ton||0).toLocaleString("it")+'<small> kg</small></div></div></div>'+
-     (d!==null?'<div class="delta" style="color:'+(d>=0?"var(--ok)":"var(--amb)")+'">'+
-       (d>=0?"▲ +":"▼ ")+d+'%<div class="xs mut" style="font-weight:500;text-align:right">vs sett. '+prev.w+'</div></div>':"")+
-     '</div>';
+  h+='<div class="card"><div class="eyebrow">Tonnellaggio \u00b7 ultime '+ks.length+' settimane</div>';
   h+='<div class="bars" style="margin-top:14px">'+ks.map(function(k,i){
        return '<i class="'+(i===ks.length-1?"cur":(k.ton?"on":""))+'" style="height:'+
          Math.max(3, Math.round((k.ton||0)/maxT*100))+'%"></i>'; }).join("")+'</div>';
@@ -1580,20 +1946,33 @@ function viewProg(){
   h+='<div class="card"><div class="between"><div class="eyebrow">Serie per gruppo</div>'+
      '<div class="xs mut">fascia verde = target</div></div>';
   Object.keys(TGT).forEach(function(g){
-    var v=last.grp[g]||0, t=TGT[g];
+    var v=last.grp[g]||0, t=TGT[g], pv=prev?(prev.grp[g]||0):null;
     var max=Math.max(t[1]*1.3, v*1.15, 1);
     var col = v<t[0]?"var(--alert)" : v>t[1]?"var(--amb)" : "var(--ok)";
-    h+='<div style="margin-top:12px">'+
-      '<div class="between" style="margin-bottom:5px"><span class="sm" style="font-weight:600">'+g+'</span>'+
-      '<span class="xs"><b style="color:'+col+';font-size:13px">'+v+'</b><span class="mut"> / '+t[0]+'–'+t[1]+'</span></span></div>'+
-      '<div class="track">'+
-        '<div class="band" style="left:'+(t[0]/max*100)+'%;width:'+((t[1]-t[0])/max*100)+'%"></div>'+
-        '<div class="tick" style="left:'+(t[0]/max*100)+'%"></div>'+
-        '<div class="tick" style="left:'+(t[1]/max*100)+'%"></div>'+
-        '<div class="fill" style="width:'+Math.min(100,v/max*100)+'%;background:'+col+'"></div>'+
-      '</div></div>';
+    var dl = (pv===null)?"" : (v-pv>0?"\u2191":v-pv<0?"\u2193":"");
+    h+='<div class="gr">'+
+      '<div class="nm">'+g+'</div>'+
+      '<div class="tr">'+
+        '<div class="zn" style="left:'+r1(t[0]/max*100)+'%;width:'+r1((t[1]-t[0])/max*100)+'%"></div>'+
+        '<div class="fl" style="width:'+r1(Math.min(100,v/max*100))+'%;background:'+col+'"></div>'+
+      '</div>'+
+      '<div class="vl" style="color:'+col+'">'+v+' <span>/'+t[0]+'\u2013'+t[1]+'</span>'+
+        (dl?'<span style="color:var(--dim)"> '+dl+'</span>':'')+'</div>'+
+    '</div>';
   });
-  h+='<div class="xs mut" style="margin-top:11px">Un esercizio unilaterale vale una serie, non due: sinistra e destra descrivono lo stesso lavoro.</div></div>';
+  h+='<div class="xs mut" style="margin-top:12px">Fascia verde = target. La freccia confronta con la settimana '+(prev?prev.w:"precedente")+'. '+
+     'Un esercizio unilaterale vale una serie, non due.</div></div>';
+
+  /* la spinta, in Progressi come striscia: il dettaglio vive in Corpo */
+  if(slp.ok){
+    h+='<div class="card"><div class="between"><div class="eyebrow">Spinta \u00b7 peso</div>'+
+       '<div class="xs" style="font-weight:700;color:'+(slp.stato==="dentro"?"var(--ok)":"var(--amb)")+'">'+
+       (slp.g>0?"+":"")+kfmt(slp.g)+' g/sett</div></div>'+
+       '<div style="margin-top:8px">'+pesoChart(slp)+'</div>'+
+       '<div class="xs mut">'+slp.n+' pesate su '+slp.days+' giorni'+
+       (slp.skipped?' \u00b7 '+slp.skipped+' rientro escluso':'')+
+       (slp.noisy?' \u00b7 include i rientri, dato indicativo':'')+'</div></div>';
+  }
 
   /* andamento settimanale */
   h+='<div class="card"><div class="eyebrow">Andamento</div><table style="margin-top:8px"><tr>'+
@@ -1662,10 +2041,33 @@ function viewCorpo(){
   }
   h+='</div>';
 
+  /* --- modulo A: la spinta --- */
+  var sl=weightSlope();
+  h+='<div class="card"><div class="between"><div class="eyebrow">Spinta \u00b7 peso</div>'+
+     '<div class="xs mut">target '+PESO_TGT[0]+'\u2013'+PESO_TGT[1]+' g/sett</div></div>';
+  if(sl.ok){
+    var scol = sl.stato==="dentro"?"var(--ok)":"var(--amb)";
+    var sTxt = sl.stato==="dentro"?"nel corridoio" : sl.stato==="sotto"?"sotto il minimo":"sopra il massimo";
+    h+='<div class="between" style="margin-top:8px;align-items:flex-end">'+
+       '<div class="num" style="font-size:27px;color:'+scol+'">'+(sl.g>0?"+":"")+kfmt(sl.g)+
+       '<small style="font-size:12px;font-weight:600;color:var(--mut)"> g/sett</small></div>'+
+       '<div class="xs" style="font-weight:700;color:'+scol+';text-align:right">'+sTxt+'</div></div>';
+    h+='<div style="margin-top:8px">'+pesoChart(sl)+'</div>';
+    h+='<div class="xs mut" style="margin-top:2px">'+sl.n+' pesate su '+sl.days+' giorni'+
+       (sl.skipped?' \u00b7 '+sl.skipped+' rientro'+(sl.skipped>1?'i':'')+' escluso':'')+'</div>';
+    if(sl.noisy) h+='<div class="flag info" style="margin-top:8px">\u24d8<div>Le pesate pulite non bastavano: qui dentro ci sono anche i rientri da trasferta. La pendenza e\' indicativa, non usarla da sola per cambiare le calorie.</div></div>';
+    if(sl.stato==="sotto") h+='<div class="flag disc" style="margin-top:9px">\u26a0<div>Sotto il corridoio. Se hai stalli aperti, la causa e\' probabilmente qui: guarda il cibo prima dei carichi.</div></div>';
+    if(sl.stato==="sopra") h+='<div class="flag disc" style="margin-top:9px">\u26a0<div>Sopra il corridoio. Controlla vita/torace alla prossima misura: il surplus puo\' essere troppo aggressivo.</div></div>';
+  } else {
+    h+='<div class="sm mut" style="margin-top:8px">Pendenza non ancora calcolabile: '+esc(sl.why||"dati insufficienti")+'.</div>'+
+       '<div class="xs mut" style="margin-top:5px">Servono '+PESO_MINPT+' pesate valide. Pesati quando sei a casa e salta i giorni di trasferta senza recuperi.</div>';
+  }
+  h+='</div>';
+
   var td=today(), b=S.ben.filter(x=>x.date===td)[0];
   h+='<div class="card"><div class="between"><div class="eyebrow">Benessere di oggi</div>'+
      '<button class="btn sm '+(b?"ghost":"amb")+'" data-a="ben">'+(b?"Modifica":"30 secondi")+'</button></div>';
-  if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl===null?"–":b.refl)+' · camminate '+(b.camm===null?"–":b.camm)+
+  if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl==null?"–":b.refl)+' · camminate '+(b.camm==null?"–":b.camm)+
     ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
   else h+='<div class="xs mut" style="margin-top:8px">La sera, prima di dormire, tutto insieme.</div>';
   h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="benadd">＋ Aggiungi un giorno saltato</button>';
@@ -1678,11 +2080,47 @@ function viewCorpo(){
     recentB.forEach(function(x){
       var rn=recoveryNote(x.date);
       h+='<button class="item" data-a="ben" data-d="'+esc(x.date)+'"><div class="badge"'+(rn?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+x.date.slice(0,5)+'</div>'+
-         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+(x.sonno||"–")+'h · reflusso '+(x.refl===null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
+         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+(x.sonno||"–")+'h · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
          '<div class="ch">›</div></button>';
     });
     h+='</div>';
   }
+
+  /* --- riepilogo settimanale --- */
+  var wb=S.ben.filter(function(x){ return x.w===weekOf(today()) && (x.passi||x.ipo); })[0];
+  h+='<div class="card"><div class="between"><div class="eyebrow">Riepilogo settimanale</div>'+
+     '<button class="btn sm '+(wb?"ghost":"amb")+'" data-a="sett">'+(wb?"Modifica":"Compila")+'</button></div>';
+  if(wb) h+='<div class="sm" style="margin-top:9px">Passi '+(wb.passi?kfmt(wb.passi):"\u2013")+'/giorno \u00b7 ipopnea '+
+     (wb.ipo==null?"\u2013":dec(wb.ipo))+'/h'+
+     ((wb.ipo!==null&&wb.ipo!==undefined&&wb.ipo>5)?' <span style="color:var(--amb);font-weight:700">sopra 5</span>':'')+'</div>';
+  else h+='<div class="xs mut" style="margin-top:8px">Due numeri da Zepp, la domenica. Passi medi e indice di ipopnea.</div>';
+  h+='</div>';
+
+  /* --- modulo B: mobilita' --- */
+  var ml=mobLast(), mdue=mobDue();
+  h+='<div class="card"><div class="between"><div class="eyebrow '+(mdue?"amb":"")+'">Mobilit\u00e0 \u00b7 ogni 28 giorni</div>'+
+     '<button class="btn sm '+(mdue?"amb":"ghost")+'" data-a="mob">'+(mdue?"Da fare":"Rimisura")+'</button></div>';
+  if(ml){
+    h+='<table style="margin-top:10px"><tr><th>Test</th><th class="n">Sx</th><th class="n">Dx</th><th class="n">\u0394</th></tr>';
+    MOB.forEach(function(t){
+      if(t.bi){
+        var a=ml[t.k+"_s"], b2=ml[t.k+"_d"], d=mobAsym(ml,t.k);
+        h+='<tr><td>'+esc(t.n)+'</td><td class="n">'+(a==null?"\u2013":dec(a))+'</td>'+
+           '<td class="n">'+(b2==null?"\u2013":dec(b2))+'</td>'+
+           '<td class="n" style="color:'+((d!==null&&Math.abs(d)>=2)?"var(--amb)":"var(--dim)")+'">'+
+           (d===null?"\u2013":(d>0?"+":"")+dec(d))+'</td></tr>';
+      } else {
+        h+='<tr><td>'+esc(t.n)+'</td><td class="n" colspan="3">'+
+           (ml[t.k]==null?"\u2013":dec(ml[t.k])+" "+t.u)+'</td></tr>';
+      }
+    });
+    h+='</table><div class="xs mut" style="margin-top:8px">Rilevazione del '+esc(ml.date)+'. '+
+       'Un \u0394 oltre 2 unit\u00e0 e\' la cosa da portare al fisioterapista, piu\' del valore assoluto.</div>';
+  } else {
+    h+='<div class="xs mut" style="margin-top:8px">Quattro test, due valori per lato. '+
+       'Accendi questa misura fra qualche settimana, quando peso e stress saranno diventati automatici: due abitudini nuove per volta, non tre.</div>';
+  }
+  h+='</div>';
 
   var w=weekOf(today()), due=[31,35,39,43].indexOf(w)>=0;
   h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · settimane 31 · 35 · 39 · 43</div>'+
@@ -1717,7 +2155,7 @@ function mini(l,v){ return '<div><div class="eyebrow">'+l+'</div><div class="num
 
 /* ---------- COACH ---------- */
 function viewCoach(){
-  var h=topbar("Coach","Il ponte verso la chat");
+  var h=topbar("Coach","Il ponte verso la chat \u00b7 v2.0");
   h+='<div class="wrap">';
   h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
      '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
@@ -1875,6 +2313,14 @@ document.addEventListener("click", function(ev){
   if(a==="esess"){ editSess(el.dataset.id); return; }
   if(a==="esesssave"){ saveSessEdit(el.dataset.id); return; }
   if(a==="esessdel"){ delSess(el.dataset.id); return; }
+  if(a==="sett"){ formSett(); return; }
+  if(a==="savesett"){ saveSett(); return; }
+  if(a==="mob"){ formMob(); return; }
+  if(a==="savemob"){ saveMob(); return; }
+  if(a==="mobhow"){ mobHow(el.dataset.k); return; }
+  if(a==="mobback"){ formMob(); return; }
+  if(a==="mini"){ miniSheet(el.dataset.d); return; }
+  if(a==="minigo"){ startSession(el.dataset.d, true); closeSheet(); return; }
   if(a==="sim"){ formSim(); return; }
   if(a==="savesim"){ saveSim(); return; }
   if(a==="brief"){ copy(briefing(),"Briefing copiato. Incollalo in chat."); return; }
@@ -1897,7 +2343,7 @@ document.addEventListener("click", function(ev){
 });
 /* selezione singola dentro i pannelli: un solo gestore per tutti i form */
 document.addEventListener("click", function(ev){
-  var keys=["en","sig","r","c","p","x","q","s"];
+  var keys=["en","sig","r","c","p","x","q","s","st","me"];
   for(var i=0;i<keys.length;i++){
     var b=ev.target.closest("[data-"+keys[i]+"]");
     if(b && b.classList.contains("pill")){
@@ -2033,9 +2479,23 @@ async function delBen(date){
     catch(e){ toast("Cancellato qui. Sul foglio serve lo script aggiornato."); }
   } else toast("Giorno cancellato");
 }
-function startSession(day){
+/* La sessione minima non e' un ripiego: e' il modo di non rompere
+   la catena quando la giornata e' storta. Due esercizi, riscaldamento
+   compreso. Conta come sessione fatta, perche' quello che protegge
+   non e' il volume di oggi ma l'identita' di chi si allena. */
+function miniSheet(day){
+  var p=PLAN[day], keep=p.ex.slice(0,2).map(function(x){ return x.n; });
+  sheet('<div class="eyebrow amb">Sessione minima</div><h2 style="margin:4px 0 8px">Giorno '+day+' \u00b7 due esercizi</h2>'+
+    '<div class="sm">Riscaldamento completo, poi solo <b>'+esc(keep.join(" e "))+'</b>. Quindici minuti.</div>'+
+    '<div class="sm mut" style="margin-top:8px">Conta come sessione fatta e non spezza la catena. '+
+    'Gli altri esercizi restano nel piano: non li stai saltando, li stai rimandando.</div>'+
+    '<div class="xs mut" style="margin-top:8px">Se poi ti accorgi di stare bene, continua pure oltre i due: puoi loggare tutto.</div>'+
+    '<button class="btn amb" style="margin-top:14px" data-a="minigo" data-d="'+day+'">Inizia la minima</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+function startSession(day, mini){
   var p=PLAN[day];
-  S.draft={day:day, date:today(), t0:Date.now(), warm:WARM.map(()=>false),
+  S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, warm:WARM.map(()=>false),
     ex:p.ex.map(function(x){
       var m=meta(x.n);
       return {n:x.n, load: x.b?0:suggestLoad(x), band: x.b?lastBand(x.n,x.b):"",
@@ -2079,7 +2539,8 @@ async function commitSession(){
         reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note});
     }
   });
-  S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede, mod:(p.sede==="Casa"?"Pesi":"Bande"),
+  S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede,
+    mod:(d.mini?"Minima":(p.sede==="Casa"?"Pesi":"Bande")),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
     warm:d.warm.every(Boolean), sig: sg? sg.dataset.sig==="1":false,
     note:document.getElementById("fNote").value});
@@ -2133,10 +2594,18 @@ function formBen(date, isAdd){
       '<button class="pill '+(b.resp?"":"on")+'" data-p="0">No</button><button class="pill '+(b.resp?"on":"")+'" data-p="1">Sì</button></div></label>'+
     '<label class="fld"><span class="eyebrow">Alcol sera precedente</span><div class="pills" id="bAlc">'+
       '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
+    '<label class="fld"><span class="eyebrow">Stress · 0 nessuno · 3 marcato</span><div class="pills" id="bStr">'+
+      [0,1,2,3].map(v=>'<button class="pill '+(b.stress===v?"on":"")+'" data-st="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Testa · 1 vuoto · 5 lucido</span><div class="pills" id="bMen">'+
+      [1,2,3,4,5].map(v=>'<button class="pill '+(b.mente===v?"on":"")+'" data-me="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<div class="grid3" style="margin-top:10px">'+
-      '<label class="fld"><span class="eyebrow">HRV</span><input type="number" id="bHrv" value="'+(b.hrv||"")+'"></label>'+
-      '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" id="bRead" value="'+(b.read||"")+'"></label>'+
-      '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" id="bSonno" value="'+(b.sonno||"")+'"></label></div>'+
+      '<label class="fld"><span class="eyebrow">HRV notte</span><input type="number" inputmode="numeric" id="bHrv" value="'+(b.hrv||"")+'"></label>'+
+      '<label class="fld"><span class="eyebrow">FC riposo</span><input type="number" inputmode="numeric" id="bRhr" value="'+(b.rhr||"")+'"></label>'+
+      '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" inputmode="numeric" id="bRead" value="'+(b.read||"")+'"></label></div>'+
+    '<div class="grid2">'+
+      '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" inputmode="decimal" id="bSonno" value="'+(b.sonno||"")+'"></label>'+
+      '<label class="fld"><span class="eyebrow glow">Peso mattino kg</span><input type="number" step="0.1" inputmode="decimal" id="bPeso" value="'+(b.peso||"")+'"></label></div>'+
+    '<div class="xs mut" style="margin-top:6px">Il peso lo misuri al mattino a digiuno e lo scrivi qui la sera, insieme al resto. In trasferta lascialo vuoto: l\'app se lo aspetta.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>'+
     ((!isAdd && dt!==today())?verWarn():"")+
     '<button class="btn pri" style="margin-top:14px" data-a="saveben"'+((!isAdd && dt!==today())?' data-d="'+esc(dt)+'"':'')+'>Salva</button>'+
@@ -2148,9 +2617,13 @@ async function saveBen(origDate){
   var g=id=>{ var v=document.getElementById(id).value; return v===""?null:+v; };
   var de=document.getElementById("bDate"), dt=de? fromIso(de.value) : today();
   if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dt)){ toast("Data non valida"); return; }
+  var prev=S.ben.filter(function(x){ return x.date===dt; })[0] || {};
   var rec={date:dt, w:weekOf(dt), refl:pick("#bRefl","r"), camm:pick("#bCam","c"),
-    resp:pick("#bResp","p")===1, alc:pick("#bAlc","x")===1, hrv:g("bHrv"), read:g("bRead"),
-    sonno:g("bSonno"), note:document.getElementById("bNote").value};
+    resp:pick("#bResp","p")===1, alc:pick("#bAlc","x")===1, hrv:g("bHrv"), rhr:g("bRhr"),
+    read:g("bRead"), sonno:g("bSonno"), peso:g("bPeso"),
+    stress:pick("#bStr","st"), mente:pick("#bMen","me"),
+    passi:(prev.passi===undefined?null:prev.passi), ipo:(prev.ipo===undefined?null:prev.ipo),
+    note:document.getElementById("bNote").value};
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
   S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
   var okS=await save(); closeSheet(); render();
@@ -2159,6 +2632,78 @@ async function saveBen(origDate){
 }
 var SIMQ=[["Floor Press","I due manubri arrivano in alto insieme?"],["Box Squat","Il peso è uguale sui due piedi? (5 squat a occhi chiusi)"],
   ["Split-stance RDL","I due lati scendono alla stessa profondità?"],["Bird-dog","I due lati sono ugualmente stabili?"]];
+/* riepilogo settimanale: due numeri, una volta a settimana.
+   Vivono sulla riga benessere del giorno in cui li scrivi, così non
+   serve una tabella nuova sul foglio. */
+function formSett(){
+  var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0]||{};
+  sheet('<div class="eyebrow">Riepilogo settimanale</div><h2 style="margin:4px 0 4px">Settimana '+weekOf(dt)+'</h2>'+
+    '<div class="sm mut" style="margin-bottom:6px">Due numeri letti da Zepp, una volta a settimana. La domenica è il momento naturale.</div>'+
+    '<label class="fld"><span class="eyebrow">Passi · media giornaliera</span><input type="number" inputmode="numeric" id="wPassi" value="'+(b.passi||"")+'"></label>'+
+    '<div class="xs mut">Serve al modulo peso: se la pendenza si appiattisce e i passi sono saliti, la causa è il movimento, non il cibo.</div>'+
+    '<label class="fld"><span class="eyebrow">Indice ipopnea · eventi/ora</span><input type="number" step="0.1" inputmode="decimal" id="wIpo" value="'+(b.ipo||"")+'"></label>'+
+    '<div class="xs mut">Non guida l\'allenamento. Serve ad avere un andamento da mostrare al medico se resta sopra 5.</div>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="savesett">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+}
+async function saveSett(){
+  var g=function(id){ var v=document.getElementById(id).value; return v===""?null:+v; };
+  var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0];
+  if(!b){ b={date:dt, w:weekOf(dt), refl:null, camm:null, resp:false, alc:false, hrv:null, rhr:null,
+             read:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
+  b.passi=g("wPassi"); b.ipo=g("wIpo");
+  var okS=await save(); if(SYNC.on()) doPush(false);
+  closeSheet(); render(); toast(okS?"Riepilogo salvato":"NON salvato: vedi la scheda Coach");
+}
+
+/* --- modulo B: test di mobilità, ogni 28 giorni --- */
+function formMob(){
+  var l=mobLast();
+  var h='<div class="eyebrow">Mobilità</div><h2 style="margin:4px 0 4px">'+today()+'</h2>'+
+    '<div class="sm mut" style="margin-bottom:4px">Stessa ora, stesse scarpe (o senza), dopo il riscaldamento. Tocca il nome per la procedura.</div>';
+  MOB.forEach(function(t){
+    h+='<div class="card" style="margin:10px 0;padding:12px">'+
+       '<button class="between" style="width:100%;text-align:left" data-a="mobhow" data-k="'+t.k+'">'+
+       '<div class="sm" style="font-weight:600">'+esc(t.n)+' <span class="mut xs">'+t.u+'</span></div>'+
+       '<div class="ch" style="color:var(--dim);font-size:17px">?</div></button>';
+    if(t.bi) h+='<div class="grid2" style="margin-top:8px">'+
+       '<label class="fld" style="margin:0"><span class="eyebrow" style="color:var(--amb)">Sinistra</span><input type="number" step="0.5" inputmode="decimal" id="mb_'+t.k+'_s" value="'+((l&&l[t.k+"_s"])||"")+'"></label>'+
+       '<label class="fld" style="margin:0"><span class="eyebrow glow">Destra</span><input type="number" step="0.5" inputmode="decimal" id="mb_'+t.k+'_d" value="'+((l&&l[t.k+"_d"])||"")+'"></label></div>';
+    else h+='<label class="fld" style="margin:8px 0 0"><span class="eyebrow">Valore</span><input type="number" step="0.5" inputmode="decimal" id="mb_'+t.k+'" value="'+((l&&l[t.k])||"")+'"></label>';
+    h+='</div>';
+  });
+  h+='<label class="fld"><span class="eyebrow">Note</span><input type="text" id="mbNote"></label>'+
+     (l?'<div class="xs mut" style="margin-top:8px">I campi mostrano i valori dell\'ultima rilevazione ('+esc(l.date)+'): sovrascrivili.</div>':"")+
+     '<button class="btn pri" style="margin-top:14px" data-a="savemob">Salva</button>'+
+     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>';
+  sheet(h);
+}
+async function saveMob(){
+  var g=function(id){ var e=document.getElementById(id); if(!e) return null; var v=e.value; return v===""?null:+v; };
+  var rec={date:today(), w:weekOf(today()), note:document.getElementById("mbNote").value};
+  var any=false;
+  MOB.forEach(function(t){
+    if(t.bi){ rec[t.k+"_s"]=g("mb_"+t.k+"_s"); rec[t.k+"_d"]=g("mb_"+t.k+"_d");
+              if(rec[t.k+"_s"]!==null||rec[t.k+"_d"]!==null) any=true; }
+    else { rec[t.k]=g("mb_"+t.k); if(rec[t.k]!==null) any=true; }
+  });
+  if(!any){ toast("Nessun valore inserito"); return; }
+  if(!Array.isArray(S.mob)) S.mob=[];
+  S.mob = S.mob.filter(function(x){ return x.date!==rec.date; });
+  S.mob.push(rec);
+  S.mob.sort(function(a,b){ return s2d(a.date)-s2d(b.date); });
+  var okS=await save(); if(SYNC.on()) doPush(false);
+  closeSheet(); render(); toast(okS?"Mobilità salvata":"NON salvata: vedi la scheda Coach");
+}
+function mobHow(k){
+  var t=MOB.filter(function(x){ return x.k===k; })[0]; if(!t) return;
+  sheet('<div class="eyebrow">Come si misura</div><h2 style="margin:4px 0 10px">'+esc(t.n)+'</h2>'+
+    '<div class="sm">'+esc(t.how)+'</div>'+
+    '<div class="xs mut" style="margin-top:10px">'+(t.up?"Più alto è meglio.":"Più basso è meglio.")+
+    (t.bi?" Il confronto fra i due lati conta più del valore assoluto.":"")+'</div>'+
+    '<button class="btn ghost" style="margin-top:14px" data-a="mobback">Torna ai test</button>');
+}
+
 function formSim(){
   sheet('<div class="eyebrow">Check simmetria · settimana '+weekOf(today())+'</div>'+
     SIMQ.map(function(q,i){
@@ -2326,7 +2871,8 @@ function doImport(){
   try{
     var o=JSON.parse(document.getElementById("impT").value);
     if(!o.log||!o.sess) throw 0;
-    S=Object.assign({log:[],sess:[],mis:[],ben:[],sim:[],patches:[],draft:null,seeded:true}, o);
+    S=Object.assign({log:[],sess:[],mis:[],ben:[],sim:[],mob:[],patches:[],draft:null,seeded:true,intent:null}, o);
+    if(!Array.isArray(S.mob)) S.mob=[];
     S.lastBackup=today(); S.installed=S.installed||today();
     PLAN=buildPlan(); save(); closeSheet(); render(); toast("Backup ripristinato");
   }catch(e){ toast("File non valido: controlla di aver incollato tutto il .json"); }
