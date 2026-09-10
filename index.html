@@ -1573,7 +1573,10 @@ var SYNC = {
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
         mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo")};
     }), S.ben, byDate);
-    /* mobilità: tab non ancora presente sul foglio. Se non arriva, resta il locale. */
+    if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
+      return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
+    }), S.sim||[], function(r){ return String(r.date||"")+"|"+String(r.ex||"")+"|"+String(r.q||""); });
+    /* mobilità: se il foglio non ha ancora la scheda, resta il locale. */
     if(d.mob) S.mob = this.fuse(d.mob.map(function(r){
       var out={date:r.date, w:+r.w||weekOf(r.date), note:r.note||""};
       MOB.forEach(function(t){
@@ -1596,6 +1599,7 @@ var SYNC = {
       ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
         read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
         mente:r.mente,passi:r.passi,ipo:r.ipo,note:r.note})),
+      sim: (S.sim||[]).map(r=>({date:r.date,w:r.w,ex:r.ex,q:r.q,a:r.a,side:r.side})),
       mob: (S.mob||[]).map(function(r){
         var o={date:r.date,w:r.w};
         MOB.forEach(function(t){
