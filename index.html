@@ -767,6 +767,246 @@ function readiness(exDef){
   return {ready:true, why:cur+" → "+(cur+step)+" kg", next:cur+step};
 }
 
+/* ============================================================
+   MODULO E — CIBO A BLOCCHI
+   Non si pesa niente: la giornata sono 17 blocchi da spuntare.
+   I dati vivono sulla riga benessere del giorno, come passi e
+   ipopnea: niente tab nuova sul foglio, niente sistema parallelo.
+   In memoria si tengono GRAMMI di macro, non blocchi. I blocchi
+   sono solo il modo di leggerli: cosi' "tonno 80g" e il preset
+   "pranzo casa" convivono senza arrotondare due volte.
+   ============================================================ */
+var BLK     = {p:26, c:58, g:11};   /* grammi di macro in un blocco */
+var BLK_TGT = {p:5,  c:6,  g:6};    /* blocchi al giorno */
+
+/* [nome, dettaglio, proteine, carboidrati, grassi] in grammi */
+var CIBI = {
+  pasti:[
+    ["Colazione Parma","Milk Pro 330 + 7 mandorle + 6 biscotti",46,49,18],
+    ["Colazione Gallarate","Milk Pro 165 + Mukky 150 + mandorle + biscotti",39,47,17],
+    ["Pranzo o cena a casa","preset 1P \u00b7 2C \u00b7 2G",26,116,22],
+    ["Mensa / ristorante Parma","preset 1P \u00b7 2C \u00b7 3G",26,116,33],
+    ["Spuntino","preset 1P \u00b7 1C",26,58,0],
+    ["Whey isolate","1 misurino, il jolly",26,2,1]
+  ],
+  prot:[
+    ["Pollo","petto 150g cotto",33,0,4],
+    ["Tacchino","fesa 150g cotta",34,0,3],
+    ["Pesce bianco","180g \u2014 merluzzo, orata, branzino",36,0,2],
+    ["Salmone","150g cotto",33,0,13],
+    ["Tonno naturale","1 scatoletta 80g",18,0,1],
+    ["Tonno naturale","1 scatoletta 120g",26,0,1],
+    ["Bresaola","80g",26,0,2],
+    ["Uova intere","3 grandi",18,1,15],
+    ["Albume","200g (~6-7 uova)",22,2,0],
+    ["Fiocchi di latte","200g",24,6,8],
+    ["Yogurt greco 0%","250g",25,10,0],
+    ["Legumi cotti","250g \u2014 ceci o lenticchie",16,40,3]
+  ],
+  carb:[
+    ["Riso","80g a crudo",6,62,1],
+    ["Pasta","80g a crudo",10,60,1],
+    ["Patate","300g",6,60,0],
+    ["Pane","100g",9,52,1],
+    ["Avena","70g",9,45,5],
+    ["Banana","1 media",1,25,0],
+    ["Mela o pera","1 media",0,20,0]
+  ],
+  gras:[
+    ["Olio EVO","1 cucchiaio (12g)",0,0,12],
+    ["Mandorle o noci","20g",4,1,11],
+    ["Avocado","50g",1,1,7],
+    ["Parmigiano","20g",7,0,7]
+  ],
+  fuori:[
+    ["Pizza","1P \u00b7 2C \u00b7 3G",26,116,33],
+    ["Lasagne o pasta al forno","1P \u00b7 1C \u00b7 3G",26,58,33],
+    ["Hamburger + patatine","1P \u00b7 2C \u00b7 4G",26,116,44],
+    ["Cotoletta o fritto","1P \u00b7 \u00bdC \u00b7 3G",26,29,33],
+    ["Risotto","1C \u00b7 2G",0,58,22],
+    ["Dolce al ristorante","1C \u00b7 2G",0,58,22]
+  ],
+  mano:[
+    ["Palmo di carne o pesce","= 1 blocco P",26,0,0],
+    ["Pugno di pasta, riso, patate","cotti \u00b7 = 1 blocco C",0,58,0],
+    ["Pollice di condimento","o 1 cucchiaio d'olio \u00b7 = 1 blocco G",0,0,11],
+    ["Mezzo palmo proteico","porzione piccola",13,0,0],
+    ["Mezzo pugno di carbo","porzione piccola",0,29,0]
+  ]
+};
+var CIB_TAB=[["pasti","Pasti"],["prot","Proteine"],["carb","Carbo"],["gras","Grassi"],["fuori","Fuori piano"],["mano","A mano"]];
+
+/* giorno su cui si sta registrando: 0 = oggi, 1 = ieri.
+   Serve perche' capita di ricordarsi la sera dopo, o al rientro da Parma. */
+var CIB_DAY=0;
+function cibDate(){
+  if(!CIB_DAY) return today();
+  var d=new Date(); d.setDate(d.getDate()-CIB_DAY); return d2s(d);
+}
+function cibOn(date){
+  var b=benOn(date||cibDate());
+  return {p:(b&&b.cibP)||0, c:(b&&b.cibC)||0, g:(b&&b.cibG)||0};
+}
+/* le voci del giorno, in una stringa sola sulla stessa riga:
+   "nome|p|c|g;nome|p|c|g". Niente colonna nuova oltre a questa. */
+function cibVoci(date){
+  var b=benOn(date||cibDate());
+  if(!b || !b.cibL) return [];
+  return String(b.cibL).split(";").filter(Boolean).map(function(v){
+    var a=v.split("|");
+    return {n:a[0], p:+a[1]||0, c:+a[2]||0, g:+a[3]||0};
+  });
+}
+function cibSalvaVoci(b, voci){
+  b.cibL = voci.slice(-24).map(function(v){
+    return String(v.n).replace(/[|;]/g,"-")+"|"+v.p+"|"+v.c+"|"+v.g;
+  }).join(";");
+}
+function cibBlk(o){ return {p:o.p/BLK.p, c:o.c/BLK.c, g:o.g/BLK.g}; }
+function b1(n){ return (Math.round(n*10)/10).toString().replace(".",","); }
+
+async function cibAdd(dp,dc,dg,nome){
+  var dt=cibDate(), b=benOn(dt);
+  if(!b){
+    b={date:dt, w:weekOf(dt), refl:null, resp:false, camm:null, hrv:null, read:null,
+       sonno:null, alc:false, peso:null, rhr:null, stress:null, mente:null,
+       passi:null, ipo:null, note:""};
+    S.ben.push(b);
+  }
+  b.cibP=Math.max(0,(b.cibP||0)+dp);
+  b.cibC=Math.max(0,(b.cibC||0)+dc);
+  b.cibG=Math.max(0,(b.cibG||0)+dg);
+  if(nome){ var v=cibVoci(dt); v.push({n:nome,p:dp,c:dc,g:dg}); cibSalvaVoci(b,v); }
+  var ok=await save();
+  if(SYNC.on()) doPush(false);
+  if(!ok) toast("NON salvato: vedi la scheda Coach");
+  return ok;
+}
+async function cibReset(){
+  var b=benOn(cibDate()); if(!b) return true;
+  b.cibP=0; b.cibC=0; b.cibG=0; b.cibL="";
+  var ok=await save(); if(SYNC.on()) doPush(false);
+  return ok;
+}
+/* togliere una voce sbagliata: sottrae esattamente quello che aveva aggiunto.
+   Senza questo, un tocco sbagliato su "Colazione Parma" non si disfa con i
+   pulsanti a blocchi interi. */
+async function cibDel(idx){
+  var dt=cibDate(), b=benOn(dt); if(!b) return true;
+  var v=cibVoci(dt), x=v[idx]; if(!x) return true;
+  b.cibP=Math.max(0,(b.cibP||0)-x.p);
+  b.cibC=Math.max(0,(b.cibC||0)-x.c);
+  b.cibG=Math.max(0,(b.cibG||0)-x.g);
+  v.splice(idx,1); cibSalvaVoci(b,v);
+  var ok=await save(); if(SYNC.on()) doPush(false);
+  return ok;
+}
+
+/* cosa manca per chiudere la giornata, detto in alimenti */
+function cibHint(r){
+  var out=[];
+  if(r.p>=0.7) out.push(r.p>=1.7?"due porzioni proteiche":"una porzione proteica");
+  if(r.c>=0.7) out.push(r.c>=1.7?"due porzioni di carbo":"una porzione di carbo");
+  if(r.g>=0.7) out.push(r.g>=1.7?"due di grassi":"un cucchiaio d'olio");
+  /* lo sforo di grassi si dice sempre, non solo a giornata chiusa:
+     e' l'informazione che serve la sera, quando puoi ancora decidere. */
+  var sforo = r.g<=-1.5 ? " Grassi sopra il target: occhio al reflusso stanotte." : "";
+  if(!out.length) return "Giornata chiusa." + sforo;
+  return "Ti manca ancora: " + out.join(" + ") + "." + sforo;
+}
+
+/* media settimanale: il target e' settimanale, non giornaliero */
+function cibWeek(){
+  var n=0, s={p:0,c:0,g:0}, now=new Date().setHours(23,59,59,999);
+  S.ben.forEach(function(b){
+    if(!(b.cibP||b.cibC||b.cibG)) return;
+    var d=(now-s2d(b.date).getTime())/86400000;
+    if(d<0 || d>7) return;
+    n++; s.p+=b.cibP||0; s.c+=b.cibC||0; s.g+=b.cibG||0;
+  });
+  if(!n) return null;
+  return {n:n, p:s.p/n/BLK.p, c:s.c/n/BLK.c, g:s.g/n/BLK.g};
+}
+
+/* la card nella schermata Oggi */
+function cardCibo(){
+  var o=cibOn(), b=cibBlk(o), vuoto=!(o.p||o.c||o.g);
+  var r={p:BLK_TGT.p-b.p, c:BLK_TGT.c-b.c, g:BLK_TGT.g-b.g};
+  var riga=function(lab,val,tgt,key){
+    var pct=Math.min(100, Math.round(val/tgt*100));
+    var col = val>tgt*1.25 ? "var(--amb)" : val>=tgt*0.9 ? "var(--ok)" : "var(--mut)";
+    return '<div style="margin-top:9px"><div class="between">'+
+      '<div class="sm" style="font-weight:600">'+lab+'</div>'+
+      '<div class="xs" style="font-weight:700;color:'+col+'">'+b1(val)+' / '+tgt+'</div></div>'+
+      '<div style="height:5px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden">'+
+      '<div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>'+
+      '<div class="between" style="margin-top:5px">'+
+      '<button class="btn sm ghost" data-a="cib-" data-k="'+key+'" style="padding:0 14px;min-height:32px">\u2212</button>'+
+      '<button class="btn sm ghost" data-a="cib+q" data-k="'+key+'" style="padding:0 14px;min-height:32px">+ 1 blocco</button>'+
+      '</div></div>';
+  };
+  var h='<div class="card"><div class="between"><div class="eyebrow">Cibo \u00b7 '+(CIB_DAY?"ieri":"oggi")+'</div>'+
+    '<div class="xs mut">'+BLK_TGT.p+'P \u00b7 '+BLK_TGT.c+'C \u00b7 '+BLK_TGT.g+'G</div></div>';
+  h+=riga("\ud83e\udd69 Proteine", b.p, BLK_TGT.p, "p");
+  h+=riga("\ud83c\udf5a Carboidrati", b.c, BLK_TGT.c, "c");
+  h+=riga("\ud83e\udd51 Grassi", b.g, BLK_TGT.g, "g");
+  h+='<div class="sm" style="margin-top:11px;font-weight:600;color:'+
+     ((r.p<=0.4&&r.c<=0.4&&r.g<=0.4)?"var(--ok)":"var(--bone)")+'">'+esc(cibHint(r))+'</div>';
+  var w=cibWeek();
+  if(w) h+='<div class="xs mut" style="margin-top:6px">Media 7 giorni: '+b1(w.p)+'P \u00b7 '+b1(w.c)+'C \u00b7 '+b1(w.g)+
+    'G su '+w.n+' giorn'+(w.n>1?"i":"o")+'. Il target \u00e8 settimanale: una giornata storta non conta.</div>';
+  var voci=cibVoci();
+  if(voci.length) h+='<div class="xs mut" style="margin-top:8px">'+
+    esc(voci.map(function(v){ return v.n; }).join(" \u00b7 "))+'</div>';
+  h+='<button class="btn pri" style="margin-top:11px" data-a="cibo">Aggiungi quello che hai mangiato</button>';
+  if(!vuoto) h+='<button class="btn sm ghost" style="width:100%;margin-top:7px" data-a="cibz">Azzera '+(CIB_DAY?"ieri":"oggi")+'</button>';
+  h+='</div>';
+  return h;
+}
+
+/* il foglio di scelta */
+function formCibo(tab){
+  tab=tab||"pasti";
+  var o=cibOn(), b=cibBlk(o);
+  var h='<div class="eyebrow">Cibo</div><h2 style="margin:4px 0 2px">'+
+    b1(b.p)+'P \u00b7 '+b1(b.c)+'C \u00b7 '+b1(b.g)+'G</h2>'+
+    '<div class="sm mut" style="margin-bottom:10px">Tocca quello che hai mangiato. Il conto si aggiorna qui sopra.</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:10px">'+
+     '<button class="pill'+(CIB_DAY===0?" on":"")+'" data-a="cibday" data-v="0" data-t="'+tab+'">Oggi</button>'+
+     '<button class="pill'+(CIB_DAY===1?" on":"")+'" data-a="cibday" data-v="1" data-t="'+tab+'">Ieri</button>'+
+     '<div class="xs mut" style="align-self:center;margin-left:4px">'+esc(cibDate())+'</div></div>';
+  var vv=cibVoci();
+  if(vv.length){
+    h+='<div class="eyebrow" style="margin:2px 0 4px">Gi\u00e0 registrato \u00b7 tocca per togliere</div><div class="card" style="padding:4px 10px;margin-bottom:10px">';
+    vv.forEach(function(v,i){
+      h+='<button class="item" data-a="cibdel" data-i="'+i+'">'+
+         '<div class="t"><b>'+esc(v.n)+'</b></div>'+
+         '<div class="xs mut" style="white-space:nowrap">'+b1(v.p/BLK.p)+'P \u00b7 '+b1(v.c/BLK.c)+'C \u00b7 '+b1(v.g/BLK.g)+'G &nbsp;\u2715</div></button>';
+    });
+    h+='</div>';
+  }
+  h+='<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px">';
+  CIB_TAB.forEach(function(t){
+    h+='<button class="pill'+(t[0]===tab?" on":"")+'" data-a="cibo" data-t="'+t[0]+'">'+t[1]+'</button>';
+  });
+  h+='</div>';
+  if(tab==="mano") h+='<div class="xs mut" style="margin:2px 0 8px">Quando il piatto non \u00e8 in lista: guardi e conti, senza pesare.</div>';
+  if(tab==="fuori") h+='<div class="xs mut" style="margin:2px 0 8px">Quasi sempre grassi in eccesso, raramente proteine. Se chiudi a 9-10G sai gi\u00e0 perch\u00e9 potresti avere fastidio stanotte.</div>';
+  h+='<div class="card" style="padding:4px 10px">';
+  (CIBI[tab]||[]).forEach(function(c){
+    var bb=[];
+    if(c[2]) bb.push(b1(c[2]/BLK.p)+"P");
+    if(c[3]) bb.push(b1(c[3]/BLK.c)+"C");
+    if(c[4]) bb.push(b1(c[4]/BLK.g)+"G");
+    h+='<button class="item" data-a="cib+" data-t="'+tab+'" data-n="'+esc(c[0])+'" data-p="'+c[2]+'" data-c="'+c[3]+'" data-g="'+c[4]+'">'+
+       '<div class="t"><b>'+esc(c[0])+'</b><span class="xs mut">'+esc(c[1])+'</span></div>'+
+       '<div class="xs" style="font-weight:700;color:var(--glow);text-align:right;white-space:nowrap">'+bb.join(" \u00b7 ")+'</div></button>';
+  });
+  h+='</div>';
+  h+='<button class="btn ghost" style="margin-top:12px" data-a="x">Chiudi</button>';
+  sheet(h);
+}
+
 /* ---------- KPI settimanali ---------- */
 /* un riposo programmato è una sessione con mod "Riposo": non conta come
    allenamento fatto, ma abbassa il bersaglio settimanale da 4 a 4-riposi */
@@ -1028,6 +1268,18 @@ function diagnose(){
       m:"Oltre i 75 minuti è il principale fattore di abbandono. Cambia i dischi dentro il recupero, non dopo."});
     if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
   }
+  /* 3b. grassi e reflusso: la correlazione che giustifica il tracciamento */
+  var gr=[], gl=[];
+  S.ben.forEach(function(b){
+    if(b.refl==null || !(b.cibG>0)) return;
+    (b.cibG/BLK.g >= BLK_TGT.g+1.5 ? gr : gl).push(b.refl);
+  });
+  if(gr.length>=3 && gl.length>=3){
+    var mA=gr.reduce(function(a,b){return a+b;},0)/gr.length;
+    var mB=gl.reduce(function(a,b){return a+b;},0)/gl.length;
+    if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso · reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
+      m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio e' piu' alto ("+gr.length+" giornate contro "+gl.length+"). Non e' una prova di causa, ma e' il primo posto dove guardare."});
+  }
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
   if(sig.length) out.push({k:"segnale", t:"Ultimo segnale articolare: "+sig[sig.length-1].date,
@@ -1134,6 +1386,10 @@ function briefing(){
   else L.push("- non calcolabile: "+(sl2.why||"dati insufficienti"));
   var wb2=S.ben.filter(function(x){ return x.passi||x.ipo; }).slice(-1)[0];
   if(wb2) L.push("- ultimo riepilogo settimanale: passi "+(wb2.passi||"-")+"/giorno, ipopnea "+(wb2.ipo==null?"-":wb2.ipo)+"/h ("+wb2.date+")");
+  var cw=cibWeek();
+  if(cw) L.push("- cibo, media 7 giorni: "+b1(cw.p)+"P / "+BLK_TGT.p+" \u00b7 "+
+    b1(cw.c)+"C / "+BLK_TGT.c+" \u00b7 "+b1(cw.g)+"G / "+BLK_TGT.g+" (su "+cw.n+" giorni registrati)");
+  else L.push("- cibo: nessun blocco registrato nelle ultime 7 giornate");
   var stk2=streak();
   L.push("- catena: "+stk2.n+" settimane consecutive a bersaglio"+(stk2.curOpen?" (quella in corso e' ancora aperta)":""));
   var ml2=mobLast();
@@ -1618,7 +1874,9 @@ var SYNC = {
         camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
-        mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo")};
+        mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"),
+        cibP:keep(r,loc,"cibP"), cibC:keep(r,loc,"cibC"), cibG:keep(r,loc,"cibG"),
+        cibL:(r.cibL===undefined?(loc?loc.cibL:undefined):(r.cibL||""))};
     }), S.ben, byDate, "App_Benessere");
     if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
       return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
@@ -1645,7 +1903,7 @@ var SYNC = {
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
       ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
         read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
-        mente:r.mente,passi:r.passi,ipo:r.ipo,note:r.note})),
+        mente:r.mente,passi:r.passi,ipo:r.ipo,cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibL:r.cibL,note:r.note})),
       sim: (S.sim||[]).map(r=>({date:r.date,w:r.w,ex:r.ex,q:r.q,a:r.a,side:r.side})),
       mob: (S.mob||[]).map(function(r){
         var o={date:r.date,w:r.w};
@@ -1734,10 +1992,12 @@ function viewOggi(){
   if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='</div>';
 
+  h+=cardCibo();
+
   /* fotografia del recupero: oggi o, al mattino, il dato più fresco entro 2 giorni */
   var recB=benOn(today());
   if(!recB){ for(var rb=1;rb<=2 && !recB;rb++){ var dd=new Date(); dd.setDate(dd.getDate()-rb); recB=benOn(d2s(dd)); } }
-  if(recB && !completa){
+  if(recB && !completa && (recB.hrv||recB.read||recB.rhr||recB.sonno)){
     var rc=recovery(recB.date), rn=rc.parts.join(" \u00b7 "), oggi=recB.date===today();
     var bc = rc.lvl>=2 ? "var(--alert)" : rc.lvl===1 ? "var(--amb)" : "var(--line)";
     var bl = rc.lvl>=2 ? "TAGLIA LA SEDUTA" : rc.lvl===1 ? "SOTTO LA NORMA" : "ok";
@@ -2359,7 +2619,7 @@ document.addEventListener("click", function(ev){
   if(a==="tip"){ guideSheet(def.n, def.tip); return; }
   if(a==="gwarm"){ guideSheet(WARM[i].n, ""); return; }
   if(a==="full"){ var f=document.getElementById("gfull"); if(f) f.style.display = f.style.display==="none"?"block":"none"; return; }
-  if(a==="x"){ closeSheet(); return; }
+  if(a==="x"){ CIB_DAY=0; closeSheet(); render(); return; }
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
     var m=meta(e.n), st=m.step||2, nv=e.load+(a==="load+"?st:-st);
@@ -2387,6 +2647,32 @@ document.addEventListener("click", function(ev){
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(el.dataset.d||null); return; }
+  if(a==="cibo"){ formCibo(el.dataset.t); return; }
+  if(a==="cibday"){ CIB_DAY=+el.dataset.v||0; render(); formCibo(el.dataset.t); return; }
+  if(a==="cib+"){
+    cibAdd(+el.dataset.p||0, +el.dataset.c||0, +el.dataset.g||0, el.dataset.n).then(function(){
+      render(); formCibo(el.dataset.t);
+    });
+    return;
+  }
+  if(a==="cibdel"){
+    cibDel(+el.dataset.i).then(function(){ render(); formCibo(el.dataset.t); });
+    return;
+  }
+  if(a==="cib+q"){
+    var kq=el.dataset.k;
+    cibAdd(kq==="p"?BLK.p:0, kq==="c"?BLK.c:0, kq==="g"?BLK.g:0, "+1 blocco "+kq.toUpperCase()).then(render);
+    return;
+  }
+  if(a==="cib-"){
+    var km=el.dataset.k;
+    cibAdd(km==="p"?-BLK.p:0, km==="c"?-BLK.c:0, km==="g"?-BLK.g:0, "-1 blocco "+km.toUpperCase()).then(render);
+    return;
+  }
+  if(a==="cibz"){
+    if(confirm("Azzerare i blocchi di questa giornata?")) cibReset().then(render);
+    return;
+  }
   if(a==="benadd"){ var y=new Date(); y.setDate(y.getDate()-1); formBen(d2s(y), true); return; }
   if(a==="saveben"){ saveBen(el.dataset.d||null); return; }
   if(a==="bendel"){ delBen(el.dataset.d); return; }
@@ -2705,6 +2991,7 @@ async function saveBen(origDate){
     read:g("bRead"), sonno:g("bSonno"), peso:g("bPeso"),
     stress:pick("#bStr","st"), mente:pick("#bMen","me"),
     passi:(prev.passi===undefined?null:prev.passi), ipo:(prev.ipo===undefined?null:prev.ipo),
+    cibP:prev.cibP, cibC:prev.cibC, cibG:prev.cibG, cibL:prev.cibL,
     note:document.getElementById("bNote").value};
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
   S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
