@@ -316,6 +316,14 @@ nav.tabs button.on .lb{font-weight:700}
 nav.tabs .badge{position:absolute;top:9px;left:50%;margin-left:6px;width:8px;height:8px;
   border-radius:50%;background:var(--alert);border:1.5px solid var(--bg)}
 
+/* ---------- promemoria del coach ---------- */
+.cnote{border-color:var(--amb);background:rgba(224,164,88,.06)}
+.cn{padding:10px 0;border-bottom:1px solid var(--line)}
+.cn:last-child{border-bottom:0;padding-bottom:2px}
+.ct{font-size:13.5px;line-height:1.4;font-weight:600}
+.cb{display:flex;gap:7px;margin-top:8px}
+.cb .btn{width:auto;flex:1;min-height:38px;font-size:13px}
+
 </style>
 </head>
 <body>
@@ -1072,14 +1080,32 @@ function cibRisolvi(nome, p, c, gg){
   return n;
 }
 
-function cibHint(r){
-  var out=[];
-  if(r.p>=0.7) out.push(r.p>=1.7?"due porzioni proteiche":"una porzione proteica");
-  if(r.c>=0.7) out.push(r.c>=1.7?"due porzioni di carbo":"una porzione di carbo");
-  if(r.g>=0.7) out.push(r.g>=1.7?"due di grassi":"un cucchiaio d'olio");
-  var sforo = r.g<=-1.5 ? " Grassi sopra il target: occhio al reflusso stanotte." : "";
-  if(!out.length) return "Giornata chiusa." + sforo;
-  return "Ti manca ancora: " + out.join(" + ") + "." + sforo;
+/* Il residuo va detto con i numeri. La versione a parole aveva tre soli
+   gradini e restava ferma su "due + due + due" per mezza giornata: sembrava
+   che aggiungere un pasto non cambiasse niente. */
+function cibHint(r, g){
+  g = g || cibVuoto();
+  var resto=[], oltre=[];
+  if(r.p>=0.3) resto.push(b1(r.p)+"P"); else if(r.p<=-0.5) oltre.push("P +"+b1(-r.p));
+  if(r.c>=0.3) resto.push(b1(r.c)+"C"); else if(r.c<=-0.5) oltre.push("C +"+b1(-r.c));
+  if(r.g>=0.3) resto.push(b1(r.g)+"G"); else if(r.g<=-0.5) oltre.push("G +"+b1(-r.g));
+
+  var main = resto.length ? "Restano "+resto.join(" \u00b7 ") : "Giornata chiusa.";
+  var vuoti = MEALS.filter(function(m){ return m.k!=="ex" && m.p && !(g[m.k]||[]).length; });
+  var sub = "";
+  if(resto.length && vuoti.length){
+    var nomi = vuoti.map(function(m){ return m.n.toLowerCase(); });
+    sub = "Devi ancora registrare " + (nomi.length>1
+      ? nomi.slice(0,-1).join(", ")+" e "+nomi[nomi.length-1]
+      : nomi[0]) + ".";
+  } else if(resto.length){
+    sub = "Tutti i pasti sono registrati: quello che manca va aggiunto a un pasto o come fuori pasto.";
+  }
+  if(oltre.length){
+    sub = (sub?sub+" ":"") + "Sopra il target: " + oltre.join(", ") +
+      (r.g<=-1.5 ? ". Grassi alti, occhio al reflusso stanotte." : ".");
+  }
+  return {main:main, sub:sub};
 }
 function cibWeek(){
   var n=0, s={p:0,c:0,g:0}, now=new Date().setHours(23,59,59,999);
@@ -1133,8 +1159,10 @@ function cardCibo(){
   });
   h+='</div>';
 
-  h+='<div class="sm" style="margin-top:12px;font-weight:600;color:'+
-     ((r.p<=0.4&&r.c<=0.4&&r.g<=0.4)?"var(--ok)":"var(--bone)")+'">'+esc(cibHint(r))+'</div>';
+  var hint=cibHint(r,g);
+  h+='<div class="sm" style="margin-top:12px;font-weight:700;color:'+
+     ((r.p<=0.4&&r.c<=0.4&&r.g<=0.4)?"var(--ok)":"var(--bone)")+'">'+esc(hint.main)+'</div>';
+  if(hint.sub) h+='<div class="xs mut" style="margin-top:3px">'+esc(hint.sub)+'</div>';
 
   var w=cibWeek();
   if(w) h+='<div class="xs mut" style="margin-top:6px">Media 7 giorni: '+b1(w.p)+'P \u00b7 '+b1(w.c)+'C \u00b7 '+b1(w.g)+'G su '+
@@ -1209,6 +1237,193 @@ function formPasto(mk, cat){
   });
   h+='</div><button class="btn ghost" style="margin-top:14px" data-a="x">Chiudi</button>';
   sheet(h);
+}
+
+/* ============================================================
+   MODULO F — EXTRA DI OGGI
+   Un esercizio aggiunto alla sola sessione in corso. Non entra nel
+   piano: finisce nel log come tutti gli altri, ma domani non c'e' piu'.
+   Le serie in piu' su un esercizio previsto funzionavano gia': il
+   contatore non ha tetto, la scheda si attenua e basta. Qui si
+   aggiunge solo il pezzo che mancava.
+
+   Come sta in piedi: ogni voce della bozza puo' portarsi dietro la
+   propria definizione in "def". Dove prima si leggeva PLAN[day].ex[i]
+   ora si legge e.def || PLAN[day].ex[i], cosi' un esercizio fuori
+   piano non sfasa l'allineamento per posizione con il piano.
+   ============================================================ */
+
+/* definizione di ripiego per un esercizio non previsto oggi */
+function extraDef(nome){
+  var m=meta(nome);
+  var iso = m.t==="iso";
+  var def = {n:nome, s:3, lo: iso?12:8, hi: iso?15:12, tip:""};
+  if(m.sec){ def.lo=20; def.hi=40; }          /* tenute a tempo */
+  if(m.band) def.b = lastBand(nome,"verde") || "verde";
+  if(m.uni)  def.u = true;
+  return def;
+}
+
+/* gli esercizi degli altri giorni del piano: tecnica e carichi gia' noti */
+function extraSuggeriti(){
+  var d=S.draft; if(!d) return [];
+  var gia={}; d.ex.forEach(function(e){ gia[e.n]=1; });
+  var out=[];
+  Object.keys(PLAN).forEach(function(k){
+    if(k===d.day) return;
+    (PLAN[k].ex||[]).forEach(function(x){
+      if(gia[x.n]) return; gia[x.n]=1;
+      out.push({n:x.n, da:"giorno "+k, def:Object.assign({}, x)});
+    });
+  });
+  return out;
+}
+/* tutto il resto del catalogo */
+function extraCatalogo(){
+  var d=S.draft; if(!d) return {};
+  var gia={}; d.ex.forEach(function(e){ gia[e.n]=1; });
+  extraSuggeriti().forEach(function(x){ gia[x.n]=1; });
+  var per={};
+  Object.keys(EX).forEach(function(n){
+    if(gia[n]) return;
+    var g=EX[n].g||"Altro";
+    (per[g]||(per[g]=[])).push(n);
+  });
+  return per;
+}
+
+function extraAdd(nome, daPiano){
+  var d=S.draft; if(!d) return;
+  if(d.ex.some(function(e){ return e.n===nome; })){ toast("C'\u00e8 gi\u00e0 in questa sessione"); return; }
+  var def = daPiano ? (extraSuggeriti().filter(function(x){ return x.n===nome; })[0]||{}).def : null;
+  if(!def) def = extraDef(nome);
+  def = Object.assign({}, def, {n:nome});
+  var m=meta(nome);
+  d.ex.push({n:nome, def:def, extra:true,
+    load: def.b?0:suggestLoad(def), band: def.b?lastBand(nome,def.b):"",
+    sets:[], rir:null, note:"",
+    cur: def.u ? {S:(m.sec?def.hi:def.lo), D:(m.sec?def.lo:def.lo)} : {v:(m.sec?def.hi:def.lo)}});
+  save(); closeSheet(); render();
+  toast(nome+" aggiunto solo per oggi");
+}
+function extraDel(i){
+  var d=S.draft; if(!d) return;
+  var e=d.ex[i]; if(!e||!e.extra) return;
+  if(e.sets.length && !confirm("Togliere "+e.n+"? Le serie registrate vanno perse.")) return;
+  d.ex.splice(i,1); save(); render();
+}
+
+function formExtra(){
+  var sug=extraSuggeriti(), cat=extraCatalogo();
+  var h='<div class="eyebrow amb">Solo per oggi</div>'+
+    '<h2 style="margin:3px 0 2px;font-size:18px">Aggiungi un esercizio</h2>'+
+    '<div class="sm mut" style="margin-bottom:12px">Vale per questa sessione. Il piano non cambia: domani non lo trovi.</div>';
+
+  if(sug.length){
+    h+='<div class="eyebrow" style="margin-bottom:6px">Dagli altri giorni</div>'+
+       '<div class="xs mut" style="margin-bottom:6px">Tecnica e carichi gi\u00e0 tuoi: parte dall\'ultimo che hai fatto.</div>'+
+       '<div class="card" style="padding:2px 12px;margin-bottom:14px">';
+    sug.forEach(function(x){
+      var m=meta(x.n), ll=lastLoad(x.n,0);
+      h+='<button class="item" data-a="exadd" data-n="'+esc(x.n)+'" data-p="1">'+
+         '<div class="t"><b>'+esc(x.n)+'</b><span class="xs mut">'+esc(m.g||"")+' \u00b7 '+esc(x.da)+
+         (ll?' \u00b7 ultimo '+ll+' kg':'')+'</span></div>'+
+         '<div style="font-weight:700;color:var(--glow)">+</div></button>';
+    });
+    h+='</div>';
+  }
+
+  var gruppi=Object.keys(cat).sort();
+  if(gruppi.length){
+    h+='<div class="eyebrow" style="margin-bottom:6px">Resto del catalogo</div><div class="card" style="padding:2px 12px">';
+    gruppi.forEach(function(g){
+      h+='<div class="eyebrow" style="padding:9px 0 3px;color:var(--mut)">'+esc(g)+'</div>';
+      cat[g].forEach(function(n){
+        var ll=lastLoad(n,0), m=meta(n);
+        h+='<button class="item" data-a="exadd" data-n="'+esc(n)+'">'+
+           '<div class="t"><b>'+esc(n)+'</b><span class="xs mut">'+
+           (m.band?"con banda":(m.sec?"a tempo":(m.t==="iso"?"isolamento":"multiarticolare")))+
+           (ll?' \u00b7 ultimo '+ll+' kg':'')+'</span></div>'+
+           '<div style="font-weight:700;color:var(--glow)">+</div></button>';
+      });
+    });
+    h+='</div>';
+  } else if(!sug.length){
+    h+='<div class="card flat" style="text-align:center;padding:18px"><div class="sm mut">Hai gi\u00e0 in sessione tutto il catalogo.</div></div>';
+  }
+
+  h+='<button class="btn ghost" style="margin-top:14px" data-a="x">Chiudi</button>';
+  sheet(h);
+}
+
+/* ============================================================
+   MODULO G — CONSIGLI DEL COACH
+   Quello che il coach dice in chat si perde. Le patch invece cambiano
+   il piano per sempre, che e' un'altra cosa. Qui sta la via di mezzo:
+   un promemoria legato a un giorno del piano, che ricompare a ogni
+   sessione finche' non lo segni come fatto.
+
+   Arriva come operazione di patch, quindi e' verificabile e annullabile
+   come tutto il resto:
+     {"op":"nota","d":"A","t":"Aggiungi 2 serie di Box Squat","n":"Box Squat"}
+   "d" omesso = vale per tutti i giorni. "n" = esercizio da aggiungere
+   con un tocco, se non e' gia' in programma quel giorno.
+   ============================================================ */
+var COACH=[];
+
+function coachNote(op, ts, k){
+  COACH.push({
+    id: (ts||"") + "#" + k,
+    d: op.d || "",
+    t: op.t || "",
+    n: op.n || "",
+    ts: ts || ""
+  });
+}
+function coachPer(day){
+  var fatti=S.cdone||{};
+  return COACH.filter(function(x){
+    return (!x.d || x.d===day) && !fatti[x.id];
+  });
+}
+async function coachFatto(id){
+  S.cdone = S.cdone || {};
+  S.cdone[id] = true;
+  await save();
+  render();
+}
+async function coachRiapri(){
+  S.cdone = {};
+  await save();
+  render();
+}
+
+/* il riquadro in cima alla sessione */
+function coachCard(day){
+  var note=coachPer(day);
+  if(!note.length) return "";
+  var d=S.draft;
+  var h='<div class="card cnote"><div class="eyebrow amb">Dal coach \u00b7 '+note.length+
+        (note.length>1?' promemoria':' promemoria')+'</div>';
+  note.forEach(function(x){
+    var gia = d && d.ex.some(function(e){ return e.n===x.n; });
+    var noto = x.n && EX[x.n];
+    h+='<div class="cn"><div class="ct">'+esc(x.t)+
+       (x.ts?'<span class="xs mut"> \u00b7 '+esc(x.ts)+'</span>':'')+'</div><div class="cb">';
+    if(x.n && noto && !gia) h+='<button class="btn sm" data-a="cnadd" data-n="'+esc(x.n)+'">Aggiungi '+esc(x.n)+'</button>';
+    h+='<button class="btn sm ghost" data-a="cnok" data-id="'+esc(x.id)+'">Fatto</button>';
+    h+='</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+/* l'avviso nella schermata Oggi, prima di iniziare */
+function coachBadge(day){
+  var n=coachPer(day).length;
+  if(!n) return "";
+  return '<div class="flag info" style="margin-top:8px"><b>'+n+'</b><div>'+
+    (n===1?'Un promemoria del coach':'Promemoria del coach: '+n)+' per il giorno '+day+
+    '. Li vedi appena apri la sessione.</div></div>';
 }
 
 /* ---------- KPI settimanali ---------- */
@@ -1653,14 +1868,18 @@ var PLAN = null;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function buildPlan(){
   var P = clone(BASEPLAN);
-  CIBX=[]; CIBR=[];
-  (S.patches||[]).forEach(function(pt){ (pt.ops||[]).forEach(function(op){ applyOp(P, op); }); });
+  CIBX=[]; CIBR=[]; COACH=[];
+  COACH=[];
+  (S.patches||[]).forEach(function(pt,pi){ (pt.ops||[]).forEach(function(op,oi){
+    op._ts = pt.ts || String(pi); op._k = pi+"."+oi; applyOp(P, op);
+  }); });
   return P;
 }
 function applyOp(P, op){
   /* operazioni sul cibo: catalogo, ricette, conversione delle voci descritte */
   if(op.op==="cibo"){ CIBX.push({cat:op.cat||"pia", n:op.n, d:op.d||"", p:+op.p||0, c:+op.c||0, g:+op.g||0}); return; }
   if(op.op==="ricetta"){ CIBR.push({n:op.n, m:op.m||"pra", v:op.v||[]}); return; }
+  if(op.op==="nota"){ coachNote(op, op._ts, op._k); return; }
   if(op.op==="stima"){ cibRisolvi(op.n, +op.p||0, +op.c||0, +op.g||0); return; }
   var day = P[op.d]; if(!day) return;
   if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
@@ -1684,6 +1903,7 @@ function previewPatch(pt){
   return (pt.ops||[]).map(function(o){
     if(o.op==="cibo") return "Nuovo alimento: "+o.n+" ("+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G)";
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
+    if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
     if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
@@ -2251,6 +2471,7 @@ function viewOggi(){
        (p.dischi!=="solo bande"? '<div class="xs" style="color:var(--amb);margin-top:7px">Dischi '+esc(p.dischi)+'</div>':"")+
        '<div class="btn pri" style="margin-top:12px">Inizia</div></button>';
     h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="mini" data-d="'+next+'">Giornata storta \u00b7 sessione minima</button>';
+    h+=coachBadge(next);
   }
 
   /* le altre, in righe sottili */
@@ -2312,6 +2533,8 @@ function viewSession(){
   var h=topbar(p.name, "Giorno "+d.day+" · settimana "+weekOf(d.date));
   h+='<div class="wrap">';
 
+  h+=coachCard(d.day);
+
   /* riscaldamento */
   var wdone=d.warm.filter(Boolean).length;
   h+='<div class="card"><div class="between"><div class="eyebrow '+(wdone===WARM.length?"":"amb")+'">Riscaldamento · 6 minuti · '+wdone+"/"+WARM.length+'</div>'+
@@ -2329,7 +2552,9 @@ function viewSession(){
   if(p.dischi!=="solo bande") h+='<div class="flag disc"><b>Dischi</b><div>'+esc(p.dischi)+' — cambiali <b>dentro</b> il recupero, non dopo.</div></div>';
 
   /* esercizi */
-  d.ex.forEach(function(e,i){ h+=exCard(e,i,p.ex[i]); });
+  d.ex.forEach(function(e,i){ h+=exCard(e,i,e.def||p.ex[i]); });
+
+  h+='<button class="btn ghost" style="margin-top:4px" data-a="exadd0">Aggiungi un esercizio solo per oggi</button>';
 
   h+='<div style="margin:18px 0 30px"><button class="btn pri" data-a="close">Chiudi la sessione</button>'+
      '<button class="btn ghost" style="margin-top:8px" data-a="abort">Annulla</button></div>';
@@ -2349,7 +2574,9 @@ function restBar(){
 function exCard(e,i,def){
   var m=meta(e.n), sets=e.sets, target=def.s+" × "+(def.lo===def.hi?def.lo:def.lo+"-"+def.hi)+(m.sec?"s":"");
   var full=sets.length>=def.s;
-  var h='<div class="card" style="'+(full?"opacity:.62":"")+'">';
+  var h='<div class="card" style="'+(full?"opacity:.62":"")+(e.extra?";border-color:var(--amb)":"")+'">';
+  if(e.extra) h+='<div class="between" style="margin-bottom:6px"><div class="eyebrow amb">Solo per oggi</div>'+
+    '<button class="btn sm ghost" data-a="exrm" data-i="'+i+'" style="min-height:30px;padding:0 10px">Togli</button></div>';
   h+='<div class="between"><div style="flex:1"><h2>'+esc(e.n)+'</h2>'+
      '<div class="xs mut" style="margin-top:2px">'+esc(m.g)+' · '+target+(def.u?" · per lato":"")+'</div></div>';
   if(G[e.n]||def.tip) h+='<button class="btn sm ghost" data-a="tip" data-i="'+i+'" style="min-width:40px">?</button>';
@@ -2381,7 +2608,7 @@ function exCard(e,i,def){
     }).join("")+'</div>';
   }
 
-  if(!full){
+  if(!full || e.more){
     if(def.u){
       h+='<div class="plumb"><div class="lbl"><span class="l">Sinistra</span><span class="r">Destra</span></div>';
       h+='<div class="row" style="gap:8px;margin-top:6px">'+
@@ -2394,8 +2621,11 @@ function exCard(e,i,def){
         '<div class="step" style="flex:1"><button data-a="v-" data-i="'+i+'">−</button><div class="val">'+e.cur.v+'</div>'+
         '<button data-a="v+" data-i="'+i+'">+</button></div></div>';
     }
-    h+='<button class="btn amb" style="margin-top:10px" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+' fatta</button>';
-  } else {
+    h+='<button class="btn amb" style="margin-top:10px" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+(full?" (extra)":"")+' fatta</button>';
+  }
+  if(full){
+    h+='<button class="btn sm ghost" style="margin-top:8px" data-a="setmore" data-i="'+i+'">'+
+       (e.more?"Basta così":"Registra una serie in più")+'</button>';
     h+='<div class="row" style="margin-top:10px"><div class="eyebrow" style="width:52px">RIR</div>'+
       '<div class="pills" style="flex:1;padding:0">'+[0,1,2,3,4].map(v=>'<button class="pill '+(e.rir===v?"on":"")+'" data-a="rir" data-i="'+i+'" data-v="'+v+'">'+v+'</button>').join("")+'</div></div>';
     h+='<input type="text" placeholder="Nota (sensazioni, tecnica, dolore…)" value="'+esc(e.note)+'" data-note="'+i+'" style="margin-top:9px">';
@@ -2848,7 +3078,8 @@ function render(){
 document.addEventListener("click", function(ev){
   var el=ev.target.closest("[data-a]"); if(!el) return;
   var a=el.dataset.a, i=+el.dataset.i, j=+el.dataset.j, v=el.dataset.v, d=S.draft;
-  var def = d ? PLAN[d.day].ex[i] : null, e = d ? d.ex[i] : null;
+  var e = d ? d.ex[i] : null;
+  var def = d ? ((e && e.def) ? e.def : PLAN[d.day].ex[i]) : null;
   window._sy = window.scrollY;
 
   if(a==="nav"){ V=v; window._sy=0; render(); return; }
@@ -2877,6 +3108,12 @@ document.addEventListener("click", function(ev){
   if(a==="rest+"){ rest.end+=30000; return; }
   if(a==="rest0"){ stopRest(); render(); return; }
   if(a==="abort"){ if(confirm("Annullare la sessione? I dati non vengono salvati.")){ S.draft=null; stopRest(); save(); render(); } return; }
+  if(a==="setmore"){ e.more=!e.more; save(); render(); return; }
+  if(a==="cnok"){ coachFatto(el.dataset.id); return; }
+  if(a==="cnadd"){ extraAdd(el.dataset.n, true); return; }
+  if(a==="exadd0"){ formExtra(); return; }
+  if(a==="exadd"){ extraAdd(el.dataset.n, el.dataset.p==="1"); return; }
+  if(a==="exrm"){ extraDel(i); return; }
   if(a==="close"){ closeSession(); return; }
   if(a==="savesess"){ commitSession(); return; }
   if(a==="restday"){ restForm(); return; }
@@ -3124,7 +3361,7 @@ async function commitSession(){
   var w=weekOf(d.date);
   var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on");
   d.ex.forEach(function(e,i){
-    var def=p.ex[i]; if(!e.sets.length) return;
+    var def=e.def||p.ex[i]; if(!e.sets.length) return;
     if(def.u){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
@@ -3452,7 +3689,7 @@ function patchPreview(){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p;
     sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
