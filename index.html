@@ -283,8 +283,8 @@ nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:
 .prop{margin-top:12px;padding:11px;border:1px solid var(--amb);border-radius:11px;background:rgba(224,164,88,.07)}
 
 .daysw{display:flex;gap:6px;margin:12px 0 0}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+.ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none}
+.ctabs::-webkit-scrollbar{display:none}
 
 .vrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
 .vrow:last-child{border-bottom:0}
@@ -301,6 +301,20 @@ nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:
 :focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
   .btn:active,.vq button:active{transform:none}}
+
+/* ---------- navigazione: icone disegnate, non glifi di ripiego ---------- */
+nav.tabs button{flex:1;min-height:56px;padding:8px 0 9px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;color:var(--dim);position:relative}
+nav.tabs button.on{color:var(--bone)}
+nav.tabs button.on::before{content:"";position:absolute;top:-1px;left:50%;margin-left:-14px;
+  width:28px;height:2px;border-radius:0 0 2px 2px;background:var(--glow)}
+nav.tabs svg{width:22px;height:22px;display:block;stroke:currentColor;fill:none;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs button.on svg{stroke-width:2}
+nav.tabs .lb{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:inherit}
+nav.tabs button.on .lb{font-weight:700}
+nav.tabs .badge{position:absolute;top:9px;left:50%;margin-left:6px;width:8px;height:8px;
+  border-radius:50%;background:var(--alert);border:1.5px solid var(--bg)}
 
 </style>
 </head>
@@ -1182,7 +1196,7 @@ function formPasto(mk, cat){
     h+='</div>';
   }
 
-  h+='<div class="eyebrow" style="margin-bottom:6px">Alimenti</div><div class="tabs">';
+  h+='<div class="eyebrow" style="margin-bottom:6px">Alimenti</div><div class="ctabs">';
   CIB_CAT.forEach(function(c){
     h+='<button class="pill'+(c[0]===cat?" on":"")+'" data-a="pasto" data-m="'+mk+'" data-c="'+c[0]+'">'+c[1]+'</button>';
   });
@@ -2795,14 +2809,30 @@ function viewCoach(){
 
 /* ---------- nav ---------- */
 function nav(){
-  var items=[["oggi","▦","Oggi"],["prog","◐","Progressi"],["corpo","⌁","Corpo"],["coach","◈","Coach"]];
+  /* Icone disegnate a mano invece di glifi Unicode: peso del tratto uniforme,
+     stessa dimensione ottica, e soprattutto rendono uguali su ogni telefono.
+     I glifi precedenti (una coppia di semicerchi, un lampo) dipendevano dal
+     font di sistema e su alcuni Android uscivano come rettangoli vuoti. */
+  var ICO={
+    /* piastra da carico: il disco con il foro al centro */
+    oggi:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="2.4"/>',
+    /* andamento nel tempo */
+    prog:'<path d="M3.5 19.5V4.5"/><path d="M3.5 19.5h17"/><path d="M6.5 16l4-4.5 3.2 2.6L20 7.5"/>',
+    /* il rachide: linea a S con le vertebre. E' il soggetto dell'app */
+    corpo:'<path d="M12 3.5c-2.6 2.2-2.6 4.6 0 7s2.6 4.8 0 10"/><path d="M9.6 5.6h4.8M9.2 9h5.6M9.6 12.4h4.8M10 15.8h4.4M10.6 19.2h3.2"/>',
+    /* scambio con il coach */
+    coach:'<path d="M20 13.2c0 2.2-1.9 4-4.3 4H9.3L4 20.5l1.3-3.7C4.5 16 4 14.7 4 13.2 4 11 5.9 9.2 8.3 9.2h7.4c2.4 0 4.3 1.8 4.3 4z"/><path d="M8.4 4.2h7.2"/>'
+  };
+  var items=[["oggi","Oggi"],["prog","Progressi"],["corpo","Corpo"],["coach","Coach"]];
   document.getElementById("nav").innerHTML = items.map(function(i){
-    var dot = (i[0]==="coach" && backupState().due) ?
-      '<span style="position:absolute;top:7px;margin-left:20px;width:7px;height:7px;border-radius:50%;background:var(--alert)"></span>' : "";
-    return '<button data-a="nav" data-v="'+i[0]+'" class="'+(V===i[0]?"on":"")+'" style="position:relative">'+
-      '<span class="ico">'+i[1]+'</span>'+dot+'<span class="lb">'+i[2]+'</span></button>';
+    var badge = (i[0]==="coach" && backupState().due) ? '<span class="badge"></span>' : "";
+    return '<button data-a="nav" data-v="'+i[0]+'" class="'+(V===i[0]?"on":"")+'"'+
+      ' aria-label="'+i[1]+'" aria-current="'+(V===i[0]?"page":"false")+'">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true">'+ICO[i[0]]+'</svg>'+badge+
+      '<span class="lb">'+i[1]+'</span></button>';
   }).join("");
 }
+
 function render(){
   if(!PLAN) PLAN=buildPlan();
   app.innerHTML = V==="oggi"?viewOggi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
