@@ -2087,6 +2087,10 @@ var SYNC = {
        vince il foglio come per tutto il resto. */
     var lben={}; S.ben.forEach(function(b){ lben[b.date]=b; });
     var keep=function(r, loc, k){ return (r[k]===undefined) ? (loc?loc[k]:undefined) : num(r[k]); };
+    /* il cibo non si azzera mai da foglio vuoto: una colonna appena creata,
+       o una rilettura fatta prima di aver inviato, cancellerebbe la giornata. */
+    var keepn=function(r, loc, k){ var v=r[k]; return (v===undefined||v===null||v==="") ? (loc?loc[k]:undefined) : num(v); };
+    var keeps=function(r, loc, k){ var v=r[k]; return (v===undefined||v===null||v==="") ? (loc?loc[k]:"") : String(v); };
     if(d.ben)  S.ben  = this.fuse(d.ben.map(function(r){
       var loc=lben[r.date];
       return {date:r.date, w:+r.w||weekOf(r.date), refl:num(r.refl), resp:r.resp===true||r.resp==="Sì",
@@ -2094,8 +2098,8 @@ var SYNC = {
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
         mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"),
-        cibP:keep(r,loc,"cibP"), cibC:keep(r,loc,"cibC"), cibG:keep(r,loc,"cibG"),
-        cibJ:(r.cibJ===undefined?(loc?loc.cibJ:undefined):(r.cibJ||""))};
+        cibP:keepn(r,loc,"cibP"), cibC:keepn(r,loc,"cibC"), cibG:keepn(r,loc,"cibG"),
+        cibJ:keeps(r,loc,"cibJ")};
     }), S.ben, byDate, "App_Benessere");
     if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
       return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
