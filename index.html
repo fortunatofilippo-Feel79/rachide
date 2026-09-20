@@ -255,6 +255,53 @@ nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:
   padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;border-top:1px solid var(--line)}
 .handle{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- cibo: la giornata come sequenza di pasti ---------- */
+.macro{margin:12px 0 4px}
+.mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.mlab{font-size:11px;font-weight:700;color:var(--dim);width:12px}
+.mbar{flex:1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:2px}
+.mval{font-size:12px;font-weight:700;letter-spacing:-.02em;min-width:26px;text-align:right}
+.mtgt{font-size:11px;color:var(--dim);min-width:24px}
+
+.rail{margin-top:14px;border-left:1px solid var(--line);padding-left:0}
+.meal{display:flex;align-items:center;gap:10px;width:100%;padding:9px 2px 9px 14px;
+  position:relative;text-align:left;border-bottom:1px solid var(--line)}
+.meal:last-child{border-bottom:0}
+.meal:active{background:var(--surf2)}
+.mdot{position:absolute;left:-4px;top:50%;width:7px;height:7px;margin-top:-3.5px;
+  border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.meal.done .mdot{background:var(--ok);border-color:var(--ok)}
+.meal.over .mdot{background:var(--amb);border-color:var(--amb)}
+.mname{flex:1;font-size:13.5px;font-weight:600}
+.meal .mmac{font-size:11.5px;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.meal.done .mmac{color:var(--bone)}
+.pend{display:inline-block;min-width:15px;height:15px;line-height:15px;text-align:center;
+  border-radius:50%;background:var(--amb);color:#1A1207;font-size:10px;font-weight:800;margin-left:4px}
+
+.prop{margin-top:12px;padding:11px;border:1px solid var(--amb);border-radius:11px;background:rgba(224,164,88,.07)}
+
+.daysw{display:flex;gap:6px;margin:12px 0 0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+
+.vrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.vrow:last-child{border-bottom:0}
+.vrow.attesa{border-left:2px solid var(--amb);padding-left:9px;margin-left:-11px}
+.vtxt{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+.vtxt b{font-size:13.5px;font-weight:600}
+.vq{display:flex;gap:4px;flex-shrink:0}
+.vq button{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surf2);font-weight:700;font-size:15px;line-height:1}
+.vq button:active{transform:scale(.94)}
+.vq .vx{color:var(--mut);font-size:12px}
+
+/* qualita' di base: messa a fuoco visibile e rispetto del movimento ridotto */
+:focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
+  .btn:active,.vq button:active{transform:none}}
+
 </style>
 </head>
 <body>
@@ -768,242 +815,385 @@ function readiness(exDef){
 }
 
 /* ============================================================
-   MODULO E — CIBO A BLOCCHI
-   Non si pesa niente: la giornata sono 17 blocchi da spuntare.
-   I dati vivono sulla riga benessere del giorno, come passi e
-   ipopnea: niente tab nuova sul foglio, niente sistema parallelo.
-   In memoria si tengono GRAMMI di macro, non blocchi. I blocchi
-   sono solo il modo di leggerli: cosi' "tonno 80g" e il preset
-   "pranzo casa" convivono senza arrotondare due volte.
+   MODULO E — CIBO
+   La giornata e' fatta di pasti, non di un totale. Ogni pasto e'
+   un contenitore di voci; ogni voce e' un alimento del catalogo
+   con una quantita', oppure una descrizione a parole in attesa
+   che il coach la converta.
+   I dati vivono sulla riga benessere del giorno (campo cibJ),
+   come passi e ipopnea: nessuna tab nuova sul foglio.
+   cibP/cibC/cibG restano come totali derivati, ricalcolati a ogni
+   modifica, cosi' il foglio e il briefing leggono numeri semplici.
    ============================================================ */
-var BLK     = {p:26, c:58, g:11};   /* grammi di macro in un blocco */
-var BLK_TGT = {p:5,  c:6,  g:6};    /* blocchi al giorno */
+var BLK     = {p:26, c:58, g:11};
+var BLK_TGT = {p:5,  c:6,  g:6};
 
-/* [nome, dettaglio, proteine, carboidrati, grassi] in grammi */
-var CIBI = {
-  pasti:[
-    ["Colazione Parma","Milk Pro 330 + 7 mandorle + 6 biscotti",46,49,18],
-    ["Colazione Gallarate","Milk Pro 165 + Mukky 150 + mandorle + biscotti",39,47,17],
-    ["Pranzo o cena a casa","preset 1P \u00b7 2C \u00b7 2G",26,116,22],
-    ["Mensa / ristorante Parma","preset 1P \u00b7 2C \u00b7 3G",26,116,33],
-    ["Spuntino","preset 1P \u00b7 1C",26,58,0],
-    ["Whey isolate","1 misurino, il jolly",26,2,1]
-  ],
-  prot:[
-    ["Pollo","petto 150g cotto",33,0,4],
-    ["Tacchino","fesa 150g cotta",34,0,3],
-    ["Pesce bianco","180g \u2014 merluzzo, orata, branzino",36,0,2],
-    ["Salmone","150g cotto",33,0,13],
-    ["Tonno naturale","1 scatoletta 80g",18,0,1],
-    ["Tonno naturale","1 scatoletta 120g",26,0,1],
-    ["Bresaola","80g",26,0,2],
-    ["Uova intere","3 grandi",18,1,15],
-    ["Albume","200g (~6-7 uova)",22,2,0],
-    ["Fiocchi di latte","200g",24,6,8],
-    ["Yogurt greco 0%","250g",25,10,0],
-    ["Legumi cotti","250g \u2014 ceci o lenticchie",16,40,3]
-  ],
-  carb:[
-    ["Riso","80g a crudo",6,62,1],
-    ["Pasta","80g a crudo",10,60,1],
-    ["Patate","300g",6,60,0],
-    ["Pane","100g",9,52,1],
-    ["Avena","70g",9,45,5],
-    ["Banana","1 media",1,25,0],
-    ["Mela o pera","1 media",0,20,0]
-  ],
-  gras:[
-    ["Olio EVO","1 cucchiaio (12g)",0,0,12],
-    ["Mandorle o noci","20g",4,1,11],
-    ["Avocado","50g",1,1,7],
-    ["Parmigiano","20g",7,0,7]
-  ],
-  fuori:[
-    ["Pizza","1P \u00b7 2C \u00b7 3G",26,116,33],
-    ["Lasagne o pasta al forno","1P \u00b7 1C \u00b7 3G",26,58,33],
-    ["Hamburger + patatine","1P \u00b7 2C \u00b7 4G",26,116,44],
-    ["Cotoletta o fritto","1P \u00b7 \u00bdC \u00b7 3G",26,29,33],
-    ["Risotto","1C \u00b7 2G",0,58,22],
-    ["Dolce al ristorante","1C \u00b7 2G",0,58,22]
-  ],
-  mano:[
-    ["Palmo di carne o pesce","= 1 blocco P",26,0,0],
-    ["Pugno di pasta, riso, patate","cotti \u00b7 = 1 blocco C",0,58,0],
-    ["Pollice di condimento","o 1 cucchiaio d'olio \u00b7 = 1 blocco G",0,0,11],
-    ["Mezzo palmo proteico","porzione piccola",13,0,0],
-    ["Mezzo pugno di carbo","porzione piccola",0,29,0]
-  ]
-};
-var CIB_TAB=[["pasti","Pasti"],["prot","Proteine"],["carb","Carbo"],["gras","Grassi"],["fuori","Fuori piano"],["mano","A mano"]];
+/* i pasti del Piano_Alimentare, con il loro atteso in grammi */
+var MEALS=[
+  {k:"col", n:"Colazione",           p:26, c:70,  g:14},
+  {k:"sm",  n:"Spuntino mattina",    p:13, c:35,  g:7},
+  {k:"pra", n:"Pranzo",              p:39, c:105, g:21},
+  {k:"sp",  n:"Spuntino pomeriggio", p:13, c:35,  g:7},
+  {k:"cen", n:"Cena",                p:39, c:105, g:21},
+  {k:"ex",  n:"Fuori pasto",         p:0,  c:0,   g:0}
+];
+function meal(k){ return MEALS.filter(function(m){ return m.k===k; })[0] || MEALS[5]; }
 
-/* giorno su cui si sta registrando: 0 = oggi, 1 = ieri.
-   Serve perche' capita di ricordarsi la sera dopo, o al rientro da Parma. */
+/* catalogo: un alimento = una porzione di riferimento in grammi di macro */
+var CIBI=[
+  {cat:"col", n:"Milk Pro High Protein", d:"bottiglia 330ml",   p:35, c:13, g:1},
+  {cat:"col", n:"Milk Pro mezza",        d:"165ml",             p:18, c:6,  g:0},
+  {cat:"col", n:"Mukky",                 d:"150ml",             p:10, c:5,  g:0},
+  {cat:"col", n:"Biscotti Protein G",    d:"6 biscotti (~65g)", p:9,  c:34, g:13},
+  {cat:"col", n:"Mandorle",              d:"7 pezzi (~8g)",     p:2,  c:2,  g:4},
+  {cat:"col", n:"Avena",                 d:"70g",               p:9,  c:45, g:5},
+  {cat:"col", n:"Yogurt greco 0%",       d:"250g",              p:25, c:10, g:0},
+  {cat:"prot", n:"Pollo",            d:"petto 150g cotto",   p:33, c:0,  g:4},
+  {cat:"prot", n:"Tacchino",         d:"fesa 150g cotta",    p:34, c:0,  g:3},
+  {cat:"prot", n:"Pesce bianco",     d:"180g",               p:36, c:0,  g:2},
+  {cat:"prot", n:"Salmone",          d:"150g cotto",         p:33, c:0,  g:13},
+  {cat:"prot", n:"Tonno naturale",   d:"scatoletta 80g",     p:18, c:0,  g:1},
+  {cat:"prot", n:"Tonno grande",     d:"scatoletta 120g",    p:26, c:0,  g:1},
+  {cat:"prot", n:"Bresaola",         d:"80g",                p:26, c:0,  g:2},
+  {cat:"prot", n:"Uova",             d:"3 grandi",           p:18, c:1,  g:15},
+  {cat:"prot", n:"Albume",           d:"200g",               p:22, c:2,  g:0},
+  {cat:"prot", n:"Fiocchi di latte", d:"200g",               p:24, c:6,  g:8},
+  {cat:"prot", n:"Legumi cotti",     d:"250g",               p:16, c:40, g:3},
+  {cat:"prot", n:"Whey isolate",     d:"1 misurino",         p:26, c:2,  g:1},
+  {cat:"carb", n:"Riso",     d:"80g a crudo",  p:6,  c:62, g:1},
+  {cat:"carb", n:"Pasta",    d:"80g a crudo",  p:10, c:60, g:1},
+  {cat:"carb", n:"Patate",   d:"300g",         p:6,  c:60, g:0},
+  {cat:"carb", n:"Pane",     d:"100g",         p:9,  c:52, g:1},
+  {cat:"carb", n:"Banana",   d:"1 media",      p:1,  c:25, g:0},
+  {cat:"carb", n:"Mela o pera", d:"1 media",   p:0,  c:20, g:0},
+  {cat:"gras", n:"Olio EVO",     d:"1 cucchiaio", p:0, c:0, g:12},
+  {cat:"gras", n:"Frutta secca", d:"20g",         p:4, c:1, g:11},
+  {cat:"gras", n:"Avocado",      d:"50g",         p:1, c:1, g:7},
+  {cat:"gras", n:"Parmigiano",   d:"20g",         p:7, c:0, g:7},
+  {cat:"pia", n:"Pizza",          d:"margherita intera",    p:26, c:116, g:33},
+  {cat:"pia", n:"Lasagne",        d:"porzione ristorante",  p:26, c:58,  g:33},
+  {cat:"pia", n:"Hamburger e patatine", d:"",               p:26, c:116, g:44},
+  {cat:"pia", n:"Cotoletta",      d:"o altro fritto",       p:26, c:29,  g:33},
+  {cat:"pia", n:"Risotto",        d:"porzione",             p:6,  c:58,  g:22},
+  {cat:"pia", n:"Dolce",          d:"al ristorante",        p:2,  c:58,  g:22},
+  {cat:"pia", n:"Primo in mensa", d:"pasta o riso condito", p:10, c:70,  g:14},
+  {cat:"pia", n:"Secondo magro",  d:"griglia, in mensa",    p:32, c:0,   g:8},
+  {cat:"pia", n:"Contorno",       d:"verdure con olio",     p:2,  c:8,   g:10}
+];
+var CIB_CAT=[["col","Colazione"],["prot","Proteine"],["carb","Carbo"],["gras","Grassi"],["pia","Piatti"]];
+
+/* ricette = combinazioni di voci del catalogo, smontabili dopo l'inserimento */
+var RICETTE=[
+  {n:"Colazione Parma",     m:"col", v:[["Milk Pro High Protein",1],["Mandorle",1],["Biscotti Protein G",1]]},
+  {n:"Colazione Gallarate", m:"col", v:[["Milk Pro mezza",1],["Mukky",1],["Mandorle",1],["Biscotti Protein G",1]]},
+  {n:"Pranzo tipo casa",    m:"pra", v:[["Pesce bianco",1],["Riso",1],["Olio EVO",1]]},
+  {n:"Cena tipo casa",      m:"cen", v:[["Tacchino",1],["Patate",1],["Olio EVO",1]]},
+  {n:"Mensa Parma",         m:"pra", v:[["Primo in mensa",1],["Secondo magro",1],["Contorno",1]]}
+];
+
+/* alimenti e ricette aggiunti dalle patch del coach */
+var CIBX=[], CIBR=[];
+function cibCat(){ return CIBI.concat(CIBX); }
+function cibRic(){ return RICETTE.concat(CIBR); }
+function cibFind(n){ return cibCat().filter(function(x){ return x.n===n; })[0]; }
+
+/* ---------- giorno di lavoro ---------- */
 var CIB_DAY=0;
 function cibDate(){
   if(!CIB_DAY) return today();
   var d=new Date(); d.setDate(d.getDate()-CIB_DAY); return d2s(d);
 }
-function cibOn(date){
-  var b=benOn(date||cibDate());
-  return {p:(b&&b.cibP)||0, c:(b&&b.cibC)||0, g:(b&&b.cibG)||0};
-}
-/* le voci del giorno, in una stringa sola sulla stessa riga:
-   "nome|p|c|g;nome|p|c|g". Niente colonna nuova oltre a questa. */
-function cibVoci(date){
-  var b=benOn(date||cibDate());
-  if(!b || !b.cibL) return [];
-  return String(b.cibL).split(";").filter(Boolean).map(function(v){
-    var a=v.split("|");
-    return {n:a[0], p:+a[1]||0, c:+a[2]||0, g:+a[3]||0};
-  });
-}
-function cibSalvaVoci(b, voci){
-  b.cibL = voci.slice(-24).map(function(v){
-    return String(v.n).replace(/[|;]/g,"-")+"|"+v.p+"|"+v.c+"|"+v.g;
-  }).join(";");
-}
-function cibBlk(o){ return {p:o.p/BLK.p, c:o.c/BLK.c, g:o.g/BLK.g}; }
-function b1(n){ return (Math.round(n*10)/10).toString().replace(".",","); }
 
-async function cibAdd(dp,dc,dg,nome){
-  var dt=cibDate(), b=benOn(dt);
+/* ---------- lettura e scrittura della giornata ---------- */
+function cibVuoto(){ return {col:[],sm:[],pra:[],sp:[],cen:[],ex:[]}; }
+function cibDay(date){
+  var b=benOn(date||cibDate());
+  if(!b) return cibVuoto();
+  if(b.cibJ){
+    try{ return Object.assign(cibVuoto(), JSON.parse(b.cibJ)); }catch(e){}
+  }
+  var g=cibVuoto();
+  if(b.cibL){                                   /* migrazione dalla versione a elenco */
+    String(b.cibL).split(";").filter(Boolean).forEach(function(v){
+      var a=v.split("|");
+      g.ex.push({n:a[0], p:+a[1]||0, c:+a[2]||0, g:+a[3]||0, q:1});
+    });
+  }
+  return g;
+}
+function cibSomma(items){
+  var t={p:0,c:0,g:0};
+  (items||[]).forEach(function(v){ var q=v.q||1; t.p+=(v.p||0)*q; t.c+=(v.c||0)*q; t.g+=(v.g||0)*q; });
+  return t;
+}
+function cibTot(g){
+  var t={p:0,c:0,g:0};
+  MEALS.forEach(function(m){
+    var s=cibSomma(g[m.k]); t.p+=s.p; t.c+=s.c; t.g+=s.g;
+  });
+  return t;
+}
+async function cibSave(g,date){
+  var dt=date||cibDate(), b=benOn(dt);
   if(!b){
     b={date:dt, w:weekOf(dt), refl:null, resp:false, camm:null, hrv:null, read:null,
        sonno:null, alc:false, peso:null, rhr:null, stress:null, mente:null,
        passi:null, ipo:null, note:""};
     S.ben.push(b);
   }
-  b.cibP=Math.max(0,(b.cibP||0)+dp);
-  b.cibC=Math.max(0,(b.cibC||0)+dc);
-  b.cibG=Math.max(0,(b.cibG||0)+dg);
-  if(nome){ var v=cibVoci(dt); v.push({n:nome,p:dp,c:dc,g:dg}); cibSalvaVoci(b,v); }
+  var t=cibTot(g);
+  b.cibJ=JSON.stringify(g); b.cibL="";
+  b.cibP=Math.round(t.p); b.cibC=Math.round(t.c); b.cibG=Math.round(t.g);
   var ok=await save();
   if(SYNC.on()) doPush(false);
   if(!ok) toast("NON salvato: vedi la scheda Coach");
   return ok;
 }
-async function cibReset(){
-  var b=benOn(cibDate()); if(!b) return true;
-  b.cibP=0; b.cibC=0; b.cibG=0; b.cibL="";
-  var ok=await save(); if(SYNC.on()) doPush(false);
-  return ok;
+function cibOn(date){
+  var b=benOn(date||cibDate());
+  return {p:(b&&b.cibP)||0, c:(b&&b.cibC)||0, g:(b&&b.cibG)||0};
 }
-/* togliere una voce sbagliata: sottrae esattamente quello che aveva aggiunto.
-   Senza questo, un tocco sbagliato su "Colazione Parma" non si disfa con i
-   pulsanti a blocchi interi. */
-async function cibDel(idx){
-  var dt=cibDate(), b=benOn(dt); if(!b) return true;
-  var v=cibVoci(dt), x=v[idx]; if(!x) return true;
-  b.cibP=Math.max(0,(b.cibP||0)-x.p);
-  b.cibC=Math.max(0,(b.cibC||0)-x.c);
-  b.cibG=Math.max(0,(b.cibG||0)-x.g);
-  v.splice(idx,1); cibSalvaVoci(b,v);
-  var ok=await save(); if(SYNC.on()) doPush(false);
-  return ok;
+function cibBlk(o){ return {p:o.p/BLK.p, c:o.c/BLK.c, g:o.g/BLK.g}; }
+function b1(n){ return (Math.round(n*10)/10).toString().replace(".",","); }
+function q1(n){ return n===1 ? "" : " \u00d7"+b1(n); }
+
+/* ---------- target, ricalibrato sui dati raccolti ---------- */
+function cibTarget(){
+  var off=S.cibOff||0;                       /* scostamento in kcal, deciso da te */
+  var carbOff=Math.round(off/4);             /* lo assorbono i carboidrati */
+  return {p:130, c:350+carbOff, g:70, kcal:2550+off, off:off};
+}
+function cibProposta(){
+  if(typeof weightSlope!=="function") return null;
+  var sl=weightSlope();
+  if(!sl || !sl.ok) return null;
+  var off=S.cibOff||0;
+  if(S.cibOffTs){
+    var giorni=(new Date().getTime()-s2d(S.cibOffTs).getTime())/86400000;
+    if(giorni<14) return null;               /* una proposta ogni due settimane, non di piu' */
+  }
+  if(sl.g<150) return {dir:1,  kcal:off+150, txt:"Il peso sale di "+sl.g+" g a settimana, sotto il corridoio 150-250."};
+  if(sl.g>250) return {dir:-1, kcal:off-150, txt:"Il peso sale di "+sl.g+" g a settimana, sopra il corridoio 150-250."};
+  return null;
 }
 
-/* cosa manca per chiudere la giornata, detto in alimenti */
+/* ---------- voci ---------- */
+async function cibAdd(mk, nome, qta){
+  var g=cibDay(), x=cibFind(nome);
+  if(!x) return false;
+  var lst=g[mk]||(g[mk]=[]);
+  var gia=lst.filter(function(v){ return v.n===nome && !v.w; })[0];
+  if(gia) gia.q=(gia.q||1)+(qta||1);
+  else lst.push({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:qta||1});
+  return cibSave(g);
+}
+async function cibAddRic(mk, nome){
+  var r=cibRic().filter(function(x){ return x.n===nome; })[0];
+  if(!r) return false;
+  var g=cibDay(), lst=g[mk]||(g[mk]=[]);
+  r.v.forEach(function(pair){
+    var x=cibFind(pair[0]); if(!x) return;
+    var gia=lst.filter(function(v){ return v.n===x.n && !v.w; })[0];
+    if(gia) gia.q=(gia.q||1)+pair[1];
+    else lst.push({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:pair[1]});
+  });
+  return cibSave(g);
+}
+/* Voce descritta a parole. Vale una stima provvisoria finche' il coach non la
+   converte: quanto manca a chiudere quel pasto, che e' il caso piu' probabile
+   quando descrivi il piatto principale. Resta marcata come provvisoria. */
+async function cibAddLibero(mk, testo){
+  if(!testo) return false;
+  var g=cibDay(), m=meal(mk), fatto=cibSomma(g[mk]);
+  var st={p:Math.max(8, m.p-fatto.p), c:Math.max(10, m.c-fatto.c), g:Math.max(3, m.g-fatto.g)};
+  (g[mk]||(g[mk]=[])).push({n:testo, p:st.p, c:st.c, g:st.g, q:1, w:1});
+  return cibSave(g);
+}
+async function cibDel(mk, i){ var g=cibDay(); (g[mk]||[]).splice(i,1); return cibSave(g); }
+async function cibQ(mk, i, d){
+  var g=cibDay(), v=(g[mk]||[])[i]; if(!v) return false;
+  v.q=Math.round(((v.q||1)+d)*2)/2;
+  if(v.q<=0) g[mk].splice(i,1);
+  return cibSave(g);
+}
+async function cibReset(){
+  var b=benOn(cibDate()); if(!b) return true;
+  b.cibJ=""; b.cibL=""; b.cibP=0; b.cibC=0; b.cibG=0;
+  var ok=await save(); if(SYNC.on()) doPush(false);
+  return ok;
+}
+/* voci ancora da convertire, per il briefing */
+function cibDaStimare(giorni){
+  var out=[], lim=giorni||14, now=new Date().setHours(23,59,59,999);
+  S.ben.forEach(function(b){
+    if(!b.cibJ) return;
+    var dd=(now-s2d(b.date).getTime())/86400000;
+    if(dd<0||dd>lim) return;
+    var g=cibDay(b.date);
+    MEALS.forEach(function(m){
+      (g[m.k]||[]).forEach(function(v){ if(v.w) out.push({date:b.date, m:m.n, n:v.n}); });
+    });
+  });
+  return out;
+}
+/* il coach converte una voce libera: stessa descrizione, stessi valori */
+function cibRisolvi(nome, p, c, gg){
+  var n=0, key=String(nome).toLowerCase().trim();
+  S.ben.forEach(function(b){
+    if(!b.cibJ) return;
+    var g=cibDay(b.date), tocc=false;
+    MEALS.forEach(function(m){
+      (g[m.k]||[]).forEach(function(v){
+        if(v.w && String(v.n).toLowerCase().trim()===key){
+          v.p=p; v.c=c; v.g=gg; delete v.w; tocc=true; n++;
+        }
+      });
+    });
+    if(tocc){
+      var t=cibTot(g);
+      b.cibJ=JSON.stringify(g);
+      b.cibP=Math.round(t.p); b.cibC=Math.round(t.c); b.cibG=Math.round(t.g);
+    }
+  });
+  return n;
+}
+
 function cibHint(r){
   var out=[];
   if(r.p>=0.7) out.push(r.p>=1.7?"due porzioni proteiche":"una porzione proteica");
   if(r.c>=0.7) out.push(r.c>=1.7?"due porzioni di carbo":"una porzione di carbo");
   if(r.g>=0.7) out.push(r.g>=1.7?"due di grassi":"un cucchiaio d'olio");
-  /* lo sforo di grassi si dice sempre, non solo a giornata chiusa:
-     e' l'informazione che serve la sera, quando puoi ancora decidere. */
   var sforo = r.g<=-1.5 ? " Grassi sopra il target: occhio al reflusso stanotte." : "";
   if(!out.length) return "Giornata chiusa." + sforo;
   return "Ti manca ancora: " + out.join(" + ") + "." + sforo;
 }
-
-/* media settimanale: il target e' settimanale, non giornaliero */
 function cibWeek(){
   var n=0, s={p:0,c:0,g:0}, now=new Date().setHours(23,59,59,999);
   S.ben.forEach(function(b){
     if(!(b.cibP||b.cibC||b.cibG)) return;
     var d=(now-s2d(b.date).getTime())/86400000;
-    if(d<0 || d>7) return;
+    if(d<0||d>7) return;
     n++; s.p+=b.cibP||0; s.c+=b.cibC||0; s.g+=b.cibG||0;
   });
   if(!n) return null;
   return {n:n, p:s.p/n/BLK.p, c:s.c/n/BLK.c, g:s.g/n/BLK.g};
 }
 
-/* la card nella schermata Oggi */
+/* ============================================================
+   INTERFACCIA
+   ============================================================ */
+function cibBarra(lab, val, tgt){
+  var pct=Math.max(0,Math.min(100, val/tgt*100));
+  var over=val>tgt*1.15;
+  var col= over ? "var(--amb)" : val>=tgt*0.9 ? "var(--ok)" : "var(--glow)";
+  return '<div class="mrow"><span class="mlab">'+lab+'</span>'+
+    '<span class="mbar"><i style="width:'+pct+'%;background:'+col+'"></i></span>'+
+    '<span class="mval"'+(over?' style="color:var(--amb)"':'')+'>'+b1(val)+'</span>'+
+    '<span class="mtgt">/'+b1(tgt)+'</span></div>';
+}
+
 function cardCibo(){
-  var o=cibOn(), b=cibBlk(o), vuoto=!(o.p||o.c||o.g);
-  var r={p:BLK_TGT.p-b.p, c:BLK_TGT.c-b.c, g:BLK_TGT.g-b.g};
-  var riga=function(lab,val,tgt,key){
-    var pct=Math.min(100, Math.round(val/tgt*100));
-    var col = val>tgt*1.25 ? "var(--amb)" : val>=tgt*0.9 ? "var(--ok)" : "var(--mut)";
-    return '<div style="margin-top:9px"><div class="between">'+
-      '<div class="sm" style="font-weight:600">'+lab+'</div>'+
-      '<div class="xs" style="font-weight:700;color:'+col+'">'+b1(val)+' / '+tgt+'</div></div>'+
-      '<div style="height:5px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden">'+
-      '<div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>'+
-      '<div class="between" style="margin-top:5px">'+
-      '<button class="btn sm ghost" data-a="cib-" data-k="'+key+'" style="padding:0 14px;min-height:32px">\u2212</button>'+
-      '<button class="btn sm ghost" data-a="cib+q" data-k="'+key+'" style="padding:0 14px;min-height:32px">+ 1 blocco</button>'+
-      '</div></div>';
-  };
-  var h='<div class="card"><div class="between"><div class="eyebrow">Cibo \u00b7 '+(CIB_DAY?"ieri":"oggi")+'</div>'+
-    '<div class="xs mut">'+BLK_TGT.p+'P \u00b7 '+BLK_TGT.c+'C \u00b7 '+BLK_TGT.g+'G</div></div>';
-  h+=riga("\ud83e\udd69 Proteine", b.p, BLK_TGT.p, "p");
-  h+=riga("\ud83c\udf5a Carboidrati", b.c, BLK_TGT.c, "c");
-  h+=riga("\ud83e\udd51 Grassi", b.g, BLK_TGT.g, "g");
-  h+='<div class="sm" style="margin-top:11px;font-weight:600;color:'+
+  var g=cibDay(), tot=cibTot(g), b=cibBlk(tot), tg=cibTarget();
+  var tb={p:tg.p/BLK.p, c:tg.c/BLK.c, g:tg.g/BLK.g};
+  var r={p:tb.p-b.p, c:tb.c-b.c, g:tb.g-b.g};
+  var vuoto=!(tot.p||tot.c||tot.g);
+
+  var h='<div class="card"><div class="between">'+
+    '<div class="eyebrow">Cibo \u00b7 '+(CIB_DAY?"ieri":"oggi")+'</div>'+
+    '<div class="xs mut">'+tg.kcal+' kcal'+(tg.off?' <span style="color:var(--amb)">'+(tg.off>0?"+":"")+tg.off+'</span>':'')+'</div></div>';
+
+  h+='<div class="macro">'+cibBarra("P",b.p,tb.p)+cibBarra("C",b.c,tb.c)+cibBarra("G",b.g,tb.g)+'</div>';
+
+  /* la striscia dei pasti: la giornata letta come sequenza */
+  h+='<div class="rail">';
+  MEALS.forEach(function(m){
+    var it=g[m.k]||[], t=cibSomma(it), pieno=!!it.length;
+    var att=m.p+m.c+m.g, fat=t.p+t.c+t.g;
+    var stato = !pieno ? "" : (att && fat>att*1.25 ? " over" : " done");
+    var attesa = it.some(function(v){ return v.w; });
+    h+='<button class="meal'+stato+'" data-a="pasto" data-m="'+m.k+'">'+
+       '<span class="mdot"></span>'+
+       '<span class="mname">'+m.n+(attesa?' <b class="pend">?</b>':'')+'</span>'+
+       '<span class="mmac">'+(pieno? b1(t.p/BLK.p)+'P \u00b7 '+b1(t.c/BLK.c)+'C \u00b7 '+b1(t.g/BLK.g)+'G' : (m.k==="ex"?'\u2013':'da fare'))+'</span>'+
+       '</button>';
+  });
+  h+='</div>';
+
+  h+='<div class="sm" style="margin-top:12px;font-weight:600;color:'+
      ((r.p<=0.4&&r.c<=0.4&&r.g<=0.4)?"var(--ok)":"var(--bone)")+'">'+esc(cibHint(r))+'</div>';
+
   var w=cibWeek();
-  if(w) h+='<div class="xs mut" style="margin-top:6px">Media 7 giorni: '+b1(w.p)+'P \u00b7 '+b1(w.c)+'C \u00b7 '+b1(w.g)+
-    'G su '+w.n+' giorn'+(w.n>1?"i":"o")+'. Il target \u00e8 settimanale: una giornata storta non conta.</div>';
-  var voci=cibVoci();
-  if(voci.length) h+='<div class="xs mut" style="margin-top:8px">'+
-    esc(voci.map(function(v){ return v.n; }).join(" \u00b7 "))+'</div>';
-  h+='<button class="btn pri" style="margin-top:11px" data-a="cibo">Aggiungi quello che hai mangiato</button>';
-  if(!vuoto) h+='<button class="btn sm ghost" style="width:100%;margin-top:7px" data-a="cibz">Azzera '+(CIB_DAY?"ieri":"oggi")+'</button>';
+  if(w) h+='<div class="xs mut" style="margin-top:6px">Media 7 giorni: '+b1(w.p)+'P \u00b7 '+b1(w.c)+'C \u00b7 '+b1(w.g)+'G su '+
+    w.n+' giornat'+(w.n>1?"e":"a")+(w.n<4?'. Troppo poche per fidarsi.':'. Il target \u00e8 settimanale.')+'</div>';
+
+  var pr=cibProposta();
+  if(pr) h+='<div class="prop"><div class="sm" style="font-weight:600">'+esc(pr.txt)+'</div>'+
+    '<div class="xs mut" style="margin:4px 0 9px">Proposta: '+(pr.dir>0?"+":"")+'150 kcal, assorbite dai carboidrati.</div>'+
+    '<div class="grid2"><button class="btn sm" data-a="cibcal" data-v="'+pr.kcal+'">Adegua</button>'+
+    '<button class="btn sm ghost" data-a="cibcal" data-v="'+(S.cibOff||0)+'">Lascia com\'\u00e8</button></div></div>';
+
+  if(!vuoto) h+='<button class="btn sm ghost" style="width:100%;margin-top:9px" data-a="cibz">Azzera '+(CIB_DAY?"ieri":"oggi")+'</button>';
   h+='</div>';
   return h;
 }
 
-/* il foglio di scelta */
-function formCibo(tab){
-  tab=tab||"pasti";
-  var o=cibOn(), b=cibBlk(o);
-  var h='<div class="eyebrow">Cibo</div><h2 style="margin:4px 0 2px">'+
-    b1(b.p)+'P \u00b7 '+b1(b.c)+'C \u00b7 '+b1(b.g)+'G</h2>'+
-    '<div class="sm mut" style="margin-bottom:10px">Tocca quello che hai mangiato. Il conto si aggiorna qui sopra.</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:10px">'+
-     '<button class="pill'+(CIB_DAY===0?" on":"")+'" data-a="cibday" data-v="0" data-t="'+tab+'">Oggi</button>'+
-     '<button class="pill'+(CIB_DAY===1?" on":"")+'" data-a="cibday" data-v="1" data-t="'+tab+'">Ieri</button>'+
-     '<div class="xs mut" style="align-self:center;margin-left:4px">'+esc(cibDate())+'</div></div>';
-  var vv=cibVoci();
-  if(vv.length){
-    h+='<div class="eyebrow" style="margin:2px 0 4px">Gi\u00e0 registrato \u00b7 tocca per togliere</div><div class="card" style="padding:4px 10px;margin-bottom:10px">';
-    vv.forEach(function(v,i){
-      h+='<button class="item" data-a="cibdel" data-i="'+i+'">'+
-         '<div class="t"><b>'+esc(v.n)+'</b></div>'+
-         '<div class="xs mut" style="white-space:nowrap">'+b1(v.p/BLK.p)+'P \u00b7 '+b1(v.c/BLK.c)+'C \u00b7 '+b1(v.g/BLK.g)+'G &nbsp;\u2715</div></button>';
+function formPasto(mk, cat){
+  var m=meal(mk), g=cibDay(), it=g[mk]||[], t=cibSomma(it);
+  cat=cat||(mk==="col"?"col":(mk==="pra"||mk==="cen")?"pia":"prot");
+
+  var h='<div class="between"><div><div class="eyebrow">'+esc(cibDate())+'</div>'+
+    '<h2 style="margin:3px 0 0;font-size:18px">'+esc(m.n)+'</h2></div>'+
+    '<div style="text-align:right"><div class="num" style="font-size:16px">'+b1(t.p/BLK.p)+'P \u00b7 '+b1(t.c/BLK.c)+'C \u00b7 '+b1(t.g/BLK.g)+'G</div>'+
+    (m.p? '<div class="xs mut">atteso '+b1(m.p/BLK.p)+' \u00b7 '+b1(m.c/BLK.c)+' \u00b7 '+b1(m.g/BLK.g)+'</div>':'')+
+    '</div></div>';
+
+  h+='<div class="daysw"><button class="pill'+(CIB_DAY===0?" on":"")+'" data-a="cibday" data-v="0" data-m="'+mk+'" data-c="'+cat+'">Oggi</button>'+
+     '<button class="pill'+(CIB_DAY===1?" on":"")+'" data-a="cibday" data-v="1" data-m="'+mk+'" data-c="'+cat+'">Ieri</button></div>';
+
+  if(it.length){
+    h+='<div class="card" style="padding:2px 12px;margin:10px 0">';
+    it.forEach(function(v,i){
+      var q=v.q||1;
+      h+='<div class="vrow'+(v.w?" attesa":"")+'">'+
+         '<div class="vtxt"><b>'+esc(v.n)+q1(q)+'</b>'+
+         (v.w? '<span class="xs" style="color:var(--amb)">stima provvisoria, in attesa</span>'
+             : '<span class="xs mut">'+esc(v.d||"")+(v.d?' \u00b7 ':'')+b1(v.p*q/BLK.p)+'P '+b1(v.c*q/BLK.c)+'C '+b1(v.g*q/BLK.g)+'G</span>')+
+         '</div>'+
+         '<div class="vq"><button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="-0.5">\u2212</button>'+
+         '<button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="0.5">+</button>'+
+         '<button class="vx" data-a="cibdel" data-m="'+mk+'" data-i="'+i+'">\u2715</button></div></div>';
+    });
+    h+='</div>';
+  } else {
+    h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:16px"><div class="sm mut">Niente registrato per questo pasto.</div></div>';
+  }
+
+  h+='<button class="btn" data-a="ciblib" data-m="'+mk+'">Scrivi quello che hai mangiato</button>'+
+     '<div class="xs mut" style="margin:6px 0 14px">Descrivilo a parole. Intanto vale una stima provvisoria, poi te lo converto io dal briefing.</div>';
+
+  var ric=cibRic().filter(function(r){ return r.m===mk; });
+  if(ric.length){
+    h+='<div class="eyebrow" style="margin-bottom:6px">Ricette</div><div class="card" style="padding:2px 12px;margin-bottom:14px">';
+    ric.forEach(function(r){
+      h+='<button class="item" data-a="cibric" data-m="'+mk+'" data-n="'+esc(r.n)+'">'+
+         '<div class="t"><b>'+esc(r.n)+'</b><span class="xs mut">'+esc(r.v.map(function(x){return x[0];}).join(", "))+'</span></div>'+
+         '<div style="font-weight:700;color:var(--glow)">+</div></button>';
     });
     h+='</div>';
   }
-  h+='<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px">';
-  CIB_TAB.forEach(function(t){
-    h+='<button class="pill'+(t[0]===tab?" on":"")+'" data-a="cibo" data-t="'+t[0]+'">'+t[1]+'</button>';
+
+  h+='<div class="eyebrow" style="margin-bottom:6px">Alimenti</div><div class="tabs">';
+  CIB_CAT.forEach(function(c){
+    h+='<button class="pill'+(c[0]===cat?" on":"")+'" data-a="pasto" data-m="'+mk+'" data-c="'+c[0]+'">'+c[1]+'</button>';
   });
-  h+='</div>';
-  if(tab==="mano") h+='<div class="xs mut" style="margin:2px 0 8px">Quando il piatto non \u00e8 in lista: guardi e conti, senza pesare.</div>';
-  if(tab==="fuori") h+='<div class="xs mut" style="margin:2px 0 8px">Quasi sempre grassi in eccesso, raramente proteine. Se chiudi a 9-10G sai gi\u00e0 perch\u00e9 potresti avere fastidio stanotte.</div>';
-  h+='<div class="card" style="padding:4px 10px">';
-  (CIBI[tab]||[]).forEach(function(c){
-    var bb=[];
-    if(c[2]) bb.push(b1(c[2]/BLK.p)+"P");
-    if(c[3]) bb.push(b1(c[3]/BLK.c)+"C");
-    if(c[4]) bb.push(b1(c[4]/BLK.g)+"G");
-    h+='<button class="item" data-a="cib+" data-t="'+tab+'" data-n="'+esc(c[0])+'" data-p="'+c[2]+'" data-c="'+c[3]+'" data-g="'+c[4]+'">'+
-       '<div class="t"><b>'+esc(c[0])+'</b><span class="xs mut">'+esc(c[1])+'</span></div>'+
-       '<div class="xs" style="font-weight:700;color:var(--glow);text-align:right;white-space:nowrap">'+bb.join(" \u00b7 ")+'</div></button>';
+  h+='</div><div class="card" style="padding:2px 12px">';
+  cibCat().filter(function(x){ return x.cat===cat; }).forEach(function(x){
+    h+='<button class="item" data-a="cibadd" data-m="'+mk+'" data-n="'+esc(x.n)+'">'+
+       '<div class="t"><b>'+esc(x.n)+'</b><span class="xs mut">'+esc(x.d||"")+'</span></div>'+
+       '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+
+       b1(x.p/BLK.p)+'P \u00b7 '+b1(x.c/BLK.c)+'C \u00b7 '+b1(x.g/BLK.g)+'G</div></button>';
   });
-  h+='</div>';
-  h+='<button class="btn ghost" style="margin-top:12px" data-a="x">Chiudi</button>';
+  h+='</div><button class="btn ghost" style="margin-top:14px" data-a="x">Chiudi</button>';
   sheet(h);
 }
 
@@ -1275,10 +1465,10 @@ function diagnose(){
     (b.cibG/BLK.g >= BLK_TGT.g+1.5 ? gr : gl).push(b.refl);
   });
   if(gr.length>=3 && gl.length>=3){
-    var mA=gr.reduce(function(a,b){return a+b;},0)/gr.length;
-    var mB=gl.reduce(function(a,b){return a+b;},0)/gl.length;
-    if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso · reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
-      m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio e' piu' alto ("+gr.length+" giornate contro "+gl.length+"). Non e' una prova di causa, ma e' il primo posto dove guardare."});
+    var mA=gr.reduce(function(x,y){return x+y;},0)/gr.length;
+    var mB=gl.reduce(function(x,y){return x+y;},0)/gl.length;
+    if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso \u00b7 reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
+      m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio \u00e8 pi\u00f9 alto ("+gr.length+" giornate contro "+gl.length+"). Non \u00e8 una prova di causa, ma \u00e8 il primo posto dove guardare."});
   }
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
@@ -1386,10 +1576,17 @@ function briefing(){
   else L.push("- non calcolabile: "+(sl2.why||"dati insufficienti"));
   var wb2=S.ben.filter(function(x){ return x.passi||x.ipo; }).slice(-1)[0];
   if(wb2) L.push("- ultimo riepilogo settimanale: passi "+(wb2.passi||"-")+"/giorno, ipopnea "+(wb2.ipo==null?"-":wb2.ipo)+"/h ("+wb2.date+")");
-  var cw=cibWeek();
-  if(cw) L.push("- cibo, media 7 giorni: "+b1(cw.p)+"P / "+BLK_TGT.p+" \u00b7 "+
-    b1(cw.c)+"C / "+BLK_TGT.c+" \u00b7 "+b1(cw.g)+"G / "+BLK_TGT.g+" (su "+cw.n+" giorni registrati)");
-  else L.push("- cibo: nessun blocco registrato nelle ultime 7 giornate");
+  var cw=cibWeek(), ctg=cibTarget();
+  L.push("- cibo, target "+ctg.kcal+" kcal"+(ctg.off?" (ricalibrato di "+(ctg.off>0?"+":"")+ctg.off+")":""));
+  if(cw) L.push("- cibo, media 7 giorni: "+b1(cw.p)+"P / "+b1(ctg.p/BLK.p)+" \u00b7 "+
+    b1(cw.c)+"C / "+b1(ctg.c/BLK.c)+" \u00b7 "+b1(cw.g)+"G / "+b1(ctg.g/BLK.g)+" (su "+cw.n+" giornate registrate)");
+  else L.push("- cibo: nessuna giornata registrata nell'ultima settimana");
+  var pend=cibDaStimare(14);
+  if(pend.length){
+    L.push("");
+    L.push("Da convertire in blocchi (descritte a parole)");
+    pend.forEach(function(x){ L.push("- "+x.date+" \u00b7 "+x.m+": "+x.n); });
+  }
   var stk2=streak();
   L.push("- catena: "+stk2.n+" settimane consecutive a bersaglio"+(stk2.curOpen?" (quella in corso e' ancora aperta)":""));
   var ml2=mobLast();
@@ -1442,10 +1639,15 @@ var PLAN = null;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function buildPlan(){
   var P = clone(BASEPLAN);
+  CIBX=[]; CIBR=[];
   (S.patches||[]).forEach(function(pt){ (pt.ops||[]).forEach(function(op){ applyOp(P, op); }); });
   return P;
 }
 function applyOp(P, op){
+  /* operazioni sul cibo: catalogo, ricette, conversione delle voci descritte */
+  if(op.op==="cibo"){ CIBX.push({cat:op.cat||"pia", n:op.n, d:op.d||"", p:+op.p||0, c:+op.c||0, g:+op.g||0}); return; }
+  if(op.op==="ricetta"){ CIBR.push({n:op.n, m:op.m||"pra", v:op.v||[]}); return; }
+  if(op.op==="stima"){ cibRisolvi(op.n, +op.p||0, +op.c||0, +op.g||0); return; }
   var day = P[op.d]; if(!day) return;
   if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
   if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
@@ -1466,6 +1668,9 @@ function applyOp(P, op){
 /* anteprima leggibile prima di applicare */
 function previewPatch(pt){
   return (pt.ops||[]).map(function(o){
+    if(o.op==="cibo") return "Nuovo alimento: "+o.n+" ("+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G)";
+    if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
+    if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
     if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
     if(o.op==="dischi") return "Sequenza dischi giorno "+o.d+" → "+o.v;
@@ -1876,7 +2081,7 @@ var SYNC = {
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
         mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"),
         cibP:keep(r,loc,"cibP"), cibC:keep(r,loc,"cibC"), cibG:keep(r,loc,"cibG"),
-        cibL:(r.cibL===undefined?(loc?loc.cibL:undefined):(r.cibL||""))};
+        cibJ:(r.cibJ===undefined?(loc?loc.cibJ:undefined):(r.cibJ||""))};
     }), S.ben, byDate, "App_Benessere");
     if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
       return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
@@ -1903,7 +2108,7 @@ var SYNC = {
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
       ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
         read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
-        mente:r.mente,passi:r.passi,ipo:r.ipo,cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibL:r.cibL,note:r.note})),
+        mente:r.mente,passi:r.passi,ipo:r.ipo,cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibJ:r.cibJ,note:r.note})),
       sim: (S.sim||[]).map(r=>({date:r.date,w:r.w,ex:r.ex,q:r.q,a:r.a,side:r.side})),
       mob: (S.mob||[]).map(function(r){
         var o={date:r.date,w:r.w};
@@ -2647,32 +2852,23 @@ document.addEventListener("click", function(ev){
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(el.dataset.d||null); return; }
-  if(a==="cibo"){ formCibo(el.dataset.t); return; }
-  if(a==="cibday"){ CIB_DAY=+el.dataset.v||0; render(); formCibo(el.dataset.t); return; }
-  if(a==="cib+"){
-    cibAdd(+el.dataset.p||0, +el.dataset.c||0, +el.dataset.g||0, el.dataset.n).then(function(){
-      render(); formCibo(el.dataset.t);
-    });
+  if(a==="pasto"){ formPasto(el.dataset.m, el.dataset.c); return; }
+  if(a==="cibday"){ CIB_DAY=+el.dataset.v||0; render(); formPasto(el.dataset.m, el.dataset.c); return; }
+  if(a==="cibadd"){ cibAdd(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m, el.dataset.c); }); return; }
+  if(a==="cibric"){ cibAddRic(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m); }); return; }
+  if(a==="cibq"){ cibQ(el.dataset.m, +el.dataset.i, +el.dataset.d).then(function(){ render(); formPasto(el.dataset.m); }); return; }
+  if(a==="cibdel"){ cibDel(el.dataset.m, +el.dataset.i).then(function(){ render(); formPasto(el.dataset.m); }); return; }
+  if(a==="ciblib"){
+    var txt=prompt("Cosa hai mangiato? Descrivilo come ti viene.\nEsempio: risotto ai funghi del ristorante, porzione normale");
+    if(txt && txt.trim()) cibAddLibero(el.dataset.m, txt.trim()).then(function(){ render(); formPasto(el.dataset.m); });
     return;
   }
-  if(a==="cibdel"){
-    cibDel(+el.dataset.i).then(function(){ render(); formCibo(el.dataset.t); });
+  if(a==="cibcal"){
+    S.cibOff=+el.dataset.v||0; S.cibOffTs=today();
+    save().then(function(){ render(); toast("Target aggiornato: "+cibTarget().kcal+" kcal"); });
     return;
   }
-  if(a==="cib+q"){
-    var kq=el.dataset.k;
-    cibAdd(kq==="p"?BLK.p:0, kq==="c"?BLK.c:0, kq==="g"?BLK.g:0, "+1 blocco "+kq.toUpperCase()).then(render);
-    return;
-  }
-  if(a==="cib-"){
-    var km=el.dataset.k;
-    cibAdd(km==="p"?-BLK.p:0, km==="c"?-BLK.c:0, km==="g"?-BLK.g:0, "-1 blocco "+km.toUpperCase()).then(render);
-    return;
-  }
-  if(a==="cibz"){
-    if(confirm("Azzerare i blocchi di questa giornata?")) cibReset().then(render);
-    return;
-  }
+  if(a==="cibz"){ if(confirm("Azzerare questa giornata?")) cibReset().then(render); return; }
   if(a==="benadd"){ var y=new Date(); y.setDate(y.getDate()-1); formBen(d2s(y), true); return; }
   if(a==="saveben"){ saveBen(el.dataset.d||null); return; }
   if(a==="bendel"){ delBen(el.dataset.d); return; }
@@ -2991,7 +3187,7 @@ async function saveBen(origDate){
     read:g("bRead"), sonno:g("bSonno"), peso:g("bPeso"),
     stress:pick("#bStr","st"), mente:pick("#bMen","me"),
     passi:(prev.passi===undefined?null:prev.passi), ipo:(prev.ipo===undefined?null:prev.ipo),
-    cibP:prev.cibP, cibC:prev.cibC, cibG:prev.cibG, cibL:prev.cibL,
+    cibP:prev.cibP, cibC:prev.cibC, cibG:prev.cibG, cibJ:prev.cibJ,
     note:document.getElementById("bNote").value};
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
   S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
@@ -3222,7 +3418,7 @@ function patchPreview(){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>!PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p;
     sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
