@@ -359,8 +359,8 @@ var EX = {
   "Floor Press (volume)":       {g:"Petto",   t:"compl",cap:20, step:2},
   "Push-up":                    {g:"Petto",   t:"compl"},
   "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  cap:8,  step:2},
-  "Alzate laterali":            {g:"Spalle",  t:"iso",  step:2},
-  "Face pull":                  {g:"Spalle",  t:"iso",  step:2},
+  "Alzate laterali":            {g:"Spalle",  t:"iso",  step:1},
+  "Face pull":                  {g:"Spalle",  t:"iso",  cap:6,  step:2},
   "Hip thrust con banda":       {g:"Gambe",   t:"compl",band:true},
   "Split-stance RDL":           {g:"Gambe",   t:"comp", cap:20, step:2, uni:true},
   "Affondi indietro manubri":   {g:"Gambe",   t:"compl",step:2, uni:true},
@@ -386,8 +386,9 @@ var EX = {
   "Push-up piedi rialzati o deficit":{g:"Petto",t:"compl"}
 };
 
-var REST = {comp:120, compl:90, iso:60, core:45};
-var BANDS = ["gialla","verde","azzurra","nera","rossa"];
+var REST = {comp:150, compl:90, iso:75, core:45};
+/* scala reale del set BeMaxx: gialla 4,5 · blu 9,1 · verde 13,6 · nera 18,1 · rossa 22,7 kg */
+var BANDS = ["gialla","blu","verde","nera","rossa"];
 
 /* ---------- riscaldamento: 6 minuti, blocco scoliosi ---------- */
 var WARM = [
@@ -641,7 +642,7 @@ var G = {
    MOTORE
    ============================================================ */
 var KEY = "rachide:v1";
-var S = {log:[], sess:[], mis:[], ben:[], sim:[], mob:[], patches:[], draft:null, seeded:false,
+var S = {log:[], sess:[], mis:[], ben:[], sim:[], mob:[], patches:[], draft:null, seeded:false, dirtyBen:{}, benTs:{},
          lastBackup:null, installed:null, intent:null};
 
 /* ---------- storage ----------
@@ -826,8 +827,9 @@ function readiness(exDef){
   }
   if(m.cap && cur>=m.cap){
     var alt = n.indexOf("Reverse Fly")===0 ? "6 kg è tetto assoluto finché non hai una valutazione. Non salire."
-            : n.indexOf("Floor Press")===0 ? "sei al tetto: allunga la discesa a 3-4 secondi"
-            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto 8 kg: chiudi 4×10 pulite per due sessioni prima di salire"
+            : n.indexOf("Floor Press")===0 ? "tetto manubri: sali di ripetizioni fino a 12, poi 1 s di pausa a terra"
+            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto 8 kg: si progredisce di ripetizioni, fino a 12"
+            : n.indexOf("Face pull")===0 ? "tetto 6 kg: si progredisce con 2 s di tenuta a gomiti alti"
             : "tetto raggiunto: progredisci con tempo o ripetizioni";
     return {ready:true, cap:true, why:alt};
   }
@@ -966,6 +968,7 @@ async function cibSave(g,date){
   var t=cibTot(g);
   b.cibJ=JSON.stringify(g); b.cibL="";
   b.cibP=Math.round(t.p); b.cibC=Math.round(t.c); b.cibG=Math.round(t.g);
+  benTouch(dt);
   var ok=await save();
   if(SYNC.on()) doPush(false);
   if(!ok) toast("NON salvato: vedi la scheda Coach");
@@ -1024,12 +1027,87 @@ async function cibAddRic(mk, nome){
 /* Voce descritta a parole. Vale una stima provvisoria finche' il coach non la
    converte: quanto manca a chiudere quel pasto, che e' il caso piu' probabile
    quando descrivi il piatto principale. Resta marcata come provvisoria. */
-async function cibAddLibero(mk, testo){
+/* La stima provvisoria parte dal pasto tipo moltiplicato per la porzione che
+   scegli (piccola, normale, abbondante): prevedibile, e vicina al vero per il
+   piatto principale. Fuori pasto si usa lo spuntino come riferimento. */
+var PORZ=[["Piccola",0.5],["Normale",1],["Abbondante",1.4]];
+async function cibAddLibero(mk, testo, fatt){
   if(!testo) return false;
-  var g=cibDay(), m=meal(mk), fatto=cibSomma(g[mk]);
-  var st={p:Math.max(8, m.p-fatto.p), c:Math.max(10, m.c-fatto.c), g:Math.max(3, m.g-fatto.g)};
+  var g=cibDay(), m=meal(mk), f=fatt||1;
+  var base = m.p ? m : meal("sm");
+  var st={p:Math.round(base.p*f), c:Math.round(base.c*f), g:Math.round(base.g*f)};
   (g[mk]||(g[mk]=[])).push({n:testo, p:st.p, c:st.c, g:st.g, q:1, w:1});
   return cibSave(g);
+}
+/* una voce gia' nota (dal tuo storico o dal catalogo), con i suoi valori */
+async function cibAddVoce(mk, v){
+  var g=cibDay(), lst=g[mk]||(g[mk]=[]);
+  var gia=lst.filter(function(x){ return !x.w && x.n===v.n && x.p===v.p && x.c===v.c && x.g===v.g; })[0];
+  if(gia) gia.q=(gia.q||1)+1;
+  else lst.push({n:v.n, d:v.d||"", p:v.p, c:v.c, g:v.g, q:1});
+  return cibSave(g);
+}
+function cibIeri(){ var d=s2d(cibDate()); d.setDate(d.getDate()-1); return d2s(d); }
+async function cibRipeti(mk){
+  var y=cibDay(cibIeri())[mk]||[]; if(!y.length) return false;
+  var g=cibDay(), lst=g[mk]||(g[mk]=[]);
+  y.forEach(function(v){ lst.push(JSON.parse(JSON.stringify(v))); });
+  return cibSave(g);
+}
+/* cosa mangi davvero: le voci delle ultime 4 settimane, con i valori gia'
+   convertiti. Prima quelle usate in questo pasto, poi le piu' frequenti. */
+function cibStorico(mk){
+  var now=new Date().setHours(23,59,59,999), map={}, cur=cibDate();
+  S.ben.forEach(function(b){
+    if(!b.cibJ || b.date===cur || !dataOk(b.date)) return;
+    var t=s2d(b.date).getTime(), dd=(now-t)/86400000; if(dd<0||dd>28) return;
+    var g; try{ g=JSON.parse(b.cibJ); }catch(e){ return; }
+    MEALS.forEach(function(m){ (g[m.k]||[]).forEach(function(v){
+      if(v.w || !v.n) return;
+      var k=v.n+"|"+v.p+"|"+v.c+"|"+v.g;
+      var o=map[k]||(map[k]={n:v.n, d:v.d||"", p:+v.p||0, c:+v.c||0, g:+v.g||0, cnt:0, same:0, last:0});
+      o.cnt++; if(m.k===mk) o.same++; if(t>o.last) o.last=t;
+    }); });
+  });
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return (b.same-a.same)||(b.cnt-a.cnt)||(b.last-a.last); });
+}
+function cibVoceBtn(v, mk, i, src){
+  return '<button class="item" data-a="cibrec" data-m="'+mk+'" data-i="'+i+'" data-s="'+src+'">'+
+    '<div class="t"><b>'+esc(v.n)+'</b><span class="xs mut">'+esc(v.d||"")+'</span></div>'+
+    '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+
+    b1(v.p/BLK.p)+'P \u00b7 '+b1(v.c/BLK.c)+'C \u00b7 '+b1(v.g/BLK.g)+'G</div></button>';
+}
+/* scrivi a parole: mentre scrivi, se il piatto l'hai gia' mangiato te lo propongo con i valori veri */
+function formLibero(mk){
+  var m=meal(mk);
+  var h='<div class="eyebrow">'+esc(cibDate())+'</div><h2 style="margin:3px 0 10px;font-size:18px">'+esc(m.n)+'</h2>'+
+    '<label class="fld"><span class="eyebrow">Cosa hai mangiato</span>'+
+    '<textarea id="cibTxt" data-m="'+mk+'" rows="2" placeholder="Esempio: pasta al pomodoro e mozzarella"></textarea></label>'+
+    '<div id="cibSug"></div>'+
+    '<div class="eyebrow" style="margin:12px 0 6px">Porzione</div><div class="pills" id="cibPz">'+
+    PORZ.map(function(p,i){ return '<button class="pill'+(i===1?" on":"")+'" data-q="'+p[1]+'">'+p[0]+'</button>'; }).join("")+'</div>'+
+    '<div class="xs mut" style="margin-top:6px">Vale come stima finch\u00e9 non la converto con i valori veri.</div>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="ciblibok" data-m="'+mk+'">Aggiungi</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="pasto" data-m="'+mk+'">Indietro</button>';
+  sheet(h);
+  setTimeout(function(){ var t=document.getElementById("cibTxt"); if(t) t.focus(); }, 60);
+}
+var _CIBR=[], _CIBS=[];
+function cibSuggerisci(testo, mk){
+  var box=document.getElementById("cibSug"); if(!box) return;
+  var parole=String(testo||"").toLowerCase().split(/\s+/).filter(function(p){ return p.length>=3; });
+  if(!parole.length){ box.innerHTML=""; _CIBS=[]; return; }
+  var pool=cibStorico(mk).concat(cibCat().map(function(x){ return {n:x.n, d:x.d, p:x.p, c:x.c, g:x.g}; }));
+  var visti={};
+  _CIBS=pool.filter(function(v){
+    var nome=(v.n+" "+(v.d||"")).toLowerCase();
+    if(visti[v.n]) return false;
+    var ok=parole.every(function(p){ return nome.indexOf(p)>=0; });
+    if(ok) visti[v.n]=1; return ok;
+  }).slice(0,4);
+  box.innerHTML = _CIBS.length ? '<div class="xs mut" style="margin:8px 0 4px">Gi\u00e0 registrato, con i valori veri: tocca per aggiungerlo</div>'+
+    '<div class="card" style="padding:2px 12px">'+_CIBS.map(function(v,i){ return cibVoceBtn(v, mk, i, "s"); }).join("")+'</div>' : "";
 }
 async function cibDel(mk, i){ var g=cibDay(); (g[mk]||[]).splice(i,1); return cibSave(g); }
 async function cibQ(mk, i, d){
@@ -1041,6 +1119,7 @@ async function cibQ(mk, i, d){
 async function cibReset(){
   var b=benOn(cibDate()); if(!b) return true;
   b.cibJ=""; b.cibL=""; b.cibP=0; b.cibC=0; b.cibG=0;
+  benTouch(b.date);
   var ok=await save(); if(SYNC.on()) doPush(false);
   return ok;
 }
@@ -1075,6 +1154,7 @@ function cibRisolvi(nome, p, c, gg){
       var t=cibTot(g);
       b.cibJ=JSON.stringify(g);
       b.cibP=Math.round(t.p); b.cibC=Math.round(t.c); b.cibG=Math.round(t.g);
+      benTouch(b.date);
     }
   });
   return n;
@@ -1142,6 +1222,8 @@ function cardCibo(){
     '<div class="eyebrow">Cibo \u00b7 '+(CIB_DAY?"ieri":"oggi")+'</div>'+
     '<div class="xs mut">'+tg.kcal+' kcal'+(tg.off?' <span style="color:var(--amb)">'+(tg.off>0?"+":"")+tg.off+'</span>':'')+'</div></div>';
 
+  if(SYNC.on() && benDaInviare(cibDate()))
+    h+='<div class="xs" style="margin-top:4px;color:var(--amb)">Salvato sul telefono, non ancora sul foglio: lo invio appena c\'\u00e8 rete.</div>';
   h+='<div class="macro">'+cibBarra("P",b.p,tb.p)+cibBarra("C",b.c,tb.c)+cibBarra("G",b.g,tb.g)+'</div>';
 
   /* la striscia dei pasti: la giornata letta come sequenza */
@@ -1208,10 +1290,19 @@ function formPasto(mk, cat){
     h+='</div>';
   } else {
     h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:16px"><div class="sm mut">Niente registrato per questo pasto.</div></div>';
+    var ieri=cibDay(cibIeri())[mk]||[];
+    if(ieri.length) h+='<button class="btn" style="margin-bottom:8px" data-a="cibrip" data-m="'+mk+'">Come ieri: '+
+      esc(ieri.map(function(v){ return v.n; }).join(", ").slice(0,60))+'</button>';
   }
 
   h+='<button class="btn" data-a="ciblib" data-m="'+mk+'">Scrivi quello che hai mangiato</button>'+
-     '<div class="xs mut" style="margin:6px 0 14px">Descrivilo a parole. Intanto vale una stima provvisoria, poi te lo converto io dal briefing.</div>';
+     '<div class="xs mut" style="margin:6px 0 14px">Se l\'hai gi\u00e0 mangiato, te lo propongo con i valori veri mentre scrivi.</div>';
+
+  _CIBR=cibStorico(mk).filter(function(v){ return v.same>0 || v.cnt>=2; }).slice(0,6);
+  if(_CIBR.length){
+    h+='<div class="eyebrow" style="margin-bottom:6px">Usati di recente</div><div class="card" style="padding:2px 12px;margin-bottom:14px">'+
+       _CIBR.map(function(v,i){ return cibVoceBtn(v, mk, i, "r"); }).join("")+'</div>';
+  }
 
   var ric=cibRic().filter(function(r){ return r.m===mk; });
   if(ric.length){
@@ -1444,9 +1535,17 @@ function kpi(w){
   ls.forEach(function(r){ var g=meta(r.ex).g;
     grp[g]=(grp[g]||0) + (r.side ? r.reps.length/2 : r.reps.length); });
   Object.keys(grp).forEach(function(g){ grp[g]=Math.round(grp[g]); });
-  /* asimmetria: solo esercizi loggati per lato */
-  var sx=0,dx=0;
-  ls.forEach(function(r){ var t=r.reps.reduce((a,b)=>a+b,0); if(r.side==="S")sx+=t; if(r.side==="D")dx+=t; });
+  /* asimmetria: solo esercizi a ripetizioni loggati per lato, e solo quando
+     nella stessa sessione ci sono entrambi i lati. Gli esercizi a tempo
+     (side plank 60/40) sono asimmetrici per scelta e falsavano il dato. */
+  var sx=0,dx=0, coppie={};
+  ls.forEach(function(r){
+    if(!r.side || meta(r.ex).sec) return;
+    var k=r.date+"|"+r.ex, c=coppie[k]||(coppie[k]={S:null,D:null});
+    c[r.side]=(c[r.side]||0)+r.reps.reduce((a,b)=>a+b,0);
+  });
+  Object.keys(coppie).forEach(function(k){ var c=coppie[k];
+    if(c.S!==null && c.D!==null){ sx+=c.S; dx+=c.D; } });
   var asim = (sx+dx)? Math.round(Math.abs(sx-dx)/((sx+dx)/2)*100) : 0;
   var b=S.ben.filter(x=>x.w===w && x.refl!==null);
   var m=S.mis.filter(x=>x.w===w)[0];
@@ -1466,6 +1565,17 @@ function kpi(w){
    HRV a terra, poco sonno o alcol è recupero, non carico da tagliare.
    ============================================================ */
 function benOn(date){ return S.ben.filter(function(b){ return b.date===date; })[0] || null; }
+/* Ogni modifica a una giornata (cibo o benessere) la segna come "da inviare".
+   Resta segnata finche' un invio al foglio non va a buon fine: fino ad allora
+   una rilettura dal foglio non puo' sovrascriverla con la versione vecchia.
+   benTs ricorda quando e' stata toccata l'ultima volta, anche dopo l'invio:
+   serve a scartare una rilettura partita PRIMA della modifica. */
+function benTouch(date){
+  var t=Date.now();
+  if(!S.dirtyBen) S.dirtyBen={}; if(!S.benTs) S.benTs={};
+  S.dirtyBen[date]=t; S.benTs[date]=t;
+}
+function benDaInviare(date){ return !!(S.dirtyBen && S.dirtyBen[date]); }
 /* mediana HRV di riferimento: gli altri giorni con HRV, esclusa la data in esame,
    così un giorno storto non abbassa la propria soglia */
 function hrvBase(exclDate){
@@ -1766,6 +1876,19 @@ function tsv(){
   });
   return [h.join("\t")].concat(rows).join("\n");
 }
+/* tempo medio fra le serie per tipo di esercizio, in una settimana */
+function recSettimana(w){
+  var tipi={comp:"composti",compl:"complementari",iso:"isolamento",core:"core"}, acc={}, visti={};
+  S.log.forEach(function(r){
+    if(r.w!==w || r.rec==null) return;
+    var k=r.date+"|"+r.ex; if(visti[k]) return; visti[k]=1;
+    var t=meta(r.ex).t; (acc[t]||(acc[t]=[])).push(r.rec);
+  });
+  var out=Object.keys(tipi).filter(t=>acc[t]).map(function(t){
+    var a=acc[t]; return tipi[t]+" "+mmss(a.reduce((x,y)=>x+y,0)/a.length)+" (previsto "+mmss(REST[t])+" + la serie)";
+  });
+  return out.length? out.join(" · ") : "";
+}
 function briefing(){
   var ws=weeks().slice(-4), L=[];
   L.push("BRIEFING ALLENAMENTO — "+today()+" (settimana "+weekOf(today())+")");
@@ -1778,6 +1901,8 @@ function briefing(){
   var lw=ws[ws.length-1], k=kpi(lw);
   L.push("");
   L.push("Serie per gruppo, settimana "+lw+": "+Object.keys(k.grp).map(g=>g+" "+k.grp[g]).join(" · "));
+  var rc=recSettimana(lw);
+  if(rc) L.push("Tempo medio fra le serie, settimana "+lw+": "+rc);
   var m=ultimoValido(S.mis);
   if(m) L.push("Misure "+m.date+": peso "+(m.peso||"-")+" · torace "+(m.torace||"-")+" · vita "+(m.vita||"-")+
     ((m.vita&&m.torace)?" · V/T "+(m.vita/m.torace).toFixed(3):""));
@@ -2278,7 +2403,8 @@ var SYNC = {
     return ordinaData(buone.concat(extra));
   },
   /* dal foglio allo stato dell'app */
-  adopt(d){
+  adopt(d, t0){
+    t0 = t0 || 0;
     this.pending = 0; this.repaired = 0; this.scartate = 0;
     this.scartatePer = {}; this.esempioData = "";
     this.ver = +d.ver || 1;   /* 2 = lo script del foglio sa modificare e cancellare */
@@ -2292,7 +2418,8 @@ var SYNC = {
       if(rp===null){ self.repaired++; if(loc) return loc; rp=[]; }
       return {id:r.id||uid("l"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, ex:r.ex, side:r.side||"", band:r.band||"",
         load:+r.load||0, reps:rp,
-        rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||""};
+        rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||"",
+        rec:(r.rec===undefined||r.rec===null||r.rec==="") ? (loc&&loc.rec!=null?loc.rec:null) : num(r.rec)};
     }), S.log, byId, "App_Log");
     if(d.sess) S.sess = this.fuse(d.sess.map(function(r){
       return {id:r.id||uid("s"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, sede:r.sede, mod:r.mod, min:+r.min||0,
@@ -2311,8 +2438,12 @@ var SYNC = {
        o una rilettura fatta prima di aver inviato, cancellerebbe la giornata. */
     var keepn=function(r, loc, k){ var v=r[k]; return (v===undefined||v===null||v==="") ? (loc?loc[k]:undefined) : num(v); };
     var keeps=function(r, loc, k){ var v=r[k]; return (v===undefined||v===null||v==="") ? (loc?loc[k]:"") : String(v); };
+    var dirty=S.dirtyBen||{}, bts=S.benTs||{};
     if(d.ben)  S.ben  = this.fuse(d.ben.map(function(r){
       var loc=lben[r.date];
+      /* giornata cambiata sul telefono e non ancora sul foglio, oppure cambiata
+         mentre questa rilettura era in viaggio: vince il telefono */
+      if(loc && (dirty[r.date] || (bts[r.date]||0)>=t0)){ self.pending++; return loc; }
       return {date:r.date, w:+r.w||weekOf(r.date), refl:num(r.refl), resp:r.resp===true||r.resp==="Sì",
         camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
@@ -2335,18 +2466,21 @@ var SYNC = {
     }), S.mob||[], byDate, "App_Mobilita");
     this.last=new Date(); this.state="ok";
   },
+  benRow(r){
+    return {date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
+      read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
+      mente:r.mente,passi:r.passi,ipo:r.ipo,cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibJ:r.cibJ,note:r.note};
+  },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
   payloadAll(){
     return {
       log: S.log.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,ex:r.ex,gruppo:meta(r.ex).g,side:r.side,band:r.band,
         load:r.load,reps:r.reps.join("|"),serie:r.reps.length,tot:r.reps.reduce((a,b)=>a+b,0),
-        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note})),
+        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec)})),
       sess: S.sess.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,sede:r.sede,mod:r.mod,min:r.min,en:r.en,
         warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",note:r.note})),
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
-      ben: S.ben.map(r=>({date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
-        read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
-        mente:r.mente,passi:r.passi,ipo:r.ipo,cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibJ:r.cibJ,note:r.note})),
+      ben: S.ben.map(r=>SYNC.benRow(r)),
       sim: (S.sim||[]).map(r=>({date:r.date,w:r.w,ex:r.ex,q:r.q,a:r.a,side:r.side})),
       mob: (S.mob||[]).map(function(r){
         var o={date:r.date,w:r.w};
@@ -2562,12 +2696,14 @@ function viewSession(){
   h+=restBar();
   return h;
 }
+/* recupero: conto alla rovescia, poi conta il tempo oltre il previsto */
+function restTxt(){ var left=(rest.end-Date.now())/1000; return left>0 ? mmss(left) : "+"+mmss(-left); }
 function restBar(){
   if(!rest) return "";
   return '<div style="position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));z-index:45">'+
     '<div class="wrap"><div class="card" style="margin:0 0 8px;background:var(--surf2);border-color:var(--amb)">'+
-    '<div class="between"><div><div class="eyebrow amb">Recupero '+esc(rest.lbl)+'</div>'+
-    '<div class="rclk" id="rclock">'+mmss((rest.end-Date.now())/1000)+'</div></div>'+
+    '<div class="between"><div><div class="eyebrow amb" id="rlab">'+(rest.over?"Recupero finito · ":"Recupero ")+esc(rest.lbl)+'</div>'+
+    '<div class="rclk" id="rclock">'+restTxt()+'</div></div>'+
     '<div class="row"><button class="btn sm ghost" data-a="rest+">+30s</button>'+
     '<button class="btn sm" data-a="rest0">Stop</button></div></div></div></div></div>';
 }
@@ -2606,6 +2742,9 @@ function exCard(e,i,def){
       var isTopS = def.u ? (s.S>=def.hi && s.D>=def.hi) : s.v>=def.hi;
       return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'">'+lab+'</button>';
     }).join("")+'</div>';
+    var iv=intervalli(sets);
+    if(iv.length) h+='<div class="xs mut" style="margin-top:6px">Tempo fra le serie: '+iv.map(mmss).join(" · ")+
+      ' <span style="color:var(--dim)">(previsto '+mmss(REST[m.t]||60)+' + la serie)</span></div>';
   }
 
   if(!full || e.more){
@@ -3100,7 +3239,7 @@ document.addEventListener("click", function(ev){
   if(a==="l+"||a==="l-"){ e.cur.S=Math.max(0,e.cur.S+(a==="l+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
   if(a==="r+"||a==="r-"){ e.cur.D=Math.max(0,e.cur.D+(a==="r+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
   if(a==="set"){
-    e.sets.push(def.u ? {S:e.cur.S, D:e.cur.D} : {v:e.cur.v});
+    e.sets.push(def.u ? {S:e.cur.S, D:e.cur.D, t:Date.now()} : {v:e.cur.v, t:Date.now()});
     startRest(meta(e.n).t, e.n); save(); render(); return;
   }
   if(a==="undo"){ e.sets.splice(j,1); save(); render(); return; }
@@ -3129,11 +3268,20 @@ document.addEventListener("click", function(ev){
   if(a==="cibric"){ cibAddRic(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibq"){ cibQ(el.dataset.m, +el.dataset.i, +el.dataset.d).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibdel"){ cibDel(el.dataset.m, +el.dataset.i).then(function(){ render(); formPasto(el.dataset.m); }); return; }
-  if(a==="ciblib"){
-    var txt=prompt("Cosa hai mangiato? Descrivilo come ti viene.\nEsempio: risotto ai funghi del ristorante, porzione normale");
-    if(txt && txt.trim()) cibAddLibero(el.dataset.m, txt.trim()).then(function(){ render(); formPasto(el.dataset.m); });
+  if(a==="ciblib"){ formLibero(el.dataset.m); return; }
+  if(a==="ciblibok"){
+    var tx=document.getElementById("cibTxt"), pz=document.querySelector("#cibPz .pill.on");
+    var txt=tx? tx.value.trim() : "";
+    if(!txt){ toast("Scrivi cosa hai mangiato"); return; }
+    cibAddLibero(el.dataset.m, txt, pz? +pz.dataset.q : 1).then(function(){ render(); formPasto(el.dataset.m); });
     return;
   }
+  if(a==="cibrec"){
+    var src=el.dataset.s==="s" ? _CIBS : _CIBR, vv=src[+el.dataset.i];
+    if(vv) cibAddVoce(el.dataset.m, vv).then(function(){ render(); formPasto(el.dataset.m); });
+    return;
+  }
+  if(a==="cibrip"){ cibRipeti(el.dataset.m).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibcal"){
     S.cibOff=+el.dataset.v||0; S.cibOffTs=today();
     save().then(function(){ render(); toast("Target aggiornato: "+cibTarget().kcal+" kcal"); });
@@ -3189,6 +3337,7 @@ document.addEventListener("click", function(ev){
 });
 document.addEventListener("input", function(ev){
   var t=ev.target;
+  if(t.id==="cibTxt"){ cibSuggerisci(t.value, t.dataset.m); return; }
   if(t.dataset.note!==undefined && S.draft){ S.draft.ex[+t.dataset.note].note=t.value; save(); }
 });
 
@@ -3308,6 +3457,7 @@ async function delSess(id){
 async function delBen(date){
   if(!confirm("Cancellare il benessere del "+date+"?")) return;
   S.ben=S.ben.filter(function(x){ return x.date!==date; });
+  if(S.dirtyBen) delete S.dirtyBen[date];
   await save(); closeSheet(); render();
   if(SYNC.on()){
     try{ await SYNC.pushDelete({ben:[date]}); toast("Giorno cancellato dal foglio"); }
@@ -3339,7 +3489,18 @@ function startSession(day, mini){
     })};
   V="oggi"; window._sy=0; save(); render();
 }
-function startRest(t, n){ var sec=REST[t]||60; rest={end:Date.now()+sec*1000, lbl:sec+"s · "+n}; }
+/* secondi fra una serie salvata e la successiva: recupero + durata della serie.
+   Le pause oltre 10 minuti non sono recuperi e restano fuori. */
+function intervalli(sets){
+  var out=[];
+  for(var k=1;k<(sets||[]).length;k++){
+    var a=sets[k-1].t, b=sets[k].t;
+    if(a && b){ var s=(b-a)/1000; if(s>10 && s<600) out.push(s); }
+  }
+  return out;
+}
+function recMedio(sets){ var iv=intervalli(sets); return iv.length? Math.round(iv.reduce((x,y)=>x+y,0)/iv.length) : null; }
+function startRest(t, n){ var sec=REST[t]||60; rest={end:Date.now()+sec*1000, sec:sec, lbl:mmss(sec)+" · "+n, over:false}; }
 function stopRest(){ rest=null; }
 function closeSession(){
   var d=S.draft, min=Math.max(1,Math.round((Date.now()-d.t0)/60000));
@@ -3366,12 +3527,12 @@ async function commitSession(){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
         S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
-          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note});
+          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets)});
       });
     } else {
       var reps=e.sets.map(s=>s.v);
       S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
-        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note});
+        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets)});
     }
   });
   S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede,
@@ -3462,6 +3623,7 @@ async function saveBen(origDate){
     note:document.getElementById("bNote").value};
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
   S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
+  benTouch(dt); if(delDate && S.dirtyBen) delete S.dirtyBen[delDate];
   var okS=await save(); closeSheet(); render();
   if(SYNC.on()){ doPush(false); if(delDate){ try{ await SYNC.pushDelete({ben:[delDate]}); }catch(e){} } }
   toast(okS?"Benessere salvato":"NON salvato: vedi la scheda Coach");
@@ -3511,6 +3673,7 @@ async function saveSett(){
   if(!b){ b={date:dt, w:weekOf(dt), refl:null, camm:null, resp:false, alc:false, hrv:null, rhr:null,
              read:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
   b.passi=g("wPassi"); b.ipo=g("wIpo");
+  benTouch(dt);
   var okS=await save(); if(SYNC.on()) doPush(false);
   closeSheet(); render(); toast(okS?"Riepilogo salvato":"NON salvato: vedi la scheda Coach");
 }
@@ -3645,10 +3808,28 @@ async function syncSave(){
   S.sync={url:u, secret:k}; await save(); closeSheet(); render();
   doPull(true);
 }
-async function doPull(loud){
+/* Letture e scritture sul foglio passano in fila, una alla volta. Prima due
+   invii potevano incrociarsi (il vecchio arrivare dopo il nuovo) e una lettura
+   partita all'apertura poteva tornare dopo che avevi gia' aggiunto un pasto. */
+var SQ={p:Promise.resolve(), attesa:null};
+function inFila(fn){ var r=SQ.p.then(fn, fn); SQ.p=r.catch(function(){}); return r; }
+function doPull(loud){
+  if(!SYNC.on()) return Promise.resolve();
+  return inFila(function(){ return _pullNow(loud); });
+}
+function doPush(loud){
+  if(!SYNC.on()) return Promise.resolve(false);
+  if(loud) return inFila(function(){ return _pushNow(true); });
+  /* piu' richieste ravvicinate diventano un solo invio: parte con lo stato piu' recente */
+  if(SQ.attesa) return SQ.attesa;
+  SQ.attesa = inFila(function(){ SQ.attesa=null; return _pushNow(false); });
+  return SQ.attesa;
+}
+async function _pullNow(loud){
   if(!SYNC.on()) return;
   SYNC.busy=true; SYNC.err=""; if(loud) toast("Leggo dal foglio…");
   try{
+    var t0=Date.now();
     var d=await SYNC.pull();
     var vuoto = !(d.log&&d.log.length) && !(d.sess&&d.sess.length);
     if(vuoto && S.log.length){
@@ -3659,19 +3840,23 @@ async function doPull(loud){
         '<button class="btn ghost" style="margin-top:8px" data-a="x">Non ora</button>');
       return;
     }
-    SYNC.adopt(d); PLAN=buildPlan(); await save(); render();
+    SYNC.adopt(d, t0); PLAN=buildPlan(); await save(); render();
     if(SYNC.repaired>0 && loud) toast(SYNC.repaired+" righe nel foglio sono da riscrivere: vedi Coach");
-    if(SYNC.pending>0){ await doPush(false); if(loud) toast("Allineato: "+SYNC.pending+" righe locali mandate al foglio"); }
+    if(SYNC.pending>0 || Object.keys(S.dirtyBen||{}).length){ var np=SYNC.pending; await _pushNow(false); if(loud && np) toast("Allineato: "+np+" righe locali mandate al foglio"); }
     else if(loud) toast("Letto dal foglio: "+S.log.length+" righe, "+S.sess.length+" sessioni");
   }catch(e){ SYNC.state="errore"; SYNC.err=String(e.message||e); render();
     if(loud){ toast("Lettura fallita"); setTimeout(syncDiag, 500); } }
   SYNC.busy=false;
 }
-async function doPush(loud){
+async function _pushNow(loud){
   if(!SYNC.on()) return false;
   SYNC.busy=true; SYNC.err=""; if(loud) toast("Scrivo sul foglio…");
+  var snap=Object.assign({}, S.dirtyBen||{});
   try{
     var r=await SYNC.push(SYNC.payloadAll());
+    /* confermato dal foglio: tolgo il segno solo alle giornate non cambiate nel frattempo */
+    Object.keys(snap).forEach(function(k){ if(S.dirtyBen && S.dirtyBen[k]===snap[k]) delete S.dirtyBen[k]; });
+    await save();
     SYNC.state="ok"; SYNC.last=new Date(); SYNC.busy=false; render();
     var n=r.added? Object.keys(r.added).reduce((a,k)=>a+(r.added[k]||0),0) : 0;
     if(loud){ closeSheet(); toast(n? "Aggiunte "+n+" righe nuove al foglio" : "Il foglio era già aggiornato"); }
@@ -3704,6 +3889,8 @@ function patchApply(){
   S.patches = S.patches||[];
   S.patches.push({ts:today(), nota:_pend.nota||"", ops:_pend.ops});
   PLAN=buildPlan(); _pend=null; save(); closeSheet(); render();
+  /* le voci di cibo convertite dalla patch vanno subito sul foglio */
+  if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
   toast("Piano aggiornato");
 }
 function importer(){
@@ -3743,11 +3930,34 @@ setInterval(function(){
   if(c && S.draft){ var el=(Date.now()-S.draft.t0)/60000; c.textContent=Math.floor(el)+"′"; c.classList.toggle("warn", el>70); }
   if(rest){
     var left=(rest.end-Date.now())/1000, r=document.getElementById("rclock");
-    if(left<=0){ stopRest(); if(V==="oggi"&&S.draft) render(); if(navigator.vibrate) navigator.vibrate(200); toast("Recupero finito"); }
-    else if(r) r.textContent=mmss(left);
+    if(left<=0 && !rest.over){ rest.over=true; if(navigator.vibrate) navigator.vibrate(200); toast("Recupero finito");
+      if(V==="oggi"&&S.draft) render(); }
+    else if(left<-600){ stopRest(); if(V==="oggi"&&S.draft) render(); }
+    else if(r){ r.textContent=restTxt(); }
     else if(V==="oggi"&&S.draft) render();
   }
 }, 1000);
+
+/* ---------- invio di sicurezza ----------
+   Su iPhone l'app viene sospesa appena passi a un'altra app: un invio partito
+   un attimo prima puo' non arrivare. Quando l'app va in background mando subito
+   le giornate non ancora confermate (solo quelle, e' un invio piccolo); quando
+   torni, o torna la rete, riprovo con l'invio normale. */
+function flushBen(){
+  try{
+    if(!SYNC.on()) return;
+    var ks=Object.keys(S.dirtyBen||{}); if(!ks.length) return;
+    var c=SYNC.cfg(), rows=S.ben.filter(function(b){ return ks.indexOf(b.date)>=0; }).map(function(b){ return SYNC.benRow(b); });
+    if(!rows.length) return;
+    fetch(c.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({secret:c.secret||"", ben:rows}), keepalive:true}).catch(function(){});
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState==="hidden") flushBen();
+  else if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
+});
+window.addEventListener("online", function(){ if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false); });
 
 /* ---------- boot ---------- */
 (async function(){
@@ -3757,6 +3967,10 @@ setInterval(function(){
   else { seed(); S.installed=today(); await save(); }
   if(!S.patches) S.patches=[];
   if(!S.installed) S.installed=today();
+  if(!S.dirtyBen) S.dirtyBen={}; if(!S.benTs) S.benTs={};
+  /* la banda "azzurra" non esiste nel set: e' la blu */
+  S.log.forEach(function(r){ if(r.band==="azzurra") r.band="blu"; });
+  if(S.draft && S.draft.ex) S.draft.ex.forEach(function(e){ if(e.band==="azzurra") e.band="blu"; });
   PLAN = buildPlan();
   render();
   if(SYNC.on()) doPull(false);
