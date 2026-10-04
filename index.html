@@ -348,6 +348,7 @@ var EX = {
   "Shoulder Press manubri":     {g:"Spalle",  t:"comp", cap:20, step:2},
   "Push-up piedi rialzati con banda":{g:"Petto",t:"compl", band:true},
   "French Press":               {g:"Tricipiti",t:"iso",  step:2},
+  "Overhead extension 1 braccio":{g:"Tricipiti",t:"iso", cap:14, step:2, uni:true},
   "Plank":                      {g:"Core",    t:"core", sec:true},
   "Box Squat":                  {g:"Gambe",   t:"comp", cap:30, step:2},
   "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",cap:20, step:2, uni:true},
@@ -592,10 +593,14 @@ var G = {
  f:"Contrazione forte dei glutei in alto. Un lavoro laterale negli abduttori per via della banda.",
  e:"La lombare si inarca invece che il bacino salire. Senti i femorali o la lombare più dei glutei. Le ginocchia collassano dentro.",
  c:"Contrai i glutei PRIMA di iniziare la spinta, mento verso il petto. La linea retta è il massimo, non un punto da superare. Va prima del RDL: i glutei spingono a fresco e la lombare non compensa."},
+"Overhead extension 1 braccio":{p:"Seduto sul bordo di una sedia SENZA appoggiare la schiena (il gibbo non tocca lo schienale), addome attivo. Un manubrio in una mano sopra la testa, braccio quasi verticale; l'altra mano sostiene il gomito che lavora. Scendi dietro la testa in 3 secondi tenendo il gomito fermo e puntato in alto, risali espirando. Una serie per lato: alterni sx e dx, il recupero è l'altro braccio. Parti dal lato più debole e pareggia l'altro su quel numero.",
+ f:"Il tricipite, soprattutto il capo lungo (parte posteriore del braccio vicino all'ascella), che si allunga in basso e si contrae in alto. Nessuna tensione in collo o lombare.",
+ e:"Il gomito si apre o scende in avanti. La schiena si inarca per spingere. Senti la spalla più del tricipite. Il manubrio scende a scatti.",
+ c:"Gomito stretto e fermo, mano libera a sostenerlo. Se la schiena si inarca, contrai l'addome prima di partire e scendi di 2 kg. Fastidio alla spalla sinistra: ferma la serie e attiva il flag, come per lo Shoulder Press."},
 "Split-stance RDL":{p:"Un piede avanti che porta l'80% del carico, l'altro arretrato 30 cm con SOLO la punta appoggiata. Spingi il bacino INDIETRO, non scendere in basso. I manubri scorrono vicino alla gamba.",
  f:"Allungamento netto nel femorale della gamba ANTERIORE. Lombare neutra e ferma. Glutei che si contraggono nella risalita.",
  e:"La schiena si arrotonda: STOP immediato. Pieghi il ginocchio anteriore per scendere più in basso: è uno squat, non un hinge. Spingi col piede posteriore. Un lato scende molto più dell'altro.",
- c:"Test del muro: a 20 cm dal muro, tocca con i glutei senza piegare le ginocchia. Quella è la sensazione. Se un lato scende meno, quel lato definisce la profondità di entrambi. Se non tieni la schiena dritta, 10 kg."},
+ c:"Senza video: (1) nel riscaldamento 6 hinge a vuoto con un manico di scopa lungo la schiena, tre contatti (nuca, dorso, sacro): se ne perdi uno hai arrotondato. (2) Test del muro: a 20 cm dal muro, tocca con i glutei senza piegare le ginocchia. Quella è la sensazione. Se un lato scende meno, quel lato definisce la profondità di entrambi. Se non tieni la schiena dritta, 10 kg."},
 "Affondi indietro manubri":{p:"Passo INDIETRO (non avanti: riduce lo stress sul ginocchio anteriore), scendi piegando entrambe le ginocchia a 90°, spingi con la gamba ANTERIORE per tornare.",
  f:"Quadricipite e gluteo della gamba anteriore.",
  e:"Il busto si inclina troppo avanti. Il ginocchio anteriore supera la punta del piede. Perdi l'equilibrio lateralmente — se succede sempre dallo stesso lato è informazione, non caso.",
@@ -810,6 +815,7 @@ function isTop(reps, hi, sets){
 /* ---------- il motore di progressione ---------- */
 function readiness(exDef){
   var n=exDef.n, m=meta(n), h=histAll(n), out={ready:false, why:"", cap:false};
+  if(exDef.hold){ out.hold=exDef.hold; return out; }
   if(!h.length) return out;
   var dates=[...new Set(h.map(r=>r.date))].slice(-2);
   if(dates.length<2) return out;
@@ -1035,7 +1041,12 @@ async function cibAddLibero(mk, testo, fatt){
   if(!testo) return false;
   var g=cibDay(), m=meal(mk), f=fatt||1;
   var base = m.p ? m : meal("sm");
-  var st={p:Math.round(base.p*f), c:Math.round(base.c*f), g:Math.round(base.g*f)};
+  /* il secondo piatto dello stesso pasto non vale un pasto intero:
+     la stima provvisoria e' quanto manca a chiudere il pasto, con un minimo del 15% */
+  var gia = cibSomma(g[mk]||[]);
+  var st={p:Math.round(Math.max(base.p*0.15, base.p-gia.p)*f),
+          c:Math.round(Math.max(base.c*0.15, base.c-gia.c)*f),
+          g:Math.round(Math.max(base.g*0.15, base.g-gia.g)*f)};
   (g[mk]||(g[mk]=[])).push({n:testo, p:st.p, c:st.c, g:st.g, q:1, w:1});
   return cibSave(g);
 }
@@ -1768,8 +1779,10 @@ function diagnose(){
       var sameLoad = rows.every(r=>r.load===rows[0].load) && rows[0].load>0;
       var neverTop = rows.every(r=>!r.top);
       var lastDate = dates[dates.length-1], rec = recoveryNote(lastDate);
+      var mt=meta(e.n), alTetto = !!(mt.cap && rows[0].load>=mt.cap);
       if(sameLoad && neverTop) out.push({k:"stallo", t:e.n,
-        m:"Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."
+        m: alTetto ? "Tre sessioni a "+rows[0].load+" kg, che è il tetto fissato, senza chiudere il top del range. Non scendere: tieni il carico, recupero di 2 minuti e punta alle ripetizioni."
+                   : "Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."
           + (rec? " ⚠ Recupero l'ultima volta: "+rec+". Il calo può venire da lì, non dal carico — verifica su un giorno riposato prima di scendere." : "")});
       var hiRir = rows.filter(r=>r.rir!==null && r.rir>=3).length;
       if(hiRir>=2) out.push({k:"leggero", t:e.n,
@@ -1793,8 +1806,8 @@ function diagnose(){
       if(v<t[0]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sotto il minimo di "+t[0]+"."});
       if(v>t[1]) out.push({k:"volume", t:g, m:"Settimana "+lastFull+": "+v+" serie, sopra il massimo di "+t[1]+". Toglile da qui, non aggiungerle altrove."});
     });
-    if(k.dur && k.dur>75) out.push({k:"durata", t:"Durata media "+k.dur+" min · settimana "+lastFull,
-      m:"Oltre i 75 minuti è il principale fattore di abbandono. Cambia i dischi dentro il recupero, non dopo."});
+    if(k.dur && k.dur>70) out.push({k:"durata", t:"Durata media "+k.dur+" min · settimana "+lastFull,
+      m:"Sopra il tuo tetto di 60-70 minuti. Di solito è tempo morto fra le serie: oltre ~90 secondi non aggiunge ipertrofia (Singer 2024). Usa il timer e cambia i dischi dentro il recupero, non dopo."});
     if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
   }
   /* 3b. grassi e reflusso: la correlazione che giustifica il tracciamento */
@@ -1835,8 +1848,8 @@ function diagnose(){
     var stalli=out.filter(function(x){ return x.k==="stallo"||x.k==="crollo"; }).length;
     if(sl.stato==="sotto" && !sl.noisy){
       out.unshift({k:"spinta", t:"Spinta "+(sl.g>0?"+":"")+sl.g+" g/sett \u00b7 sotto il corridoio",
-        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico: alza le calorie e rileggi fra due settimane prima di scendere di peso sui manubri."
-                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Alza le calorie adesso.")
+        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico. Regola del Piano alimentare: le calorie si ricalibrano solo se la pendenza resta fuori corridoio per 2 settimane di fila; alla seconda lettura sotto, +200-250 kcal al giorno. Intanto non scendere di peso sui manubri."
+                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Se e' la seconda settimana di fila, +200-250 kcal al giorno; se e' la prima, aspetta la prossima lettura.")
            + " Calcolata su "+sl.n+" pesate in "+sl.days+" giorni."});
     }
     if(sl.stato==="sopra" && !sl.noisy) out.push({k:"spinta", t:"Spinta +"+sl.g+" g/sett \u00b7 sopra il corridoio",
@@ -1914,6 +1927,9 @@ function briefing(){
     var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":"")); }
   });});
   if(!any) L.push("- nessuno");
+  var hl=[], seenH={};
+  Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){ if(e.hold && !seenH[e.n]){ seenH[e.n]=1; hl.push("- "+e.n+": "+e.hold); } }); });
+  if(hl.length){ L.push(""); L.push("In attesa (decisione presa: non proporre aumenti)"); hl.forEach(function(x){ L.push(x); }); }
   L.push("");
   L.push("Diagnosi automatica");
   var dg=diagnose();
@@ -2016,7 +2032,7 @@ function applyOp(P, op){
   }
   if(op.op==="set"){
     var e = day.ex.filter(x=>x.n===op.n)[0]; if(!e) return;
-    ["s","lo","hi","L","b","tip","swap","u","sec","asym"].forEach(function(k){
+    ["s","lo","hi","L","b","tip","swap","u","sec","asym","hold"].forEach(function(k){
       if(op[k]!==undefined) e[k]=op[k];
     });
     return;
@@ -2040,6 +2056,7 @@ function previewPatch(pt){
     if(o.b!==undefined) ch.push("banda "+o.b);
     if(o.tip!==undefined) ch.push("nota tecnica");
     if(o.swap!==undefined) ch.push("promemoria dischi");
+    if(o.hold!==undefined) ch.push(o.hold ? "in attesa" : "attesa tolta");
     return o.n+" (giorno "+o.d+"): "+(ch.length?ch.join(", "):"nessun cambio");
   });
 }
@@ -2723,6 +2740,7 @@ function exCard(e,i,def){
 
   var r=readiness(def);
   if(r.ready && !full) h+='<div class="flag '+(r.cap?"info":"up")+'" style="margin-top:9px"><b>'+(r.cap?"Tetto":"↑")+'</b><div>'+esc(r.why)+'</div></div>';
+  if(r.hold && !full) h+='<div class="flag info" style="margin-top:9px"><b>In attesa</b><div>'+esc(r.hold)+'</div></div>';
   if(def.swap) h+='<div class="flag disc" style="margin-top:9px"><b>⟳</b><div>'+esc(def.swap)+' mentre fai questo.</div></div>';
 
   /* carico o banda */
