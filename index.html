@@ -282,7 +282,7 @@ nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:
 
 .prop{margin-top:12px;padding:11px;border:1px solid var(--amb);border-radius:11px;background:rgba(224,164,88,.07)}
 
-.daysw{display:flex;gap:6px;margin:12px 0 0}
+.daysw{display:flex;gap:6px;margin:12px 0 0;flex-wrap:wrap}
 .ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none}
 .ctabs::-webkit-scrollbar{display:none}
 
@@ -929,6 +929,20 @@ function cibFind(n){ return cibCat().filter(function(x){ return x.n===n; })[0]; 
 
 /* ---------- giorno di lavoro ---------- */
 var CIB_DAY=0;
+function cibDayLabel(n){
+  if(!n) return "oggi"; if(n===1) return "ieri";
+  var d=new Date(); d.setDate(d.getDate()-n);
+  var g=["dom","lun","mar","mer","gio","ven","sab"][d.getDay()];
+  return g+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2);
+}
+function cibDayPills(mk,cat){
+  var h="";
+  for(var n=0;n<=6;n++){
+    h+='<button class="pill'+(CIB_DAY===n?" on":"")+'" data-a="cibday" data-v="'+n+'" data-m="'+mk+'" data-c="'+cat+'">'+
+       (n===0?"Oggi":n===1?"Ieri":cibDayLabel(n))+'</button>';
+  }
+  return h;
+}
 function cibDate(){
   if(!CIB_DAY) return today();
   var d=new Date(); d.setDate(d.getDate()-CIB_DAY); return d2s(d);
@@ -1230,7 +1244,7 @@ function cardCibo(){
   var vuoto=!(tot.p||tot.c||tot.g);
 
   var h='<div class="card"><div class="between">'+
-    '<div class="eyebrow">Cibo \u00b7 '+(CIB_DAY?"ieri":"oggi")+'</div>'+
+    '<div class="eyebrow">Cibo \u00b7 '+cibDayLabel(CIB_DAY)+'</div>'+
     '<div class="xs mut">'+tg.kcal+' kcal'+(tg.off?' <span style="color:var(--amb)">'+(tg.off>0?"+":"")+tg.off+'</span>':'')+'</div></div>';
 
   if(SYNC.on() && benDaInviare(cibDate()))
@@ -1267,7 +1281,7 @@ function cardCibo(){
     '<div class="grid2"><button class="btn sm" data-a="cibcal" data-v="'+pr.kcal+'">Adegua</button>'+
     '<button class="btn sm ghost" data-a="cibcal" data-v="'+(S.cibOff||0)+'">Lascia com\'\u00e8</button></div></div>';
 
-  if(!vuoto) h+='<button class="btn sm ghost" style="width:100%;margin-top:9px" data-a="cibz">Azzera '+(CIB_DAY?"ieri":"oggi")+'</button>';
+  if(!vuoto) h+='<button class="btn sm ghost" style="width:100%;margin-top:9px" data-a="cibz">Azzera '+cibDayLabel(CIB_DAY)+'</button>';
   h+='</div>';
   return h;
 }
@@ -1282,8 +1296,7 @@ function formPasto(mk, cat){
     (m.p? '<div class="xs mut">atteso '+b1(m.p/BLK.p)+' \u00b7 '+b1(m.c/BLK.c)+' \u00b7 '+b1(m.g/BLK.g)+'</div>':'')+
     '</div></div>';
 
-  h+='<div class="daysw"><button class="pill'+(CIB_DAY===0?" on":"")+'" data-a="cibday" data-v="0" data-m="'+mk+'" data-c="'+cat+'">Oggi</button>'+
-     '<button class="pill'+(CIB_DAY===1?" on":"")+'" data-a="cibday" data-v="1" data-m="'+mk+'" data-c="'+cat+'">Ieri</button></div>';
+  h+='<div class="daysw">'+cibDayPills(mk,cat)+'</div>';
 
   if(it.length){
     h+='<div class="card" style="padding:2px 12px;margin:10px 0">';
