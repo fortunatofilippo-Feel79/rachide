@@ -1677,6 +1677,7 @@ function rhrBase(exclDate){ return medBase("rhr", exclDate); }
    HRV giù + FC su = carico sistemico vero.
    HRV giù + FC normale = probabile rumore di misura.
    ============================================================ */
+var SONNO_BASSO=6.5, STRESS_ALTO=2;
 function recovery(date){
   var b=benOn(date); if(!b) return {lvl:0, parts:[], hint:""};
   var parts=[], lvl=0, hb=hrvBase(date), rb=rhrBase(date);
@@ -1687,20 +1688,31 @@ function recovery(date){
   if(hrvLow){ parts.push("HRV "+b.hrv+" (norma ~"+hb+")"); lvl=Math.max(lvl,1); }
   if(rhrHigh){ parts.push("FC riposo "+b.rhr+" (norma ~"+rb+")"); lvl=Math.max(lvl,1); }
   if(b.read!=null && b.read<70){ parts.push("readiness "+b.read); lvl=Math.max(lvl,1); }
-  if(b.sonno!=null && b.sonno<6){ parts.push("sonno "+b.sonno+"h"); lvl=Math.max(lvl,1); }
-  if(b.stress!=null && b.stress>=3){ parts.push("stress 3"); lvl=Math.max(lvl,1); }
+  /* soglie come da Lettura dati e Jarvis (decisione del 18/10/2026): sonno sotto 6,5 h, stress da 2 */
+  var sonnoCorto = b.sonno!=null && b.sonno<SONNO_BASSO, stressAlto = b.stress!=null && b.stress>=STRESS_ALTO;
+  if(sonnoCorto){ parts.push("sonno "+b.sonno+"h"); lvl=Math.max(lvl,1); }
+  if(stressAlto){ parts.push("stress "+b.stress); lvl=Math.max(lvl,1); }
   var hint="";
+  /* livello 2 = due segnali insieme. La coppia stress+sonno viene prima del «rumore di misura» dell'HRV:
+     se c'è anche quella, il livello 2 non deve sparire. Mai un invito a scendere di carico. */
   if(hrvLow && rhrHigh){ lvl=2;
-    hint="HRV giù e FC a riposo su insieme: è carico sistemico, non rumore di misura. Scendi di un gradino e non cercare i massimali."; }
+    hint="HRV giù e FC a riposo su insieme: è carico sistemico, non rumore di misura. Tieni i carichi fermi e non cercare i massimali."; }
+  else if(stressAlto && sonnoCorto){ lvl=2;
+    hint="Stress alto e sonno corto nello stesso giorno: accorcia la seduta, non tagliare il carico. Il volume si recupera, l'abitudine no."; }
   else if(hrvLow && rhrOk){
     hint="HRV giù ma FC a riposo nella norma: probabilmente è rumore di misura. Allenati normale e rileggi domani."; }
-  else if(b.stress!=null && b.stress>=2 && b.sonno && b.sonno<6){ lvl=2;
-    hint="Stress alto e sonno corto nello stesso giorno: accorcia la seduta, non tagliare il carico. Il volume si recupera, l'abitudine no."; }
   else if(rhrHigh && !hrvLow){
     hint="FC a riposo sopra la norma con HRV tenuta: spesso precede un malanno. Tieni i carichi fermi per una seduta."; }
   return {lvl:lvl, parts:parts, hint:hint};
 }
 function recoveryNote(date){ return recovery(date).parts.join(" · "); }
+/* recupero basso di OGGI (livello 2): conta solo la riga benessere di oggi, mai il dato di ieri.
+   Serve a non proporre salite di carico quel giorno; non propone mai di scendere. */
+function recoveryOggi(){
+  var b=benOn(today()); if(!b) return null;
+  var r=recovery(today());
+  return r.lvl>=2 ? r : null;
+}
 
 /* ============================================================
    MODULO A — PESO E SPINTA
@@ -2034,8 +2046,8 @@ function progressioni(){
     cand.push({n:e.n, day:d, why:why, next:r.next, ord:ord, ultima:h[h.length-1].date, come:comeSi(e, r)});
   }); });
   cand.sort(function(a,b){ return a.ord-b.ord || s2d(a.ultima)-s2d(b.ultima) || (a.n<b.n?-1:1); });
-  var fz=frozen();
-  _PGC={scelta: fz? null : (cand[0]||null), coda: fz? cand : cand.slice(1), frozen:fz};
+  var fz=frozen(), rbasso=recoveryOggi(), ferma=fz||!!rbasso;
+  _PGC={scelta: ferma? null : (cand[0]||null), coda: ferma? cand : cand.slice(1), frozen:fz, recupero:rbasso};
   return _PGC;
 }
 function cardProg(){
@@ -2047,6 +2059,13 @@ function cardProg(){
        (S.freeze.note?'<div class="xs mut" style="margin-top:6px">'+esc(S.freeze.note)+'</div>':"")+
        (pg.coda.length?'<div class="xs mut" style="margin-top:8px">In coda: '+esc(pg.coda.map(function(u){ return u.n; }).join(", "))+'.</div>'
                       :'<div class="xs mut" style="margin-top:8px">Nessuna progressione in coda.</div>')+'</div>';
+    return h;
+  }
+  if(pg.recupero){
+    h+='<div class="card" style="border-color:var(--amb)">'+
+       '<div class="eyebrow amb">Carichi fermi · oggi</div>'+
+       '<div class="sm" style="margin-top:6px"><b>Recupero basso: '+esc(pg.recupero.parts.join(" · "))+'.</b> Oggi non salire di carico: la progressione riparte quando il recupero torna nella norma.</div>'+
+       (pg.coda.length?'<div class="xs mut" style="margin-top:8px">Pronte, in attesa: '+esc(pg.coda.map(function(u){ return u.n; }).join(", "))+'.</div>':'')+'</div>';
     return h;
   }
   if(!pg.scelta) return "";
@@ -2067,7 +2086,7 @@ function pianoRows(){
   ["A","B","C","D","T1","T2"].forEach(function(d){ if(!PLAN || !PLAN[d]) return; PLAN[d].ex.forEach(function(e,i){
     var m=meta(e.n), r=readiness(e);
     var prog = (pg.scelta && pg.scelta.n===e.n) ? "SCELTA: "+pg.scelta.why :
-               r.ready ? (r.cap? "tetto: "+r.why : "in coda: "+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
+               r.ready ? (r.cap? "tetto: "+r.why : (pg.recupero? "fermo oggi (recupero basso): " : "in coda: ")+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
     out.push({id:d+"|"+e.n, day:d, ord:i+1, ex:e.n, gruppo:m.g, serie:e.s, lo:e.lo, hi:e.hi,
       load:(e.b||m.sec)? "" : suggestLoad(e), band: e.b? lastBand(e.n, e.b) : "",
       uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:m.cap||"", attesa:e.hold||"", prog:prog,
@@ -2101,7 +2120,7 @@ function statoRows(){
       rhr: vuotoSe(mediana(bb.filter(function(b){ return b.rhr; }).map(function(b){ return b.rhr; }))),
       sonno: son.length? r1(media(son)) : "", sonno_fuori: sonF.length? r1(media(sonF)) : "",
       rec_bassi: bb.filter(function(b){ return recovery(b.date).lvl>=1; }).length,
-      prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : "",
+      prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso" : "",
       diagnosi: cur? dg.map(function(x){ return x.t; }).join(" | ").slice(0,900) : "",
       bene:ch.bene||"", cambia:ch.cambia||"",
       piano_sett: (ch.giorni&&ch.giorni.length)? ch.giorni.join(" ")+(ch.mom?" · "+ch.mom:"") : "",
@@ -2406,12 +2425,12 @@ function briefing(){
   var seen={}, any=false;
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
     if(seen[e.n]) return; seen[e.n]=1;
-    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":"")); }
+    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":(recoveryOggi()&&!r.cap?" [fermo: recupero basso oggi]":""))); }
   });});
   if(!any) L.push("- nessuno");
   var pgb=progressioni();
   L.push(""); L.push("Progressione scelta dall'app (una alla volta)");
-  L.push(pgb.scelta? "- "+pgb.scelta.n+": "+pgb.scelta.why+" — "+pgb.scelta.come : "- nessuna");
+  L.push(pgb.scelta? "- "+pgb.scelta.n+": "+pgb.scelta.why+" — "+pgb.scelta.come : (pgb.recupero? "- nessuna: carichi fermi oggi, recupero basso ("+pgb.recupero.parts.join(" · ")+")" : "- nessuna"));
   if(pgb.coda.length) L.push("- in coda: "+pgb.coda.map(function(x){ return x.n; }).join(", "));
   var hl=[], seenH={};
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){ if(e.hold && !seenH[e.n]){ seenH[e.n]=1; hl.push("- "+e.n+": "+e.hold); } }); });
@@ -3062,11 +3081,11 @@ function viewOggi(){
       var oggi=recB.date===today(), bc = rc.lvl>=2 ? "var(--alert)" : "var(--amb)";
       h+='<div class="card" style="border-color:'+bc+'">'+
          '<div class="between"><div class="eyebrow amb">Recupero'+(oggi?" · oggi":" · "+recB.date.slice(0,5))+'</div>'+
-         '<div class="xs" style="font-weight:700;color:'+bc+'">'+(rc.lvl>=2?"TAGLIA LA SEDUTA":"SOTTO LA NORMA")+'</div></div>'+
+         '<div class="xs" style="font-weight:700;color:'+bc+'">'+(rc.lvl>=2?(oggi?"CARICHI FERMI":"RECUPERO BASSO"):"SOTTO LA NORMA")+'</div></div>'+
          '<div class="sm" style="margin-top:8px">HRV '+(recB.hrv||"–")+' · FC '+(recB.rhr||"–")+' · readiness '+(recB.read||"–")+' · sonno '+(recB.sonno||"–")+'h'+
          ((recB.stress!=null)?' · stress '+recB.stress:'')+' · alcol '+(recB.alc?"sì":"no")+'</div>'+
          '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
-         esc(rc.hint||"Se ti alleni, scendi un gradino sulla scala e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
+         esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
     }
     var p=PLAN[next];
     h+='<button class="card" data-a="open" data-d="'+next+'" style="display:block;width:100%;text-align:left;border-color:var(--glow);background:rgba(111,179,196,.06)">'+
@@ -3227,6 +3246,7 @@ function exCard(e,i,def){
   if(r.ready && !full){
     if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>Tetto</b><div>'+esc(r.why)+'</div></div>';
     else if(scelta) h+='<div class="flag up" style="margin-top:9px"><b>↑</b><div><b>'+esc(pg.scelta.why)+'</b><br>'+esc(pg.scelta.come)+'</div></div>';
+    else if(pg.recupero) h+='<div class="xs mut" style="margin-top:8px">Pronto per salire, ma oggi il recupero è basso: carichi fermi.</div>';
     else h+='<div class="xs mut" style="margin-top:8px">Pronto anche questo, ma resta in coda: una progressione alla volta.</div>';
   }
   if(r.cedimento && !full) h+='<div class="flag info" style="margin-top:9px"><b>RIR</b><div>Top raggiunto a cedimento: per contare deve arrivare a RIR 1-2.</div></div>';
@@ -3583,7 +3603,7 @@ function mini(l,v){ return '<div><div class="eyebrow">'+l+'</div><div class="num
 
 /* ---------- COACH ---------- */
 function viewCoach(){
-  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.0");
+  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.1");
   h+='<div class="wrap">';
   h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
      '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
