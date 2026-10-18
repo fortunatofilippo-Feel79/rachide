@@ -3601,6 +3601,17 @@ function storageAlarm(){
 }
 function mini(l,v){ return '<div><div class="eyebrow">'+l+'</div><div class="num" style="font-size:17px;margin-top:2px">'+v+'</div></div>'; }
 
+/* Ricarica la pagina saltando la copia in memoria del telefono. Salva prima; i dati stanno nel browser e non si toccano. */
+async function aggiornaApp(){
+  toast("Aggiorno\u2026");
+  try{ await save(); }catch(e){}
+  try{
+    var base=location.origin+location.pathname;
+    await fetch(base,{cache:"reload"});
+  }catch(e){ toast("Nessuna rete: riprova quando sei online."); return; }
+  location.reload();
+}
+
 /* ---------- COACH ---------- */
 function viewCoach(){
   var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.1");
@@ -3720,6 +3731,9 @@ function viewCoach(){
      '</table>'+
      (Store.fallback?'<div class="flag disc" style="margin-top:10px"><b>!</b><div>Lo storage di Claude non ha risposto: sto usando la memoria del browser, che qui dentro può non sopravvivere alla chiusura. Scarica il backup a fine sessione.</div></div>':"")+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="stest">Verifica ora scrittura e rilettura</button></div>';
+  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.1</div></div>'+
+     '<div class="sm mut" style="margin-top:7px">Se hai pubblicato una modifica e l\'icona sulla Home mostra ancora la versione vecchia, premi qui. I dati restano dove sono.</div>'+
+     '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="aggiorna">Aggiorna app</button></div>';
   h+='<div style="height:30px"></div></div>';
   return h;
 }
@@ -3849,6 +3863,7 @@ document.addEventListener("click", function(ev){
   if(a==="esess"){ editSess(el.dataset.id); return; }
   if(a==="esesssave"){ saveSessEdit(el.dataset.id); return; }
   if(a==="esessdel"){ delSess(el.dataset.id); return; }
+  if(a==="aggiorna"){ aggiornaApp(); return; }
   if(a==="purga"){ purgaSheet(); return; }
   if(a==="purgago"){ purgaVai(); return; }
   if(a==="sett"){ formSett(); return; }
