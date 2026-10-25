@@ -2901,6 +2901,16 @@ var SYNC = {
     }catch(e){ out.push({t:"Lettura via script", v:"bloccata — "+String(e.message||e), bad:true}); }
     return out;
   },
+  /* proposta della settimana: la review della domenica la salva su Drive e lo
+     script del foglio la restituisce con azione=proposta. undefined = lo script
+     non la conosce ancora (risponde con le schede, senza il campo "proposta"). */
+  async proposta(){
+    var c=this.cfg(), u=c.url+"?k="+encodeURIComponent(c.secret||"")+"&azione=proposta", d=null;
+    try{ var r=await fetch(u,{redirect:"follow"}); d=JSON.parse(await r.text()); }
+    catch(e){ try{ d=await this.jsonp(u); }catch(e2){ return undefined; } }
+    if(!d || !d.ok || !("proposta" in d)) return undefined;
+    return d.proposta || null;
+  },
   async push(payload){
     var c=this.cfg();
     payload.secret=c.secret||"";
@@ -3080,6 +3090,7 @@ function viewOggi(){
   var completa=!next;
   var h=topbar("Settimana "+w, dayName(today())+" "+today());
   h+='<div class="wrap">';
+  h+=cardProposta(true);
 
   if(Store.ok===false) h+=storageAlarm();
   if(!S.log.length){
@@ -3640,9 +3651,17 @@ async function aggiornaApp(){
 }
 
 /* ---------- COACH ---------- */
+function cardProposta(compatta){
+  var p=propAttiva(); if(!p) return "";
+  return '<div class="card" style="border-color:var(--amb)"><div class="eyebrow amb">Proposta del Coach'+(p.data?' \u00b7 '+esc(p.data):'')+'</div>'+
+    '<div class="sm" style="margin-top:6px">Pronta dalla review della domenica: guarda cosa cambia e decidi tu.</div>'+
+    '<button class="btn pri" style="margin-top:10px" data-a="propvedi">Vedi cosa cambia</button>'+
+    (compatta ? '' : '<button class="btn ghost" style="margin-top:8px" data-a="propno">Non applicare</button>')+'</div>';
+}
 function viewCoach(){
-  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.2");
+  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.3");
   h+='<div class="wrap">';
+  h+=cardProposta(false);
   h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
      '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
      'Quello che richiede un giudizio — cambiare esercizio, ridistribuire il volume, leggere un segnale — lo porti in chat con il briefing qui sotto.</div></div>';
@@ -3735,10 +3754,12 @@ function viewCoach(){
   h+='<div class="grid2" style="margin-top:10px"><button class="btn ghost" data-a="imp">Ripristina backup</button><button class="btn ghost" data-a="dlt">Scarica .tsv</button></div>';
 
   h+='<div class="eyebrow" style="margin:22px 0 6px">Aggiornamenti del piano</div>';
-  h+='<div class="card"><div class="sm">Le proposte del coach arrivano come codice, nella scheda Settimana del documento. Copialo, poi tocca qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
+  h+='<div class="card"><div class="sm">La proposta della domenica compare da sola in cima a questa pagina e in Oggi. Se non arriva, copia il codice dalla scheda Settimana del documento e tocca qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
+     (S.propScript===false ? '<div class="xs mut" style="margin-top:6px">Lo script del foglio non passa ancora le proposte: per ora vale il copia e incolla.</div>' : '')+
      '<button class="btn pri" style="margin-top:10px" data-a="pincolla">Incolla e vedi cosa cambia</button>'+
      '<textarea id="patchT" style="margin-top:10px" placeholder=\'oppure incolla qui a mano: {"nota":"…","ops":[…]}\'></textarea>'+
-     '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button></div>';
+     '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button>'+
+     (SYNC.on() ? '<button class="btn ghost" style="margin-top:8px" data-a="propcheck">Controlla se c\'è una proposta</button>' : '')+'</div>';
   var ps=S.patches||[];
   if(ps.length){
     h+='<div class="card"><div class="between"><div class="eyebrow">Storico modifiche · '+ps.length+'</div>'+
@@ -3763,7 +3784,7 @@ function viewCoach(){
      '</table>'+
      (Store.fallback?'<div class="flag disc" style="margin-top:10px"><b>!</b><div>Lo storage di Claude non ha risposto: sto usando la memoria del browser, che qui dentro può non sopravvivere alla chiusura. Scarica il backup a fine sessione.</div></div>':"")+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="stest">Verifica ora scrittura e rilettura</button></div>';
-  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.2</div></div>'+
+  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.3</div></div>'+
      '<div class="sm mut" style="margin-top:7px">Se hai pubblicato una modifica e l\'icona sulla Home mostra ancora la versione vecchia, premi qui. I dati restano dove sono.</div>'+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="aggiorna">Aggiorna app</button></div>';
   h+='<div style="height:30px"></div></div>';
@@ -3924,6 +3945,9 @@ document.addEventListener("click", function(ev){
   if(a==="spush"){ doPush(true); return; }
   if(a==="pprev"){ patchPreview(); return; }
   if(a==="pincolla"){ patchIncolla(); return; }
+  if(a==="propvedi"){ var pa=propAttiva(); if(pa) patchPreview(pa.testo, pa.id); return; }
+  if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
+  if(a==="propcheck"){ propCheck(true); return; }
   if(a==="passo1"){ S.passo1=!S.passo1; save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
   if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
   if(a==="papply"){ patchApply(); return; }
@@ -4500,7 +4524,35 @@ async function _pushNow(loud){
     return false;
   }
 }
-var _pend=null;
+var _pend=null, _pendId=null;
+/* ---------- proposta della settimana, dal foglio ---------- */
+function hashOps(ops){
+  /* senza le chiavi interne (_ts, _k) che buildPlan aggiunge alle operazioni */
+  var s=JSON.stringify(ops||[], function(k,v){ return k.charAt(0)==="_" ? undefined : v; }), h=0;
+  for(var i=0;i<s.length;i++){ h=((h<<5)-h+s.charCodeAt(i))|0; }
+  return String(h);
+}
+/* la proposta resta in vista finche' non la applichi o la scarti; se l'hai gia'
+   incollata a mano (stesse operazioni), non ricompare */
+function propAttiva(){
+  var p=S.prop; if(!p || !p.id || p.id===S.propFatta) return null;
+  try{ var ops=JSON.parse(p.testo).ops, h=hashOps(ops);
+    if((S.patches||[]).some(function(pt){ return hashOps(pt.ops)===h; })) return null;
+  }catch(e){ return null; }
+  return p;
+}
+async function propCheck(force){
+  if(!SYNC.on()) return;
+  var now=Date.now();
+  if(!force && S.propTs && now-S.propTs < 3*3600000) return;
+  S.propTs=now;
+  var p=await SYNC.proposta();
+  if(p===undefined){ S.propScript=false; await save(); if(force){ render(); toast("Il foglio non passa ancora le proposte"); } return; }
+  S.propScript=true;
+  S.prop = (p && p.id && p.testo) ? {id:String(p.id), data:String(p.data||""), testo:String(p.testo)} : null;
+  await save(); render();
+  if(force) toast(propAttiva() ? "C'è una proposta nuova" : "Nessuna proposta nuova");
+}
 /* un tocco: legge gli appunti, li mette nel riquadro e apre l'anteprima */
 async function patchIncolla(){
   var txt="";
@@ -4531,15 +4583,15 @@ function patchControllo(pt){
     return msg;
   });
 }
-function patchPreview(){
-  var raw=document.getElementById("patchT").value.trim();
+function patchPreview(raw, pid){
+  if(typeof raw!=="string"){ var ta=document.getElementById("patchT"); raw=ta ? ta.value.trim() : ""; }
   if(!raw){ toast("Incolla prima il codice"); return; }
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
     var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
-    _pend=p;
+    _pend=p; _pendId=pid||null;
     var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
     sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
       (nko ? '<div class="flag stop"><div><b>'+nko+(nko===1?' voce non trova':' voci non trovano')+' il suo esercizio</b>: non cambiano nulla. Il resto si applica. Scrivilo al Coach.</div></div>' : '')+
@@ -4556,7 +4608,8 @@ function patchApply(){
   S.patches = S.patches||[];
   S.patches.push({ts:today(), nota:_pend.nota||"", ops:_pend.ops});
   (_pend.ops||[]).forEach(function(o){ if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); } });
-  PLAN=buildPlan(); _pend=null; save(); closeSheet(); render();
+  if(_pendId) S.propFatta=_pendId;
+  PLAN=buildPlan(); _pend=null; _pendId=null; save(); closeSheet(); render();
   /* le voci di cibo convertite dalla patch vanno subito sul foglio */
   if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
   toast("Piano aggiornato");
@@ -4625,7 +4678,10 @@ function flushBen(){
 }
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="hidden") flushBen();
-  else if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
+  else if(SYNC.on()){
+    if(Object.keys(S.dirtyBen||{}).length) doPush(false);
+    propCheck(false).catch(function(){});
+  }
 });
 window.addEventListener("online", function(){ if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false); });
 
@@ -4664,7 +4720,7 @@ window.addEventListener("online", function(){ if(SYNC.on() && Object.keys(S.dirt
   if(S.draft && S.draft.ex) S.draft.ex.forEach(function(e){ if(e.band==="azzurra") e.band="blu"; });
   PLAN = buildPlan();
   render();
-  if(SYNC.on()) doPull(false);
+  if(SYNC.on()) doPull(false).then(function(){ return propCheck(false); }).catch(function(){});
 })();
 
 </script></body></html>
