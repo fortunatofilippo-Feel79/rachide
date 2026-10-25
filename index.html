@@ -4512,6 +4512,25 @@ async function patchIncolla(){
   var t=document.getElementById("patchT"); if(t) t.value=txt.slice(a, b+1);
   patchPreview();
 }
+/* Controllo della patch sul piano in vigore, voce per voce: una modifica che non
+   trova il suo esercizio non fa nulla, e senza avviso passerebbe inosservata.
+   Simula in sequenza solo aggiunte e tolte, che cambiano cosa trovano le voci dopo. */
+function patchControllo(pt){
+  var P=clone(PLAN);
+  return (pt.ops||[]).map(function(o){
+    var strut=["set","del","add","dischi"].indexOf(o.op)>=0, day=o.d ? P[o.d] : null, msg=null;
+    if(strut || (o.op==="nota" && o.d)){
+      if(!day) msg="il giorno «"+o.d+"» non esiste";
+      else if((o.op==="set"||o.op==="del") && !day.ex.some(function(e){ return e.n===o.n; })) msg="«"+o.n+"» non c'è nel giorno "+o.d;
+      else if(o.op==="add" && (!o.ex || day.ex.some(function(e){ return e.n===o.ex.n; }))) msg=o.ex ? "«"+o.ex.n+"» c'è già nel giorno "+o.d : "esercizio mancante";
+    }
+    if(!msg && day){
+      if(o.op==="del") day.ex=day.ex.filter(function(e){ return e.n!==o.n; });
+      if(o.op==="add") day.ex.push(o.ex);
+    }
+    return msg;
+  });
+}
 function patchPreview(){
   var raw=document.getElementById("patchT").value.trim();
   if(!raw){ toast("Incolla prima il codice"); return; }
@@ -4521,8 +4540,12 @@ function patchPreview(){
     var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p;
+    var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
     sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
-      previewPatch(p).map(l=>'<div class="flag info">•<div>'+esc(l)+'</div></div>').join("")+
+      (nko ? '<div class="flag stop"><div><b>'+nko+(nko===1?' voce non trova':' voci non trovano')+' il suo esercizio</b>: non cambiano nulla. Il resto si applica. Scrivilo al Coach.</div></div>' : '')+
+      previewPatch(p).map((l,i)=> ctl[i]
+        ? '<div class="flag stop">✕<div>'+esc(l)+' · '+esc(ctl[i])+'</div></div>'
+        : '<div class="flag info">•<div>'+esc(l)+'</div></div>').join("")+
       '<div class="xs mut" style="margin-top:10px">Puoi annullarla in qualsiasi momento dallo storico. I dati già registrati non vengono toccati.</div>'+
       '<button class="btn pri" style="margin-top:14px" data-a="papply">Applica</button>'+
       '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
