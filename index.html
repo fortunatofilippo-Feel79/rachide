@@ -369,9 +369,8 @@ details.more[open]>summary::after{transform:rotate(-90deg)}
 <script>
 /* ============================================================
    RACHIDE — registro allenamento
-   Dati clinici di riferimento: RX rachide in toto 31/10/2008,
-   dorsale dx-convessa 20° Cobb · lombare sn-convessa 29° Cobb
-   (curva maggiore) · emibacino sn più basso di 1,3 cm.
+   I riferimenti clinici stanno nei documenti del progetto, non qui:
+   il repository e' pubblico.
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 
@@ -847,6 +846,15 @@ function isTop(reps, hi, sets){
   return reps.filter(r=>r>=hi).length >= Math.min(need, reps.length) && reps.length>=Math.min(sets,need);
 }
 
+/* gradino di carico: con i dischi da 0,5 kg si sale di 1 kg per manubrio,
+   tranne sugli esercizi con un tetto per la spalla, che restano come sono */
+var CLIN={"Curl bicipiti manubri":1,"Hammer Curl":1,"Reverse Fly":1,"Face pull":1,"Overhead extension 1 braccio":1};
+function stepOf(n){
+  var m=meta(n);
+  if(S.passo1 && !CLIN[n] && !m.band && !m.sec) return Math.min(1, m.step||2);
+  return m.step||2;
+}
+
 /* ---------- il motore di progressione ---------- */
 function readiness(exDef){
   var n=exDef.n, m=meta(n), h=histAll(n), out={ready:false, why:"", cap:false};
@@ -881,7 +889,7 @@ function readiness(exDef){
     return {ready:true, cap:true, why:alt};
   }
   if(!cur) return {ready:true, why:"passa alla variante successiva della scala"};
-  var step = m.step||2;
+  var step = stepOf(n);
   return {ready:true, why:cur+" → "+(cur+step)+" kg", next:cur+step};
 }
 
@@ -1428,11 +1436,11 @@ function extraSuggeriti(){
   var d=S.draft; if(!d) return [];
   var gia={}; d.ex.forEach(function(e){ gia[e.n]=1; });
   var out=[];
-  Object.keys(PLAN).forEach(function(k){
-    if(k===d.day) return;
+  /* prima il resto del giorno stesso (utile nella versione da 45'), poi gli altri giorni */
+  [d.day].concat(Object.keys(PLAN).filter(function(k){ return k!==d.day; })).forEach(function(k){
     (PLAN[k].ex||[]).forEach(function(x){
       if(gia[x.n]) return; gia[x.n]=1;
-      out.push({n:x.n, da:"giorno "+k, def:Object.assign({}, x)});
+      out.push({n:x.n, da:(k===d.day?"oggi, dal piano":"giorno "+k), def:Object.assign({}, x)});
     });
   });
   return out;
@@ -1655,15 +1663,32 @@ function benDaInviare(date){ return !!(S.dirtyBen && S.dirtyBen[date]); }
 /* mediana HRV di riferimento: gli altri giorni con HRV, esclusa la data in esame,
    così un giorno storto non abbassa la propria soglia */
 function hrvBase(exclDate){
-  var v=S.ben.filter(function(b){ return b.hrv && b.date!==exclDate; }).map(function(b){ return b.hrv; });
+  var v=S.ben.filter(function(b){ return b.hrv && b.date!==exclDate && plaus("hrv", b.hrv); }).map(function(b){ return b.hrv; });
   if(v.length<3) return null;
   v.sort(function(a,b){ return a-b; });
   var m=Math.floor(v.length/2);
   return v.length%2 ? v[m] : Math.round((v[m-1]+v[m])/2);
 }
+/* valori plausibili: un numero fuori scala (FC 31) e' un errore di battitura,
+   non un dato. Resta salvato com'e', ma non entra nelle mediane del recupero. */
+var PLAUS={rhr:[35,100], hrv:[10,200], sonno:[3,12]};
+function plaus(field, v){ var r=PLAUS[field]; return !r || (v>=r[0] && v<=r[1]); }
+/* controllo prima di salvare il benessere: chiede conferma, non blocca */
+function controlloBen(r){
+  var a=[];
+  if(r.rhr!=null && !plaus("rhr",r.rhr)) a.push("FC a riposo "+r.rhr+" (di solito tra 35 e 100)");
+  if(r.hrv!=null && !plaus("hrv",r.hrv)) a.push("HRV "+r.hrv+" (di solito tra 10 e 200)");
+  if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+r.sonno+" h (di solito tra 3 e 12)");
+  if(r.peso!=null){
+    var ps=S.ben.filter(function(b){ return b.peso>0 && b.date!==r.date && dataOk(b.date); })
+      .sort(function(x,y){ return s2d(y.date)-s2d(x.date); }).slice(0,7).map(function(b){ return b.peso; });
+    if(ps.length>=3){ var md=mediana(ps); if(Math.abs(r.peso-md)>2) a.push("Peso "+r.peso+" kg, "+dec(r1(Math.abs(r.peso-md)))+" kg lontano dalle ultime pesate"); }
+  }
+  return a;
+}
 /* mediana di riferimento per un campo qualsiasi, esclusa la data in esame */
 function medBase(field, exclDate){
-  var v=S.ben.filter(function(b){ return b[field] && b.date!==exclDate; }).map(function(b){ return b[field]; });
+  var v=S.ben.filter(function(b){ return b[field] && b.date!==exclDate && plaus(field, b[field]); }).map(function(b){ return b[field]; });
   if(v.length<3) return null;
   v.sort(function(a,b){ return a-b; });
   var m=Math.floor(v.length/2);
@@ -1681,9 +1706,10 @@ var SONNO_BASSO=6.5, STRESS_ALTO=2;
 function recovery(date){
   var b=benOn(date); if(!b) return {lvl:0, parts:[], hint:""};
   var parts=[], lvl=0, hb=hrvBase(date), rb=rhrBase(date);
-  var hrvLow  = !!(b.hrv && hb && b.hrv < hb*0.80);
-  var rhrHigh = !!(b.rhr && rb && b.rhr > rb*1.07);
-  var rhrOk   = !!(b.rhr && rb && !rhrHigh);
+  var bHrv = plaus("hrv", b.hrv) ? b.hrv : null, bRhr = plaus("rhr", b.rhr) ? b.rhr : null;
+  var hrvLow  = !!(bHrv && hb && bHrv < hb*0.80);
+  var rhrHigh = !!(bRhr && rb && bRhr > rb*1.07);
+  var rhrOk   = !!(bRhr && rb && !rhrHigh);
   if(b.alc){ parts.push("alcol la sera prima"); lvl=Math.max(lvl,1); }
   if(hrvLow){ parts.push("HRV "+b.hrv+" (norma ~"+hb+")"); lvl=Math.max(lvl,1); }
   if(rhrHigh){ parts.push("FC riposo "+b.rhr+" (norma ~"+rb+")"); lvl=Math.max(lvl,1); }
@@ -1972,7 +1998,7 @@ function diagnose(){
 
 /* ============================================================
    MODULO V3 — 11/10/2026
-   Undici modifiche decise con Filippo l'11/10:
+   Undici modifiche decise l'11/10:
    1 RIR a parole e regola sui composti · 2 lati sx/dx e lato piu' duro
    3 piano e stato nel foglio · 4 una progressione alla volta
    5 seduta un esercizio per schermata · 6 orologio e recupero che avvisa
@@ -2141,7 +2167,7 @@ function sessEta(){
   });
   if(rest){ var lr=(rest.end-Date.now())/1000; if(lr>0) sec+=lr; }
   var end=Date.now()+sec*1000, tot=(end-d.t0)/60000;
-  return {end:end, tot:tot, late: tot > (p.min||60)+10};
+  return {end:end, tot:tot, late: tot > (d.rid ? RIDOTTA_MIN : (p.min||60))+10};
 }
 function clockTxt(){
   var d=S.draft; if(!d) return "";
@@ -2527,6 +2553,8 @@ function applyOp(P, op){
   if(op.op==="ricetta"){ CIBR.push({n:op.n, m:op.m||"pra", v:op.v||[]}); return; }
   if(op.op==="nota"){ coachNote(op, op._ts, op._k); return; }
   if(op.op==="stima"){ cibRisolvi(op.n, +op.p||0, +op.c||0, +op.g||0); return; }
+  /* calorie: si applica una volta sola, quando approvi la patch (patchApply), non a ogni ricostruzione */
+  if(op.op==="kcal") return;
   var day = P[op.d]; if(!day) return;
   if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
   if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
@@ -2551,6 +2579,7 @@ function previewPatch(pt){
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
     if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
+    if(o.op==="kcal") return "Calorie: target "+(2550+(+o.off||0))+" kcal al giorno ("+((+o.off||0)>0?"+":"")+(+o.off||0)+" sulla base, tutto sui carboidrati)";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
     if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
     if(o.op==="dischi") return "Sequenza dischi giorno "+o.d+" → "+o.v;
@@ -3096,7 +3125,8 @@ function viewOggi(){
        ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
           ' · HRV '+(recB.hrv||"–")+' · sonno '+(recB.sonno||"–")+' h</div>' : "")+
        '<div class="btn pri" style="margin-top:12px">Inizia</div></button>';
-    h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="mini" data-d="'+next+'">Giornata storta · sessione minima</button>';
+    h+='<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" style="width:100%" data-a="ridotta" data-d="'+next+'">Poco tempo · 45′</button>'+
+       '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>';
     h+=coachBadge(next);
   }
 
@@ -3171,7 +3201,7 @@ function viewOggi(){
 /* ---------- sessione in corso ---------- */
 function viewSession(){
   var d=S.draft, p=PLAN[d.day];
-  var h=topbar(p.name, "Giorno "+d.day+" · settimana "+weekOf(d.date));
+  var h=topbar(p.name, "Giorno "+d.day+" · settimana "+weekOf(d.date)+(d.rid?" · ridotta 45′":(d.mini?" · minima":"")));
   h+='<div class="wrap">';
   h+=coachCard(d.day);
 
@@ -3577,9 +3607,6 @@ function viewCorpo(){
   if(uSim) h+='<div class="sm" style="margin-top:9px">Ultimo: '+esc(uSim.date)+'</div>';
   h+='</div>';
 
-  h+='<div class="card flat"><div class="eyebrow">Riferimento clinico</div>'+
-     '<div class="sm mut" style="margin-top:6px">RX rachide in toto, 31/10/2008 — dorsale dx-convessa 20° Cobb, lombare sn-convessa 29° Cobb (curva maggiore), emibacino sn più basso di 1,3 cm. Referto non aggiornato.</div></div>';
-
   h+='<div class="eyebrow" style="margin:16px 0 6px">I tre segnali che fermano la serie</div><div class="card">';
   STOPS.forEach(s=>h+='<div class="flag stop">•<div>'+esc(s)+'</div></div>');
   h+='</div><div style="height:24px"></div></div>';
@@ -3614,7 +3641,7 @@ async function aggiornaApp(){
 
 /* ---------- COACH ---------- */
 function viewCoach(){
-  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.1");
+  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.2");
   h+='<div class="wrap">';
   h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
      '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
@@ -3691,6 +3718,10 @@ function viewCoach(){
        '<button class="btn sm" data-a="freeze" data-w="4">+4 sett.</button></div>';
   }
   h+='</div>';
+  h+='<div class="card"><div class="between"><div><div class="eyebrow">Gradino di carico</div>'+
+     '<div class="sm" style="margin-top:4px">'+(S.passo1? "<b>1 kg</b> per manubrio: hai i dischi da 0,5 kg." : "<b>2 kg</b> per manubrio.")+'</div></div></div>'+
+     '<div class="xs mut" style="margin-top:6px">Con i dischi da 0,5 kg il salto passa da +14% a +7% su 14 kg. Curl, Hammer, Reverse Fly, Face pull e Overhead extension restano come sono: il loro tetto è per la spalla.</div>'+
+     '<button class="btn sm '+(S.passo1?"ghost":"")+'" style="width:100%;margin-top:10px" data-a="passo1">'+(S.passo1?"Torna a 2 kg":"Ho i dischi da 0,5 kg: passa a 1 kg")+'</button></div>';
 
   h+='<div class="eyebrow" style="margin:18px 0 6px">Dati</div>';
   var bk=backupState();
@@ -3704,8 +3735,9 @@ function viewCoach(){
   h+='<div class="grid2" style="margin-top:10px"><button class="btn ghost" data-a="imp">Ripristina backup</button><button class="btn ghost" data-a="dlt">Scarica .tsv</button></div>';
 
   h+='<div class="eyebrow" style="margin:22px 0 6px">Aggiornamenti del piano</div>';
-  h+='<div class="card"><div class="sm">Quando in chat decidiamo di cambiare qualcosa — un carico, un range, un esercizio — ricevi un codice. Incollalo qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
-     '<textarea id="patchT" style="margin-top:10px" placeholder=\'{"nota":"…","ops":[…]}\'></textarea>'+
+  h+='<div class="card"><div class="sm">Le proposte del coach arrivano come codice, nella scheda Settimana del documento. Copialo, poi tocca qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
+     '<button class="btn pri" style="margin-top:10px" data-a="pincolla">Incolla e vedi cosa cambia</button>'+
+     '<textarea id="patchT" style="margin-top:10px" placeholder=\'oppure incolla qui a mano: {"nota":"…","ops":[…]}\'></textarea>'+
      '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button></div>';
   var ps=S.patches||[];
   if(ps.length){
@@ -3731,7 +3763,7 @@ function viewCoach(){
      '</table>'+
      (Store.fallback?'<div class="flag disc" style="margin-top:10px"><b>!</b><div>Lo storage di Claude non ha risposto: sto usando la memoria del browser, che qui dentro può non sopravvivere alla chiusura. Scarica il backup a fine sessione.</div></div>':"")+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="stest">Verifica ora scrittura e rilettura</button></div>';
-  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.1</div></div>'+
+  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.2</div></div>'+
      '<div class="sm mut" style="margin-top:7px">Se hai pubblicato una modifica e l\'icona sulla Home mostra ancora la versione vecchia, premi qui. I dati restano dove sono.</div>'+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="aggiorna">Aggiorna app</button></div>';
   h+='<div style="height:30px"></div></div>';
@@ -3790,7 +3822,7 @@ document.addEventListener("click", function(ev){
   if(a==="x"){ CIB_DAY=0; closeSheet(); render(); return; }
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
-    var m=meta(e.n), st=m.step||2, nv=e.load+(a==="load+"?st:-st);
+    var m=meta(e.n), st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
     if(m.cap && nv>m.cap){ toast("Tetto "+m.cap+" kg. Progredisci con il tempo."); return; }
     e.load=Math.max(0,nv); save(); render(); return;
   }
@@ -3891,6 +3923,9 @@ document.addEventListener("click", function(ev){
   if(a==="spull"){ doPull(true); return; }
   if(a==="spush"){ doPush(true); return; }
   if(a==="pprev"){ patchPreview(); return; }
+  if(a==="pincolla"){ patchIncolla(); return; }
+  if(a==="passo1"){ S.passo1=!S.passo1; save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
+  if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
   if(a==="papply"){ patchApply(); return; }
   if(a==="prev"){ if(confirm("Annullare l'ultima modifica al piano?")){ S.patches.pop(); PLAN=buildPlan(); save(); render(); toast("Modifica annullata"); } return; }
 });
@@ -4052,10 +4087,13 @@ function miniSheet(day){
     '<button class="btn amb" style="margin-top:14px" data-a="minigo" data-d="'+day+'">Inizia la minima</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
-function startSession(day, mini){
-  var p=PLAN[day];
-  S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, warm:WARM.map(()=>false),
-    ex:p.ex.map(function(x){
+/* versione ridotta (45'): i primi 4 esercizi del giorno, cioe' i composti.
+   Gli altri restano nel piano e si possono aggiungere da «Aggiungi un esercizio». */
+var RIDOTTA_N=4, RIDOTTA_MIN=45;
+function startSession(day, mini, rid){
+  var p=PLAN[day], lista = rid ? p.ex.slice(0, RIDOTTA_N) : p.ex;
+  S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, warm:WARM.map(()=>false),
+    ex:lista.map(function(x){
       var m=meta(x.n);
       return {n:x.n, load: x.b?0:suggestLoad(x), band: x.b?lastBand(x.n,x.b):"",
         sets:[], rir:null, note:"", duro:null,
@@ -4110,7 +4148,7 @@ async function commitSession(){
     }
   });
   S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede,
-    mod:(d.mini?"Minima":(p.sede==="Casa"?"Pesi":"Bande")),
+    mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.sede==="Casa"?"Pesi":"Bande"))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
     warm:d.warm.every(Boolean), sig: sg? sg.dataset.sig==="1":false,
     note:document.getElementById("fNote").value});
@@ -4207,6 +4245,8 @@ async function saveBen(origDate){
     citta:(function(){ var e=document.querySelector("#bSede .pill.on"), c=document.getElementById("bCitta");
       return (e && e.dataset.sd==="Fuori" && c)? c.value.trim() : ""; })(),
     note:document.getElementById("bNote").value};
+  var avv=controlloBen(rec);
+  if(avv.length && !confirm("Valori insoliti:\n- "+avv.join("\n- ")+"\n\nSalvo lo stesso?")) return;
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */
   S.ben = S.ben.filter(x=>x.date!==dt && x.date!==(delDate||dt)); S.ben.push(rec);
   benTouch(dt); if(delDate && S.dirtyBen) delete S.dirtyBen[delDate];
@@ -4461,17 +4501,51 @@ async function _pushNow(loud){
   }
 }
 var _pend=null;
+/* un tocco: legge gli appunti, li mette nel riquadro e apre l'anteprima */
+async function patchIncolla(){
+  var txt="";
+  try{ txt=await navigator.clipboard.readText(); }
+  catch(e){ toast("Non riesco a leggere gli appunti: incolla a mano nel riquadro"); return; }
+  txt=String(txt||"").trim();
+  var a=txt.indexOf("{"), b=txt.lastIndexOf("}");
+  if(a<0 || b<a){ toast("Negli appunti non c'è un codice del coach"); return; }
+  var t=document.getElementById("patchT"); if(t) t.value=txt.slice(a, b+1);
+  patchPreview();
+}
+/* Controllo della patch sul piano in vigore, voce per voce: una modifica che non
+   trova il suo esercizio non fa nulla, e senza avviso passerebbe inosservata.
+   Simula in sequenza solo aggiunte e tolte, che cambiano cosa trovano le voci dopo. */
+function patchControllo(pt){
+  var P=clone(PLAN);
+  return (pt.ops||[]).map(function(o){
+    var strut=["set","del","add","dischi"].indexOf(o.op)>=0, day=o.d ? P[o.d] : null, msg=null;
+    if(strut || (o.op==="nota" && o.d)){
+      if(!day) msg="il giorno «"+o.d+"» non esiste";
+      else if((o.op==="set"||o.op==="del") && !day.ex.some(function(e){ return e.n===o.n; })) msg="«"+o.n+"» non c'è nel giorno "+o.d;
+      else if(o.op==="add" && (!o.ex || day.ex.some(function(e){ return e.n===o.ex.n; }))) msg=o.ex ? "«"+o.ex.n+"» c'è già nel giorno "+o.d : "esercizio mancante";
+    }
+    if(!msg && day){
+      if(o.op==="del") day.ex=day.ex.filter(function(e){ return e.n!==o.n; });
+      if(o.op==="add") day.ex.push(o.ex);
+    }
+    return msg;
+  });
+}
 function patchPreview(){
   var raw=document.getElementById("patchT").value.trim();
   if(!raw){ toast("Incolla prima il codice"); return; }
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p;
+    var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
     sheet('<div class="eyebrow amb">Aggiornamento del piano</div><h2 style="margin:3px 0 10px">'+esc(p.nota||"Modifica")+'</h2>'+
-      previewPatch(p).map(l=>'<div class="flag info">•<div>'+esc(l)+'</div></div>').join("")+
+      (nko ? '<div class="flag stop"><div><b>'+nko+(nko===1?' voce non trova':' voci non trovano')+' il suo esercizio</b>: non cambiano nulla. Il resto si applica. Scrivilo al Coach.</div></div>' : '')+
+      previewPatch(p).map((l,i)=> ctl[i]
+        ? '<div class="flag stop">✕<div>'+esc(l)+' · '+esc(ctl[i])+'</div></div>'
+        : '<div class="flag info">•<div>'+esc(l)+'</div></div>').join("")+
       '<div class="xs mut" style="margin-top:10px">Puoi annullarla in qualsiasi momento dallo storico. I dati già registrati non vengono toccati.</div>'+
       '<button class="btn pri" style="margin-top:14px" data-a="papply">Applica</button>'+
       '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
@@ -4481,6 +4555,7 @@ function patchApply(){
   if(!_pend) return;
   S.patches = S.patches||[];
   S.patches.push({ts:today(), nota:_pend.nota||"", ops:_pend.ops});
+  (_pend.ops||[]).forEach(function(o){ if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); } });
   PLAN=buildPlan(); _pend=null; save(); closeSheet(); render();
   /* le voci di cibo convertite dalla patch vanno subito sul foglio */
   if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
