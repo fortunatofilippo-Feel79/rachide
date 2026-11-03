@@ -19,6 +19,12 @@ function topbar(title, sub){
     '<div class="eyebrow">'+esc(sub)+'</div><h1>'+esc(title)+'</h1></div>'+clock+'</div></div></header>';
 }
 
+/* versione nuova pronta: un tocco per passarci */
+function bannerVersione(){
+  if(!SW_NUOVO) return "";
+  return '<div class="flag info" style="margin-top:12px"><b>↻</b><div><b>Nuova versione pronta.</b> I dati restano dove sono. '+
+    '<button data-a="swagg" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Aggiorna ora</button></div></div>';
+}
 /* ---------- OGGI ---------- */
 /* scelta del luogo: tre bottoni affiancati */
 function segLuogo(sel, day){
@@ -44,6 +50,7 @@ function viewOggi(){
   var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
   h+=cardProposta(true);
+  h+=bannerVersione();
 
   if(Store.ok===false) h+=storageAlarm();
   if(!S.log.length && !S.ben.length){
@@ -615,6 +622,12 @@ function mini(l,v){ return '<div><div class="eyebrow">'+l+'</div><div class="num
 
 /* Ricarica la pagina saltando la copia in memoria del telefono. Salva prima; i dati stanno nel browser e non si toccano. */
 async function aggiornaApp(){
+  if(SW_REG){
+    toast("Cerco una versione nuova\u2026");
+    try{ await SW_REG.update(); }catch(e){ toast("Nessuna rete: riprova quando sei online."); return; }
+    setTimeout(function(){ if(SW_REG.waiting) swApplica(); else toast("Hai già l'ultima versione ("+VERSIONE_APP+")"); }, 1500);
+    return;
+  }
   toast("Aggiorno\u2026");
   try{ await save(); }catch(e){}
   try{
@@ -633,8 +646,9 @@ function cardProposta(compatta){
     (compatta ? '' : '<button class="btn ghost" style="margin-top:8px" data-a="propno">Non applicare</button>')+'</div>';
 }
 function viewCoach(){
-  var h=topbar("Coach","Il ponte verso la chat \u00b7 v3.3");
+  var h=topbar("Coach","Il ponte verso la chat \u00b7 v"+VERSIONE_APP);
   h+='<div class="wrap">';
+  h+=bannerVersione();
   h+=cardProposta(false);
   h+='<div class="card"><div class="eyebrow glow">Come funziona</div>'+
      '<div class="sm" style="margin-top:7px">L\'app decide quello che si decide con una regola: carichi, tetti, doppia progressione, KPI. '+
@@ -764,8 +778,8 @@ function viewCoach(){
      '</table>'+
      (Store.fallback?'<div class="flag disc" style="margin-top:10px"><b>!</b><div>Lo storage di Claude non ha risposto: sto usando la memoria del browser, che qui dentro può non sopravvivere alla chiusura. Scarica il backup a fine sessione.</div></div>':"")+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="stest">Verifica ora scrittura e rilettura</button></div>';
-  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v3.3</div></div>'+
-     '<div class="sm mut" style="margin-top:7px">Se hai pubblicato una modifica e l\'icona sulla Home mostra ancora la versione vecchia, premi qui. I dati restano dove sono.</div>'+
+  h+='<div class="card"><div class="between"><div class="eyebrow">Versione dell\'app</div><div class="xs" style="font-weight:700">v'+VERSIONE_APP+'</div></div>'+
+     '<div class="sm mut" style="margin-top:7px">L\'app funziona anche senza rete. Quando pubblichi una modifica, la versione nuova si scarica da sola e compare l\'avviso in Oggi; qui puoi cercarla subito. I dati restano dove sono.</div>'+
      '<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="aggiorna">Aggiorna app</button></div>';
   h+='<div style="height:30px"></div></div>';
   return h;

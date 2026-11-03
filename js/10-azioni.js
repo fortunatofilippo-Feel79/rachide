@@ -117,6 +117,7 @@ document.addEventListener("click", function(ev){
   if(a==="esesssave"){ saveSessEdit(el.dataset.id); return; }
   if(a==="esessdel"){ delSess(el.dataset.id); return; }
   if(a==="aggiorna"){ aggiornaApp(); return; }
+  if(a==="swagg"){ swApplica(); return; }
   if(a==="purga"){ purgaSheet(); return; }
   if(a==="purgago"){ purgaVai(); return; }
   if(a==="sett"){ formSett(); return; }

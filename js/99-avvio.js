@@ -73,5 +73,32 @@ async function avvia(){
   render();
   if(SYNC.on()) doPull(false).then(function(){ return propCheck(false); }).catch(function(){});
 }
-if(!window.__TEST__) avvia();
+/* ---------- offline e aggiornamenti ---------- */
+var SW_NUOVO=false, SW_REG=null;
+function registraSW(){
+  if(!("serviceWorker" in navigator) || location.protocol==="file:") return;
+  navigator.serviceWorker.register("sw.js").then(function(reg){
+    SW_REG=reg;
+    var pronta=function(){ if(reg.waiting && navigator.serviceWorker.controller){ SW_NUOVO=true; render(); } };
+    pronta();
+    reg.addEventListener("updatefound", function(){
+      var n=reg.installing; if(n) n.addEventListener("statechange", function(){ if(n.state==="installed") pronta(); });
+    });
+    setInterval(function(){ reg.update().catch(function(){}); }, 3600000);
+  }).catch(function(){});
+  var ricaricata=false;
+  navigator.serviceWorker.addEventListener("controllerchange", function(){ if(ricaricata) return; ricaricata=true; location.reload(); });
+}
+/* applica la versione nuova: mai a seduta in corso senza chiederlo */
+function swApplica(){
+  if(S.draft && !confirm("C'è una seduta in corso: resta salvata, ma l'app si ricarica. Procedo?")) return;
+  save().then(function(){
+    if(SW_REG && SW_REG.waiting) SW_REG.waiting.postMessage("aggiorna"); else location.reload();
+  });
+}
+/* chiede al browser di non cancellare la memoria locale quando lo spazio scarseggia */
+function memoriaPersistente(){
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(function(p){ if(!p) navigator.storage.persist(); }); }catch(e){}
+}
+if(!window.__TEST__){ avvia(); registraSW(); memoriaPersistente(); }
 

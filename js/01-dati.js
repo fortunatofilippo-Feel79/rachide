@@ -4,6 +4,8 @@
    il repository e' pubblico.
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
+/* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
+var VERSIONE_APP = "4.0.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
