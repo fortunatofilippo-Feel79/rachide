@@ -636,3 +636,9 @@ input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--lin
 .pex li em.cut{color:var(--amb);background:rgba(224,164,88,.14)}
 .pex li.via{opacity:.55}
 .pex li.via span{text-decoration:line-through}
+
+/* ---------- v4.3: settimane piene, tenute, rotte ---------- */
+.stk i.ten{background:repeating-linear-gradient(135deg,var(--glow) 0 3px,rgba(111,179,196,.35) 3px 6px)}
+.stchip{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
+.stprev{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;border:1.5px solid;border-radius:12px;font-size:13px}
+.stprev b{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}

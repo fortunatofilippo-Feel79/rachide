@@ -50,7 +50,7 @@ function viewOggi(){
   /* se il piano prevede una seduta per oggi, e' quella */
   var peOggi=pianoDelGiorno(today());
   if(peOggi && peOggi.stato!=="saltata" && giorni.indexOf(peOggi.d)>=0 && !sedutaCoperta(w, peOggi.d)) next=peOggi.d;
-  var completa=!next;
+  var completa=!next, stw=statoSettimana(w);
   var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
   h+=cardProposta(true);
@@ -84,6 +84,8 @@ function viewOggi(){
     h+='<div class="card" style="border-color:var(--ok)"><div class="eyebrow" style="color:var(--ok)">Settimana completa</div>'+
        '<h2 style="margin:5px 0 6px">'+(pk?"Due su due":"Quattro su quattro")+'</h2>'+
        '<div class="sm mut">Il recupero fa parte del programma quanto le sessioni. Se vuoi allenarti lo stesso, apri le altre sedute qui sotto.</div></div>';
+  } else if(stw.ok && !stw.aperte){
+    h+=cardSettimanaFatta(w, stw, next);
   } else {
     if(rc && rc.lvl>=1){
       var oggi=recB.date===today(), bc = rc.lvl>=2 ? "var(--alert)" : "var(--amb)";
@@ -114,6 +116,7 @@ function viewOggi(){
        '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>')+
        '</div>';
     h+=coachBadge(next);
+    h+=cardRischio(w, rischioSettimana(w));
   }
 
   /* 2 · una sola progressione */
@@ -124,9 +127,11 @@ function viewOggi(){
 
   /* 4 · la settimana: sette giorni, cosa e' fatto e cosa e' previsto */
   var target=bersaglio(w, riposi.length), sedPiano=seduteDelPiano(w), salt=saltate(w);
+  var SW=STATO_SETT[stw.stato];
   h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
-     '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
-     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div>';
+     '<div class="xs" style="font-weight:700;color:var(--mut)">'+
+     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+
+     ' <span class="stchip" style="color:'+SW.c+';border-color:'+SW.c+'">'+SW.t+(stw.ok?' ✓':'')+'</span></div></div>';
   h+=cardSettimanaRail(w, sedPiano);
   h+='<div class="xs mut" style="margin-top:6px">Tocca un giorno per segnarlo a casa, fuori con le bande, fuori senza niente o occupato. Il tempo di ogni giorno si sceglie in «Adatta la settimana».</div>';
   if(salt.length) h+='<div class="flag disc" style="margin-top:10px">↻<div><b>'+(salt.length>1?'Sedute del piano non fatte: ':'Seduta del piano non fatta: ')+esc(salt.map(function(e){ return e.d+" ("+ggDi(e.data)+")"; }).join(", "))+'.</b> Nessun problema: adatta la settimana ai giorni che restano.</div></div>';
@@ -146,12 +151,14 @@ function viewOggi(){
   if(stk.n>0 || !completa){
     var wN=weekOf(today()), cells="";
     for(var si=5;si>=0;si--){ var ww=wN-si, wd=weekDone(ww);
-      cells+='<i class="'+(ww===wN?(wd.ok?"on":"cur"):(wd.ok?"on":""))+'"></i>'; }
+      cells+='<i class="'+(wd.stato==="piena"?"on":wd.stato==="tenuta"?"ten":(ww===wN?"cur":""))+'" title="'+ww+': '+STATO_SETT[wd.stato].t+'"></i>'; }
     h+='<div class="stk">'+cells+'</div>'+
        '<div class="xs mut" style="margin-top:6px">'+
-       (stk.n>0? '<b style="color:var(--ok)">'+stk.n+' settiman'+(stk.n>1?'e':'a')+' di fila</b> chiuse a bersaglio.'
+       (stk.n>0? '<b style="color:var(--ok)">'+stk.n+' settiman'+(stk.n>1?'e':'a')+' di fila</b>'+(stk.tenute? ', di cui '+stk.tenute+' tenut'+(stk.tenute>1?'e':'a')+' (barra a righe).' : ' piene.')
                : 'La catena si conta a settimane, non a giorni: un giorno saltato non rompe niente.')+
-       (stk.curOpen&&!completa?' Questa è ancora aperta.':'')+'</div>';
+       (stk.curOpen&&!completa?' Questa è ancora aperta.':'')+
+       ' Piena: tutte le sedute o tutti i gruppi al minimo. Tenuta: almeno 2 sedute e tutto il piano adattato ai tuoi giorni.</div>';
+    if(stk.avviso) h+='<div class="flag disc" style="margin-top:8px">⚠<div><b>'+stk.tenuteFila+' settimane tenute di fila.</b> Tenere va bene per qualche settimana, ma il mantenimento a lungo diventa regressione: prova a liberare un giorno o a dare 90′ a una seduta per chiudere tutti i gruppi.</div></div>';
   }
   if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="picco">'+
@@ -379,10 +386,11 @@ function viewProg(){
       (sub?'<div class="s">'+sub+'</div>':'')+'</div>';
   };
   h+='<div class="between" style="margin:14px 0 0"><div class="eyebrow glow">Settimana '+last.w+'</div>'+
-     '<div class="xs mut">'+(stk.n>0? stk.n+' settimane di fila' : 'catena da riavviare')+'</div></div>';
+     '<div class="xs mut">'+(stk.n>0? stk.n+' settimane di fila'+(stk.tenute? ' · '+stk.tenute+' tenute' : '') : 'catena da riavviare')+'</div></div>';
+  var stl=statoSettimana(last.w);
   h+='<div class="hero">'+
-     cell("Sessioni", last.n+"/"+last.target, last.rest?" +"+last.rest+"R":"", null,
-          last.n>=last.target?"var(--ok)":"var(--amb)")+
+     cell("Sessioni", last.n+"/"+last.target, last.rest?" +"+last.rest+"R":"", "settimana "+STATO_SETT[stl.stato].t,
+          stl.stato==="piena"?"var(--ok)":stl.stato==="tenuta"?"var(--glow)":"var(--amb)")+
      cell("Serie dure", dec(last.sdure), "",
           (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : "pesi, bande e corpo libero"),
           d!==null? (d>=0?"var(--ok)":"var(--amb)") : null)+

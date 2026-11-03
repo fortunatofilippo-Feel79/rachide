@@ -36,7 +36,9 @@ function kpi(w){
     if(r.rir===null || r.rir===undefined) return; rirN++; if(r.rir===0) rir0++; });
   var b=S.ben.filter(x=>x.w===w && x.refl!==null);
   var m=S.mis.filter(x=>x.w===w)[0];
-  return {w:w, n:ss.length, rest:rest, target:target, ader:Math.round(ss.length/target*100),
+  /* sedute previste: quelle del piano della settimana, se c'e'; altrimenti il bersaglio */
+  var pv=(typeof seduteDelPiano==="function")? seduteDelPiano(w).filter(function(e){ return e.stato!=="riposo"; }).length : 0, previste=pv||target;
+  return {w:w, n:ss.length, rest:rest, target:target, previste:previste, ader:Math.min(100, Math.round(ss.length/previste*100)),
     dur:dur.length?Math.round(dur.reduce((a,b)=>a+b,0)/dur.length):null,
     en:en.length?+(en.reduce((a,b)=>a+b,0)/en.length).toFixed(1):null,
     top: tot? Math.round(top/tot*100):null, ton:car.tot, ton_pesi:car.pesi, ton_bande:car.bande, ton_corpo:car.corpo,
@@ -247,18 +249,56 @@ function mobAsym(rec, k){
    La catena è settimanale, non giornaliera: una giornata saltata
    non rompe niente, così non scatta l'effetto "tanto ho già rotto".
    ============================================================ */
-function weekDone(w){
+/* ---------- la settimana: piena, tenuta, rotta ----------
+   Si conta quello che ottieni, non quante volte ti alleni: a parita' di volume la
+   frequenza cambia poco (Iversen 2021).
+   - piena: tutte le sedute del bersaglio (4, 2 in picco, meno i riposi), oppure
+     tutti e 7 i gruppi al minimo di serie dure, con qualsiasi numero di sedute;
+   - tenuta: almeno 2 sedute e tutte quelle del piano adattato ai tuoi giorni (nessuna
+     saltata, nessuna ancora da fare), ma qualche gruppo sotto. Con l'intensita'
+     mantenuta poche sedute conservano forza e massa per qualche settimana (Spiering 2021);
+   - rotta: settimana finita con meno di 2 sedute, o con una seduta del piano saltata
+     e la settimana non ricalcolata;
+   - aperta: la settimana in corso, finche' non e' piena o tenuta.
+   Piene e tenute fanno la catena. Dopo 3 tenute di fila l'app avvisa: il mantenimento
+   a lungo diventa regressione (soglia scelta dal progetto). */
+var SEDUTE_MIN=2, TENUTE_MAX=3;
+function statoSettimana(w){
   var ss=S.sess.filter(function(s){ return s.w===w; });
-  var real=ss.filter(function(s){ return !isRest(s); }).length;
-  var rp=ss.filter(isRest).length;
-  return {real:real, target:bersaglio(w, rp), ok:real>=bersaglio(w, rp)};
+  var real=ss.filter(function(s){ return !isRest(s); }).length, rp=ss.filter(isRest).length, tg=bersaglio(w, rp);
+  var grp=serieGruppo(S.log.filter(function(r){ return r.w===w; }));
+  var sotto=Object.keys(TGT).filter(function(g){ return (grp[g]||0)<TGT[g][0]-0.01; });
+  var sed=(typeof seduteDelPiano==="function")? seduteDelPiano(w) : [];
+  var aperte=sed.filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; }).length;
+  var salt=sed.filter(function(e){ return e.stato==="saltata"; }).length;
+  var out={w:w, real:real, target:tg, rp:rp, sotto:sotto, piano:sed.length, aperte:aperte, saltate:salt, stato:"aperta"};
+  if(real>=tg || (real>=1 && !sotto.length)) out.stato="piena";
+  else if(real>=SEDUTE_MIN && sed.length && !aperte && !salt) out.stato="tenuta";
+  else if(w<weekOf(today())) out.stato="rotta";
+  out.ok=(out.stato==="piena"||out.stato==="tenuta");
+  return out;
 }
+function weekDone(w){ var s=statoSettimana(w); return {real:s.real, target:s.target, ok:s.ok, stato:s.stato}; }
 function streak(){
-  var wNow=weekOf(today()), c=0, cur=weekDone(wNow).ok;
+  var wNow=weekOf(today()), c=0, ten=0, fila=0, inTesta=true, cur=statoSettimana(wNow).ok;
   for(var w=(cur?wNow:wNow-1); w>=PLAN_W0-12; w--){
-    if(weekDone(w).ok) c++; else break;
+    var s=statoSettimana(w); if(!s.ok) break;
+    c++;
+    if(s.stato==="tenuta"){ ten++; if(inTesta) fila++; } else inTesta=false;
   }
-  return {n:c, curOpen:!cur};
+  return {n:c, tenute:ten, tenuteFila:fila, curOpen:!cur, avviso:fila>=TENUTE_MAX};
+}
+/* quante sedute mancano per tenere la settimana in corso, con il piano o i giorni che restano */
+function rischioSettimana(w){
+  var s=statoSettimana(w); if(s.ok) return {serve:0, s:s};
+  var prev=s.aperte;
+  if(!s.piano && typeof dateSettimana==="function"){
+    var mancano=giorniSettimana(w).filter(function(d){ return !sedutaCoperta(w,d); }).length;
+    var liberi=dateSettimana(w).filter(function(d){ return giorniFa(d)<0 || (giorniFa(d)===0 && !S.sess.some(function(x){ return x.date===d && !isRest(x); })); })
+      .filter(function(d){ return dispoGiorno(w,d)!=="no"; }).length;
+    prev=Math.min(mancano, liberi);
+  }
+  return {serve:Math.max(0, SEDUTE_MIN-s.real-prev), s:s};
 }
 
 /* ============================================================
@@ -544,7 +584,8 @@ function statoRows(){
     if(cur && !dg) dg=diagnose();
     var son=bb.filter(function(b){ return b.sonno; }).map(function(b){ return b.sonno; });
     var sonF=bb.filter(function(b){ return b.sonno && b.sede==="Fuori"; }).map(function(b){ return b.sonno; });
-    return {w:w, dal:sd.dal, al:sd.al, sedute:k.n, bersaglio:k.target, riposi:k.rest,
+    var stw=statoSettimana(w);
+    return {w:w, dal:sd.dal, al:sd.al, sedute:k.n, bersaglio:k.target, previste:k.previste, settimana:stw.stato, riposi:k.rest,
       min:vuotoSe(k.dur), en:vuotoSe(k.en), top:vuotoSe(k.top), ton:k.ton_pesi, ton_bande_stima:k.ton_bande, ton_corpo_stima:k.ton_corpo,
       serie_dure:k.sdure, serie_dure_pct: k.dure.pct==null? "" : k.dure.pct, duro:duroTxt(k.duro),
       rir0: k.rirN? k.rir0+"/"+k.rirN : "",

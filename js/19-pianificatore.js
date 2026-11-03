@@ -296,7 +296,12 @@ function pianoSheet(){
         '<div class="fl pv" style="left:'+r1(Math.min(100,r.fatte/max*100))+'%;width:'+r1(Math.min(100-r.fatte/max*100, r.prev/max*100))+'%;background:'+col+'"></div></div>'+
         '<div class="vl" style="color:'+col+'">'+dec(Math.round(r.tot*2)/2)+' <span>/'+r.min+'–'+r.max+'</span></div></div>'; }).join("")+
     '<div class="xs mut" style="margin-top:8px">Pieno = già fatto · chiaro = previsto. Fascia verde = 10-20 serie (core 6-12), serie dure, indirette a metà.</div></div>';
-  if(bil.buchi.length && PS.sedute.length) h+='<div class="flag info" style="margin-top:8px"><b>!</b><div>'+esc(bil.buchi.join(", "))+' '+(bil.buchi.length>1?'restano':'resta')+' sotto il minimo: con questi giorni e questi tempi non c\'è spazio. Più tempo in un giorno (60′ o 90′) o un giorno in più li chiude.</div></div>';
+  var sp=statoPrevisto(w, PS.sedute, bil), SP=STATO_SETT[sp];
+  h+='<div class="stprev" style="border-color:'+SP.c+'"><span>Se fai queste sedute la settimana è</span><b style="color:'+SP.c+'">'+SP.t+'</b></div>';
+  if(sp==="rotta"){
+    var c30=giorniRestano(w).filter(function(d){ return PS.dispo[d]==="no"; });
+    h+='<div class="flag disc" style="margin-top:8px">⚠<div><b>Servono almeno 2 sedute per tenere la settimana.</b> '+(c30.length? 'Mezz\'ora a corpo libero in un giorno che hai segnato occupato basta.<button class="btn sm" style="margin-top:8px;width:100%" data-a="p30">Aggiungi 30′ a corpo libero</button>' : 'Non restano giorni: la catena riparte la prossima settimana.')+'</div></div>';
+  } else if(bil.buchi.length && PS.sedute.length) h+='<div class="flag info" style="margin-top:8px"><b>!</b><div>'+esc(bil.buchi.join(", "))+' '+(bil.buchi.length>1?'restano':'resta')+' sotto il minimo: la settimana è tenuta, non piena. Più tempo in un giorno (60′ o 90′) o un giorno in più li chiude.</div></div>';
   var gs=giorniSenzaPesi();
   if(gs!=null && gs>=10 && PS.sedute.length && PS.sedute.every(function(e){ return e.l!=="casa"; }))
     h+='<div class="flag disc" style="margin-top:8px">⚠<div>Sono '+gs+' giorni senza carichi pesanti e nessuna seduta con i pesi in programma. Per la forza massima servono: se puoi, tieni almeno una seduta a casa con i pesi.</div></div>';
@@ -317,6 +322,75 @@ function pianoSalva(){
   cfgTocca("settimane");
   var ok=save(); if(SYNC.on()) doPush(false);
   return ok;
+}
+
+/* ---------- la catena: piano fatto, rischio, mezz'ora a corpo libero ---------- */
+var STATO_SETT={piena:{t:"piena", c:"var(--ok)"}, tenuta:{t:"tenuta", c:"var(--glow)"}, rotta:{t:"rotta", c:"var(--alert)"}, aperta:{t:"in corso", c:"var(--mut)"}};
+/* la seduta migliore da 30 minuti a corpo libero, oggi: sceglie quella che recupera di piu' */
+function seduta30(){
+  var w=weekOf(today()), d=today(), dispo={}, tempo={}, forza={};
+  dateSettimana(w).forEach(function(x){ dispo[x]=(x===d)? "casa" : "no"; });
+  tempo[d]=30; forza[d]="corpo";
+  var g=generaSettimana(w, {dispo:dispo, tempo:tempo, forza:forza});
+  return g.sedute[0] || null;
+}
+function avvia30(){
+  var w=weekOf(today()), sd=seduta30();
+  if(!sd){ toast("Oggi hai già fatto una seduta: scegli un altro giorno in «Adatta la settimana»"); return; }
+  if(!statoSettimana(w).ok){
+    /* serve per tenere la settimana: entra nel piano (le saltate escono, la stessa seduta in un altro giorno si sposta a oggi) */
+    var p=pianoSett(w), keep=seduteDelPiano(w).filter(function(e){ return e.stato!=="saltata" && !(e.d===sd.d && e.stato==="futura"); })
+      .map(function(e){ return {data:e.data, d:e.d, l:e.l, ora:e.ora, t:e.t, agg:e.agg, ser:e.ser, via:e.via}; });
+    S.pianoSett=S.pianoSett||{};
+    S.pianoSett[w]={ts:Date.now(), da:"app", nota:(p&&p.nota)||"", sedute:keep.concat([{data:sd.data, d:sd.d, l:"corpo", ora:sd.ora, t:30, agg:sd.agg, ser:sd.ser, via:sd.via}])};
+    S.tempo=S.tempo||{}; S.tempo[w]=S.tempo[w]||{}; S.tempo[w][sd.data]=30;
+    cfgTocca("settimane");
+  }
+  startSession(sd.d, false, false, "corpo", listaSeduta(sd));
+}
+function giorniRestano(w){
+  return dateSettimana(w).filter(function(d){ return giorniFa(d)<0 || (giorniFa(d)===0 && !S.sess.some(function(x){ return x.date===d && !isRest(x); })); });
+}
+/* in Oggi, al posto della prossima seduta quando il piano della settimana e' fatto */
+function cardSettimanaFatta(w, s, next){
+  var ten=(s.stato==="tenuta"), col=STATO_SETT[s.stato].c;
+  var h='<div class="card" style="border-color:'+col+'"><div class="eyebrow" style="color:'+col+'">Settimana '+(ten?'tenuta':'piena')+' ✓</div>'+
+    '<h2 style="margin:5px 0 6px">'+(ten? 'Hai fatto il piano della settimana' : 'Tutti i gruppi al minimo')+'</h2>'+
+    '<div class="sm mut">'+(ten? s.real+' sedute, quelle che i tuoi giorni permettevano: la catena continua.'+(s.sotto.length? ' Restano sotto il minimo di serie: '+esc(s.sotto.join(", "))+'.' : '')
+      : 'Con '+s.real+(s.real===1?' seduta':' sedute')+' hai già il minimo di serie dure in tutti e 7 i gruppi. Il recupero fa parte del programma.')+'</div>';
+  var sd=ten? seduta30() : null;
+  if(sd){
+    var cs=contributi(listaSeduta(sd)), rec=s.sotto.filter(function(g){ return (cs[g]||0)>0; });
+    h+='<button class="btn" style="margin-top:12px" data-a="corpo30">Se trovi mezz\'ora · 30′ a corpo libero</button>'+
+      '<div class="xs mut" style="margin-top:6px">Seduta '+sd.d+' adattata'+(rec.length? ', recupera '+esc(rec.join(", ")) : '')+'. Facoltativa: la settimana è già tenuta.</div>';
+  } else if(next) h+='<button class="btn sm ghost" style="width:100%;margin-top:12px" data-a="open" data-d="'+next+'">Se vuoi allenarti lo stesso: giorno '+next+'</button>';
+  return h+'</div>';
+}
+/* in Oggi, quando la settimana rischia di rompersi */
+function cardRischio(w, rs){
+  if(!rs || !rs.serve) return "";
+  var rest=giorniRestano(w), oggiOk=rest.indexOf(today())>=0 && !pianoDelGiorno(today()), sd=oggiOk? seduta30() : null;
+  var h='<div class="flag disc" style="margin-top:12px">⚠<div><b>Per tenere la settimana '+(rs.serve>1? 'mancano '+rs.serve+' sedute' : 'manca 1 seduta')+'.</b> ';
+  if(rest.length<rs.serve) return h+'Non restano abbastanza giorni: questa settimana la catena si ferma e riparte lunedì. Capita.</div></div>';
+  h+='Ne servono almeno 2 a settimana: anche mezz\'ora a corpo libero basta.';
+  if(sd) h+='<button class="btn sm" style="margin-top:8px;width:100%" data-a="corpo30">30′ a corpo libero oggi · seduta '+sd.d+'</button>';
+  h+='<button class="btn sm ghost" style="margin-top:6px;width:100%" data-a="piano">'+(sd? 'Oppure scegli un altro giorno' : 'Scegli il giorno in «Adatta la settimana»')+'</button></div></div>';
+  return h;
+}
+/* nel pianificatore: un giorno occupato diventa 30' a corpo libero, il piu' lontano dalle altre sedute */
+function piano30(){
+  var w=PS.w, cand=giorniRestano(w).filter(function(d){ return PS.dispo[d]==="no"; });
+  if(!cand.length) return;
+  var usati=PS.sedute.map(function(e){ return s2d(e.data).getTime(); }).concat(S.sess.filter(function(x){ return x.w===w && !isRest(x); }).map(function(x){ return s2d(x.date).getTime(); }));
+  var dist=function(d){ var t=s2d(d).getTime(); return usati.length? Math.min.apply(null, usati.map(function(u){ return Math.abs(u-t); })) : 0; };
+  cand.sort(function(a,b){ return dist(b)-dist(a); });
+  var d=cand[0]; PS.dispo[d]="casa"; PS.tempo[d]=30; PS.forza[d]="corpo";
+  pianoCalcola(); pianoSheet(); toast(GG_NOME[ggDi(d)]+" "+d.slice(0,5)+": 30′ a corpo libero");
+}
+function statoPrevisto(w, sedute, bil){
+  var ss=S.sess.filter(function(s){ return s.w===w; }), real=ss.filter(function(s){ return !isRest(s); }).length;
+  var tg=bersaglio(w, ss.filter(isRest).length), tot=real+(sedute||[]).length;
+  return (tot>=tg || (tot>=1 && !bil.buchi.length))? "piena" : tot>=SEDUTE_MIN? "tenuta" : "rotta";
 }
 
 /* ---------- per il coach: piano, disponibilita', bilancio, formato ---------- */
