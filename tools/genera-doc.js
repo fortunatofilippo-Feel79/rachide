@@ -17,6 +17,7 @@ const COLONNE = {
     gruppo: 'gruppo muscolare principale', side: 'S sinistra, D destra, vuoto se bilaterale', band: 'banda usata',
     load: 'carico in kg per manubrio', reps: 'ripetizioni per serie, separate da |', serie: 'numero di serie', tot: 'ripetizioni totali',
     vol: 'volume in kg (carico × ripetizioni)', rir: 'ripetizioni di riserva nell\'ultima serie (0 = cedimento, 4 = 4 o più)',
+    rirs: 'ripetizioni di riserva di ogni serie, separate da | (es. 2|1|0)',
     top: 'Sì se il top del range è chiuso', note: 'nota libera', rec: 'secondi medi tra una serie e la successiva', duro: 'lato più duro: S, D, U (uguali)',
     dolz: 'dolore segnato durante l\'esercizio, zona:valore separati da ; (es. spalla_sx:4)'
   },
@@ -50,7 +51,9 @@ const COLONNE = {
   },
   stato: {
     w: 'settimana', dal: 'lunedì', al: 'domenica', sedute: 'sedute fatte', bersaglio: 'sedute previste (4, 2 in picco, meno i riposi)',
-    riposi: 'riposi programmati', min: 'durata media', en: 'energia media', top: '% serie al top del range', ton: 'tonnellaggio kg',
+    riposi: 'riposi programmati', min: 'durata media', en: 'energia media', top: '% serie al top del range', ton: 'kg sollevati con i pesi (esatti)',
+    ton_bande_stima: 'kg stimati con le bande (valore nominale × 0,7)', ton_corpo_stima: 'kg stimati a corpo libero (quota del peso; push-up circa 72%)',
+    serie_dure: 'serie dure della settimana, somma per gruppo col conteggio frazionario (RIR 4+ vale mezza)', serie_dure_pct: '% di serie chiuse a RIR 0-3 o senza RIR',
     duro: 'lato più duro (conteggio)', rir0: 'composti a cedimento / composti con RIR', peso: 'peso medio', peso_g: 'pendenza g/settimana',
     kcal: 'calorie medie', prot: 'proteine medie g', carb: 'carboidrati medi g', grassi: 'grassi medi g', hrv: 'HRV mediana', rhr: 'FC a riposo mediana',
     sonno: 'sonno medio h', sonno_fuori: 'sonno medio nelle notti fuori', rec_bassi: 'giorni con recupero basso', prog: 'progressione scelta',
@@ -74,7 +77,7 @@ const SCHEDE = { log: 'App_Log', sess: 'App_Sessioni', mis: 'App_Misure', ben: '
 /* le colonne reali, dal codice: un campione di stato con ogni tipo di riga */
 function colonneReali() {
   const S = ctx.S, oggi = ctx.today();
-  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, top: true, note: '', rec: 120, duro: 'S', dolz: '' }];
+  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, rirs: [2], top: true, note: '', rec: 120, duro: 'S', dolz: '' }];
   S.sess = [{ id: 's', w: 40, date: oggi, day: 'A', sede: 'Casa', mod: 'Pesi', min: 60, en: 4, warm: true, sig: false, dol: 2, dolz: 'lombare:2', note: '' }];
   S.mis = [{ w: 40, date: oggi, peso: 66, torace: 95, bic: 33, coscia: 54, vita: 80, note: '' }];
   S.ben = [{ date: oggi, w: 40, hrv: 50 }];
@@ -140,6 +143,8 @@ function genera() {
     ['Carico suggerito', 'L\'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. I tetti per la spalla valgono sempre.'],
     ['Rientro dopo una pausa', 'Dopo 8-21 giorni senza l\'esercizio: stesso carico, la prima serie fa da prova. Oltre 21 giorni: un gradino sotto per una seduta ([McMaster 2013](' + ctx.FONTI.mcmaster.u + ')).'],
     ['Recupero', 'Livello 2 (carichi fermi, mai un invito a scendere): HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo.'],
+    ['Serie dure', 'L\'unità di volume è lo sforzo, non l\'attrezzo: una serie chiusa a RIR 0-3 conta 1, a RIR 4 o più conta 0,5, senza RIR conta 1. Vale per pesi, bande e corpo libero ([Schoenfeld 2017](' + ctx.FONTI.carichi.u + '): crescita simile con carichi leggeri se le serie sono vicine al cedimento). La soglia è una scelta del progetto.'],
+    ['Carico sollevato', 'Pesi: kg esatti. Bande: valore nominale della banda × 0,7 × ripetizioni (stima). Corpo libero: quota del peso × ripetizioni (stima; solo il push-up ha una misura, circa 69-75% del peso, [Suprak 2011](' + ctx.FONTI.suprak.u + ')). Le tenute e il core non hanno un carico. Per confrontare le settimane si usano le serie dure.'],
     ['Piano flessibile', 'Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.'],
     ['Settimana di picco', 'Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](' + ctx.FONTI.spiering.u + ')).'],
     ['Dolore', 'In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](' + ctx.FONTI.silbernagel.u + ')). Zone: ' + ctx.ZONE.map(z => '`' + z[0] + '`').join(', ') + '.'],

@@ -15,16 +15,62 @@ var IND={
   "Band row seduto":["Bicipiti"], "Band row un braccio":["Bicipiti"], "Rematore al telaio della porta":["Bicipiti"], "Band pull-down":["Bicipiti"],
   "Face pull":["Dorso"], "Reverse Fly":["Dorso"], "Band pull-apart":["Dorso"], "Y-T-W a busto inclinato":["Dorso"]
 };
+/* ---------- serie dure ----------
+   L'unita' di volume non e' l'attrezzo ma lo sforzo: con carichi leggeri la crescita
+   muscolare e' simile a quella coi carichi pesanti SE le serie sono vicine al cedimento
+   (Schoenfeld 2017). Una serie chiusa a RIR 0-3 conta 1; chiusa a RIR 4 o piu' (serie
+   comoda) conta 0,5. Senza RIR (dati di prima, tenute) conta 1.
+   La soglia e' una scelta del progetto, non di una fonte. */
+var RIR_DURA=3, PESO_LEGGERA=0.5;
+function pesoSerie(r, j){
+  var v=(r.rirs && r.rirs[j]!=null && r.rirs[j]!=="") ? +r.rirs[j] : null;
+  if(v==null || meta(r.ex).sec) return 1;
+  return v>RIR_DURA ? PESO_LEGGERA : 1;
+}
+function serieRiga(r){ var n=0; (r.reps||[]).forEach(function(x,j){ n+=pesoSerie(r,j); }); return r.side ? n/2 : n; }
 /* un esercizio unilaterale e' UNA serie per il muscolo: le righe sx e dx descrivono lo stesso lavoro */
 function serieGruppo(righe){
   var grp={};
   righe.forEach(function(r){
-    var g=meta(r.ex).g, n=r.side ? r.reps.length/2 : r.reps.length;
+    var g=meta(r.ex).g, n=serieRiga(r);
     grp[g]=(grp[g]||0)+n;
     (IND[r.ex]||[]).forEach(function(g2){ grp[g2]=(grp[g2]||0)+n*0.5; });
   });
   Object.keys(grp).forEach(function(g){ grp[g]=Math.round(grp[g]*2)/2; });
   return grp;
+}
+/* quante serie sono dure sul totale (conteggio grezzo, senza il fattore indiretto) */
+function serieDure(righe){
+  var tot=0, dure=0;
+  righe.forEach(function(r){ if(meta(r.ex).sec) return;
+    var f=r.side? 0.5 : 1; (r.reps||[]).forEach(function(x,j){ tot+=f; if(pesoSerie(r,j)===1) dure+=f; }); });
+  return {tot:tot, dure:dure, pct: tot? Math.round(dure/tot*100) : null};
+}
+
+/* ---------- carico sollevato, per modalita' ----------
+   pesi: kg esatti (carico x ripetizioni).
+   bande: kg stimati dalla banda (BANDKG, valore nominale) con un fattore perche' la
+          tensione reale dipende da quanto la allunghi: stima del progetto.
+   corpo libero: kg stimati come quota del tuo peso. Solo per il push-up c'e' una
+          misura (Suprak 2011: circa 69-75% del peso); le altre quote sono stime
+          del progetto, da affinare. Le tenute e il core non hanno un carico. */
+var BAND_K=0.7;
+var QUOTA_PESO={"Push-up":0.72, "Push-up stretti":0.72, "Push-up piedi rialzati":0.8, "Push-up piedi rialzati con banda":0.8,
+  "Pike push-up":0.7, "Rematore al telaio della porta":0.45, "Box squat alla sedia 3s":0.85, "Bulgarian split squat 3s":0.85,
+  "Affondi indietro":0.85, "Hip hinge una gamba":0.8, "Hip thrust a una gamba":0.6, "Calf raise monopodalico":1, "Calf raise":1, "Calf raise (BW)":1};
+function caricoRiga(r){
+  var reps=(r.reps||[]).reduce(function(a,b){ return a+b; },0), m=meta(r.ex);
+  if(m.sec || m.t==="core" || !reps) return {tipo:"", kg:0};
+  if(r.band) return {tipo:"bande", kg:(BANDKG[r.band]||0)*BAND_K*reps, stima:true};
+  if(r.load>0) return {tipo:"pesi", kg:r.load*reps};
+  var q=QUOTA_PESO[r.ex], pe=ultimoPeso()||66;
+  if(q) return {tipo:"corpo", kg:q*pe*reps*(r.side?0.5:1), stima:true};
+  return {tipo:"", kg:0};
+}
+function caricoSettimana(righe){
+  var o={pesi:0, bande:0, corpo:0};
+  righe.forEach(function(r){ var c=caricoRiga(r); if(c.tipo) o[c.tipo]+=c.kg; });
+  return {pesi:Math.round(o.pesi), bande:Math.round(o.bande), corpo:Math.round(o.corpo), tot:Math.round(o.pesi+o.bande+o.corpo)};
 }
 
 /* ---------- serie storiche del benessere ---------- */
@@ -85,6 +131,7 @@ function kpiValori(){
   put("aderenza", (ws.length && k.target)? Math.round(k.n/k.target*100) : null, sw+k.n+" su "+k.target);
   var nel=0, fuori=[]; Object.keys(TGT).forEach(function(g){ var v=k.grp[g]||0, t=TGT[g]; if(v>=t[0] && v<=t[1]) nel++; else fuori.push(g+" "+dec(v)); });
   put("serie_gruppo", (ws.length? nel : null), sw+nel+" su "+Object.keys(TGT).length+(fuori.length? " · fuori: "+fuori.join(", ") : ""));
+  put("serie_dure", k.dure.pct, k.dure.pct==null? "–" : sw+k.dure.pct+"% ("+dec(k.dure.dure)+" su "+dec(k.dure.tot)+")");
   put("top_range", k.top, k.top==null? "–" : sw+k.top+"%");
   var cN=0, c0=0; ws.slice(-2).forEach(function(x){ var kk=kpi(x); cN+=kk.rirN; c0+=kk.rir0; });
   put("cedimenti", cN? c0 : null, cN? c0+" su "+cN : "nessun RIR registrato");

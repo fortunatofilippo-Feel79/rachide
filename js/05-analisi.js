@@ -8,7 +8,7 @@ function kpi(w){
   var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
   var target=bersaglio(w, rest);
   var dur=ss.filter(s=>s.min).map(s=>s.min), en=ss.filter(s=>s.en).map(s=>s.en);
-  var ton=ls.reduce((a,r)=>a + r.load*(r.reps.reduce((x,y)=>x+y,0)), 0);
+  var car=caricoSettimana(ls), dure=serieDure(ls);
   var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
   /* serie per gruppo: un esercizio unilaterale è UNA serie per il muscolo,
      non due. Le righe sinistra e destra descrivono lo stesso lavoro. */
@@ -39,7 +39,8 @@ function kpi(w){
   return {w:w, n:ss.length, rest:rest, target:target, ader:Math.round(ss.length/target*100),
     dur:dur.length?Math.round(dur.reduce((a,b)=>a+b,0)/dur.length):null,
     en:en.length?+(en.reduce((a,b)=>a+b,0)/en.length).toFixed(1):null,
-    top: tot? Math.round(top/tot*100):null, ton:Math.round(ton), grp:grp, asim:asim, duro:duro, rir0:rir0, rirN:rirN,
+    top: tot? Math.round(top/tot*100):null, ton:car.tot, ton_pesi:car.pesi, ton_bande:car.bande, ton_corpo:car.corpo,
+    dure:dure, sdure:Math.round(Object.keys(grp).reduce(function(a,g){ return a+grp[g]; },0)*2)/2, grp:grp, asim:asim, duro:duro, rir0:rir0, rirN:rirN,
     warm: ss.filter(s=>s.warm).length, sig: ss.filter(s=>s.sig).length,
     refl: b.length? +(b.reduce((a,x)=>a+x.refl,0)/b.length).toFixed(1) : null,
     peso: m?m.peso:null, vt: (m&&m.vita&&m.torace)? +(m.vita/m.torace).toFixed(3):null};
@@ -544,7 +545,8 @@ function statoRows(){
     var son=bb.filter(function(b){ return b.sonno; }).map(function(b){ return b.sonno; });
     var sonF=bb.filter(function(b){ return b.sonno && b.sede==="Fuori"; }).map(function(b){ return b.sonno; });
     return {w:w, dal:sd.dal, al:sd.al, sedute:k.n, bersaglio:k.target, riposi:k.rest,
-      min:vuotoSe(k.dur), en:vuotoSe(k.en), top:vuotoSe(k.top), ton:k.ton, duro:duroTxt(k.duro),
+      min:vuotoSe(k.dur), en:vuotoSe(k.en), top:vuotoSe(k.top), ton:k.ton_pesi, ton_bande_stima:k.ton_bande, ton_corpo_stima:k.ton_corpo,
+      serie_dure:k.sdure, serie_dure_pct: k.dure.pct==null? "" : k.dure.pct, duro:duroTxt(k.duro),
       rir0: k.rirN? k.rir0+"/"+k.rirN : "",
       peso: pes.length? r1(media(pes)) : "", peso_g: sl.ok? sl.g : "",
       kcal: cib.length? Math.round(media(cib.map(function(b){ return 4*(b.cibP||0)+4*(b.cibC||0)+9*(b.cibG||0); }))) : "",

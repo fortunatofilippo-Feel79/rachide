@@ -72,6 +72,7 @@ function briefing(){
   });
   var lw=ws[ws.length-1], k=kpi(lw);
   L.push("");
+  L.push("Serie dure, settimana "+lw+": "+dec(k.sdure)+" (serie con RIR 4+ valgono mezza; "+(k.dure.pct==null?"-":k.dure.pct+"%")+" dure) · carico: pesi "+k.ton_pesi+" kg, bande ~"+k.ton_bande+", corpo libero ~"+k.ton_corpo+" (stime)");
   L.push("Serie per gruppo, settimana "+lw+": "+Object.keys(k.grp).map(g=>g+" "+k.grp[g]).join(" · "));
   L.push("Composti a cedimento, settimana "+lw+": "+k.rir0+" su "+k.rirN+" · lato più duro: "+(duroTxt(k.duro)||"non registrato"));
   var rc=recSettimana(lw);

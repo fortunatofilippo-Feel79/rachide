@@ -439,6 +439,8 @@ var G = {
    ============================================================ */
 var FONTI={
   schoenfeld:{t:"Schoenfeld, Ogborn, Krieger 2017 · J Sports Sci", u:"https://core.ac.uk/download/200371264.pdf"},
+  carichi:{t:"Schoenfeld et al. 2017 · carichi leggeri e pesanti, J Strength Cond Res", u:"https://pubmed.ncbi.nlm.nih.gov/28834797/"},
+  suprak:{t:"Suprak et al. 2011 · quota del peso nel push-up, J Strength Cond Res 25:497", u:"https://pubmed.ncbi.nlm.nih.gov/20179649"},
   bazvalle:{t:"Baz-Valle et al. 2022 · J Hum Kinet 81:199", u:"https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877/"},
   pelland:{t:"Pelland et al. 2024 · meta-regressioni volume e frequenza", u:"https://bibbase.org/network/publication/joshuapelland-jacobremmert-zacrobinson-sethhinson-michaelzourdos-theresistancetrainingdoseresponsemetaregressionsexploringtheeectsofweeklyvolumeandfrequencyonmusclehypertrophyandstrengthgain-2024"},
   singer:{t:"Singer et al. 2024 · Front Sports Act Living", u:"https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/text"},
@@ -460,6 +462,8 @@ var KPI=[
    come:"Sedute fatte / bersaglio della settimana (4, oppure 2 in settimana di picco, meno i riposi programmati)", bersaglio:"100%", ok:100, att:75, verso:"su", fonte:"piano"},
   {id:"serie_gruppo", area:"Allenamento", nome:"Serie per gruppo nel range", unita:"gruppi", freq:"settimanale",
    come:"Serie settimanali per gruppo: dirette = 1, indirette = 0,5 (es. la panca per i tricipiti). Range 10-20, core 6-12", bersaglio:"7 gruppi su 7 nel range", ok:7, att:5, verso:"su", fonte:"bazvalle", fonti:["schoenfeld","bazvalle","pelland"]},
+  {id:"serie_dure", area:"Allenamento", nome:"Serie dure sul totale", unita:"%", freq:"settimanale",
+   come:"Serie chiuse a RIR 0-3 (o senza RIR) / serie totali. Una serie chiusa a RIR 4 o più è comoda e conta mezza. Vale per pesi, bande e corpo libero: con carichi leggeri la crescita è simile solo se le serie sono vicine al cedimento", bersaglio:"≥ 85%", ok:85, att:70, verso:"su", fonte:"carichi"},
   {id:"top_range", area:"Allenamento", nome:"Serie al top del range", unita:"%", freq:"settimanale",
    come:"Righe di esercizio chiuse al massimo del range di ripetizioni / righe totali (esclusi gli esercizi a tempo)", bersaglio:"≥ 70%", ok:70, att:50, verso:"su", fonte:"piano"},
   {id:"cedimenti", area:"Allenamento", nome:"Composti a cedimento", unita:"", freq:"ultime 2 settimane",

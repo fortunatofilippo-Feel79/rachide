@@ -72,7 +72,11 @@ document.addEventListener("click", function(ev){
     return;
   }
   if(a==="undo"){ e.sets.splice(j,1); save(); render(); return; }
-  if(a==="rir"){ e.rir=+v; save(); render(); if(+v===0 && meta(e.n).t==="comp") toast("Cedimento su un composto: la regola è RIR 1-2"); return; }
+  if(a==="rir"){ var jj=el.dataset.j!==undefined ? +el.dataset.j : e.sets.length-1; if(e.sets[jj]) e.sets[jj].rir=+v;
+    /* il RIR dell'esercizio e' quello dell'ultima serie che lo ha */
+    for(var q=e.sets.length-1;q>=0;q--){ if(e.sets[q].rir!=null){ e.rir=e.sets[q].rir; break; } }
+    save(); render(); suono("conto");
+    if(+v===0 && meta(e.n).t==="comp") toast("Cedimento su un composto: la regola è RIR 1-2"); return; }
   if(a==="duro"){ e.duro=v; save(); render(); return; }
   if(a==="fgo"){ var nk=+el.dataset.k; if(nk<0) nk=0; d.cur=nk; window._sy=0; save(); render(); return; }
   if(a==="vista"){ S.vistaTutte=!S.vistaTutte; window._sy=0; save(); render(); return; }
@@ -366,12 +370,12 @@ async function commitSession(){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
         S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
-          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
+          reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
       });
     } else {
       var reps=e.sets.map(s=>s.v);
       S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
-        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
+        reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
     }
   });
   var lu=d.luogo||"casa";

@@ -28,6 +28,7 @@ L'app mostra in Oggi la lista «Da registrare oggi» con questi orari e può agg
 | --- | --- | --- | --- | --- | --- |
 | `aderenza` | Aderenza | Sedute fatte / bersaglio della settimana (4, oppure 2 in settimana di picco, meno i riposi programmati) | 100% | settimanale | Regola del piano (Piano Unico v5, decisioni del coach) |
 | `serie_gruppo` | Serie per gruppo nel range | Serie settimanali per gruppo: dirette = 1, indirette = 0,5 (es. la panca per i tricipiti). Range 10-20, core 6-12 | 7 gruppi su 7 nel range | settimanale | [Schoenfeld, Ogborn, Krieger 2017 · J Sports Sci](https://core.ac.uk/download/200371264.pdf); [Baz-Valle et al. 2022 · J Hum Kinet 81:199](https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877/); [Pelland et al. 2024 · meta-regressioni volume e frequenza](https://bibbase.org/network/publication/joshuapelland-jacobremmert-zacrobinson-sethhinson-michaelzourdos-theresistancetrainingdoseresponsemetaregressionsexploringtheeectsofweeklyvolumeandfrequencyonmusclehypertrophyandstrengthgain-2024) |
+| `serie_dure` | Serie dure sul totale | Serie chiuse a RIR 0-3 (o senza RIR) / serie totali. Una serie chiusa a RIR 4 o più è comoda e conta mezza. Vale per pesi, bande e corpo libero: con carichi leggeri la crescita è simile solo se le serie sono vicine al cedimento | ≥ 85% | settimanale | [Schoenfeld et al. 2017 · carichi leggeri e pesanti, J Strength Cond Res](https://pubmed.ncbi.nlm.nih.gov/28834797/) |
 | `top_range` | Serie al top del range | Righe di esercizio chiuse al massimo del range di ripetizioni / righe totali (esclusi gli esercizi a tempo) | ≥ 70% | settimanale | Regola del piano (Piano Unico v5, decisioni del coach) |
 | `cedimenti` | Composti a cedimento | Esercizi multiarticolari chiusi a RIR 0. Sui composti si chiude a RIR 1-2 | 0 | ultime 2 settimane | Regola del piano (Piano Unico v5, decisioni del coach) |
 | `record` | Record nelle ultime 4 settimane | Nuovi record di carico o di ripetizioni allo stesso carico | ≥ 2 | mobile 28 giorni | Regola del piano (Piano Unico v5, decisioni del coach) |
@@ -73,6 +74,8 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 - **Carico suggerito.** L'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. I tetti per la spalla valgono sempre.
 - **Rientro dopo una pausa.** Dopo 8-21 giorni senza l'esercizio: stesso carico, la prima serie fa da prova. Oltre 21 giorni: un gradino sotto per una seduta ([McMaster 2013](https://pubmed.ncbi.nlm.nih.gov/23529287/)).
 - **Recupero.** Livello 2 (carichi fermi, mai un invito a scendere): HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo.
+- **Serie dure.** L'unità di volume è lo sforzo, non l'attrezzo: una serie chiusa a RIR 0-3 conta 1, a RIR 4 o più conta 0,5, senza RIR conta 1. Vale per pesi, bande e corpo libero ([Schoenfeld 2017](https://pubmed.ncbi.nlm.nih.gov/28834797/): crescita simile con carichi leggeri se le serie sono vicine al cedimento). La soglia è una scelta del progetto.
+- **Carico sollevato.** Pesi: kg esatti. Bande: valore nominale della banda × 0,7 × ripetizioni (stima). Corpo libero: quota del peso × ripetizioni (stima; solo il push-up ha una misura, circa 69-75% del peso, [Suprak 2011](https://pubmed.ncbi.nlm.nih.gov/20179649)). Le tenute e il core non hanno un carico. Per confrontare le settimane si usano le serie dure.
 - **Piano flessibile.** Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.
 - **Settimana di picco.** Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](https://pubmed.ncbi.nlm.nih.gov/33629972/)).
 - **Dolore.** In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](https://search.pedro.org.au/search-results/record-detail/18389)). Zone: `collo`, `dorsale`, `costole`, `lombare`, `spalla_sx`, `spalla_dx`, `gomito_sx`, `gomito_dx`, `polso_sx`, `polso_dx`, `anca_sx`, `anca_dx`, `ginocchio_sx`, `ginocchio_dx`, `caviglia_sx`, `caviglia_dx`, `altro`.
@@ -99,6 +102,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `tot` | ripetizioni totali |
 | `vol` | volume in kg (carico × ripetizioni) |
 | `rir` | ripetizioni di riserva nell'ultima serie (0 = cedimento, 4 = 4 o più) |
+| `rirs` | ripetizioni di riserva di ogni serie, separate da \| (es. 2\|1\|0) |
 | `top` | Sì se il top del range è chiuso |
 | `note` | nota libera |
 | `rec` | secondi medi tra una serie e la successiva |
@@ -226,7 +230,11 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `min` | durata media |
 | `en` | energia media |
 | `top` | % serie al top del range |
-| `ton` | tonnellaggio kg |
+| `ton` | kg sollevati con i pesi (esatti) |
+| `ton_bande_stima` | kg stimati con le bande (valore nominale × 0,7) |
+| `ton_corpo_stima` | kg stimati a corpo libero (quota del peso; push-up circa 72%) |
+| `serie_dure` | serie dure della settimana, somma per gruppo col conteggio frazionario (RIR 4+ vale mezza) |
+| `serie_dure_pct` | % di serie chiuse a RIR 0-3 o senza RIR |
 | `duro` | lato più duro (conteggio) |
 | `rir0` | composti a cedimento / composti con RIR |
 | `peso` | peso medio |

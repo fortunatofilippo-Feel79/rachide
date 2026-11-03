@@ -284,8 +284,15 @@ function exCard(e,i,def){
     h+='<div class="sets" style="margin-top:10px">'+sets.map(function(s,j){
       var lab = def.u ? s.S+"·"+s.D : s.v;
       var isTopS = def.u ? (s.S>=def.hi && s.D>=def.hi) : s.v>=def.hi;
-      return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'">'+lab+'</button>';
+      return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'" aria-label="Serie '+(j+1)+', tocca per toglierla">'+lab+
+        (s.rir!=null? '<small>r'+(s.rir>=4?"4+":s.rir)+'</small>' : (m.sec? '' : '<small class="vuoto">r?</small>'))+'</button>';
     }).join("")+'</div>';
+    if(!m.sec){
+      var ls1=sets[sets.length-1], isC=m.t==="comp";
+      h+='<div class="rirrow"><span class="eyebrow">Serie '+sets.length+' · quante ne avevi ancora?</span><div class="pills" style="padding:0;margin-top:5px">'+
+        [0,1,2,3,4].map(function(v2){ return '<button class="pill '+(ls1.rir===v2?"on":"")+'" data-a="rir" data-i="'+i+'" data-j="'+(sets.length-1)+'" data-v="'+v2+'">'+(v2===0?"0 · cedimento":v2===4?"4+":v2)+'</button>'; }).join("")+'</div>'+
+        '<div class="xs mut" style="margin-top:3px">'+(isC? 'Composto: chiudi a 1-2. ' : '')+'Da 4 in su la serie era comoda e conta mezza.</div></div>';
+    }
     var iv=intervalli(sets);
     if(iv.length) h+='<div class="xs mut" style="margin-top:6px">Tempo fra le serie: '+iv.map(mmss).join(" · ")+
       ' <span style="color:var(--dim)">(previsto '+mmss(REST[m.t]||60)+' + la serie)</span></div>';
@@ -313,10 +320,6 @@ function exCard(e,i,def){
     h+='<button class="btn sm ghost" style="margin-top:8px" data-a="setmore" data-i="'+i+'">'+
        (e.more?"Basta così":"Registra una serie in più")+'</button>';
     var isComp=m.t==="comp";
-    h+='<div style="margin-top:12px"><div class="eyebrow">Quante ne avevi ancora nell\'ultima serie?</div>'+
-      '<div class="pills" style="margin-top:6px;padding:0">'+[0,1,2,3,4].map(v=>'<button class="pill '+(e.rir===v?"on":"")+'" data-a="rir" data-i="'+i+'" data-v="'+v+'">'+
-        (v===0?"0 · cedimento":v===4?"4+":v)+'</button>').join("")+'</div>'+
-      '<div class="xs mut">RIR 0 = non ne facevi un\'altra.'+(isComp?' Composto: chiudi a 1-2.':'')+'</div></div>';
     if(isComp && e.rir===0) h+='<div class="flag disc" style="margin-top:8px"><b>RIR</b><div>Cedimento su un composto. La prossima volta fermati quando la ripetizione rallenta: il top di oggi non vale per salire.</div></div>';
     if(def.u && !m.sec) h+='<div style="margin-top:12px"><div class="eyebrow">Lato più duro</div><div class="pills" style="margin-top:6px;padding:0">'+
       [["S","Sinistra"],["U","Uguali"],["D","Destra"]].map(function(x){ return '<button class="pill '+(e.duro===x[0]?"on":"")+'" data-a="duro" data-i="'+i+'" data-v="'+x[0]+'">'+x[1]+'</button>'; }).join("")+'</div></div>';
@@ -335,8 +338,8 @@ function stat(l,v,u,c){
 }
 function viewProg(){
   var ws=weeks().slice(-8), ks=ws.map(kpi), last=ks[ks.length-1];
-  var prev=null; for(var i=ks.length-2;i>=0;i--){ if(ks[i].ton){ prev=ks[i]; break; } }
-  var d = (prev&&prev.ton) ? Math.round((last.ton-prev.ton)/prev.ton*100) : null;
+  var prev=null; for(var i=ks.length-2;i>=0;i--){ if(ks[i].sdure){ prev=ks[i]; break; } }
+  var d = (prev&&prev.sdure) ? Math.round((last.sdure-prev.sdure)/prev.sdure*100) : null;
   var h=topbar("Progressi","Storico dalla settimana 24");
   h+='<div class="wrap">';
   /* stato vuoto: senza nemmeno una sessione non c'e' niente da riassumere,
@@ -371,8 +374,8 @@ function viewProg(){
   h+='<div class="hero">'+
      cell("Sessioni", last.n+"/"+last.target, last.rest?" +"+last.rest+"R":"", null,
           last.n>=last.target?"var(--ok)":"var(--amb)")+
-     cell("Tonnellaggio", kfmt(last.ton), " kg",
-          (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : null),
+     cell("Serie dure", dec(last.sdure), "",
+          (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : "pesi, bande e corpo libero"),
           d!==null? (d>=0?"var(--ok)":"var(--amb)") : null)+
      cell("Top del range", (last.top!==null?last.top:"\u2013"), last.top!==null?"%":"",
           "bersaglio 70%", (last.top!==null&&last.top>=70)?"var(--ok)":null)+
@@ -392,14 +395,8 @@ function viewProg(){
   /* cruscotto dei KPI: definizioni, bersagli e fonti in un posto solo */
   h+=cardCruscotto();
 
-  /* tonnellaggio */
-  var maxT=Math.max.apply(null,ks.map(function(k){return k.ton||0;}))||1;
-  h+='<div class="card"><div class="eyebrow">Tonnellaggio \u00b7 ultime '+ks.length+' settimane</div>';
-  h+='<div class="bars" style="margin-top:14px">'+ks.map(function(k,i){
-       return '<i class="'+(i===ks.length-1?"cur":(k.ton?"on":""))+'" style="height:'+
-         Math.max(3, Math.round((k.ton||0)/maxT*100))+'%"></i>'; }).join("")+'</div>';
-  h+='<div class="barlab">'+ks.map(function(k,i){
-       return '<span class="'+(i===ks.length-1?"cur":"")+'">'+k.w+'</span>'; }).join("")+'</div></div>';
+  /* carico sollevato, diviso per tipo: una settimana con le bande non e' una settimana leggera */
+  h+=cardCarico(ks);
 
   /* serie per gruppo, con la fascia bersaglio disegnata */
   var wInCorso = last.w===weekOf(today()) && last.n<last.target;
@@ -825,4 +822,20 @@ function render(){
   Fig.mount();
   aggiornaBadge();
   window.scrollTo(0, window._sy||0);
+}
+
+/* barre impilate: pesi (kg esatti) · bande e corpo libero (stime, con la tilde) */
+function cardCarico(ks){
+  var maxT=Math.max.apply(null,ks.map(function(k){ return k.ton||0; }))||1, l=ks[ks.length-1];
+  var h='<div class="card"><div class="between"><div class="eyebrow">Carico sollevato \u00b7 ultime '+ks.length+' settimane</div>'+
+    '<div class="xs" style="font-weight:700">'+kfmt(l.ton)+' kg'+((l.ton_bande||l.ton_corpo)?' <span class="mut">~</span>':'')+'</div></div>';
+  h+='<div class="bars stack" style="margin-top:14px">'+ks.map(function(k,i){
+    var t=k.ton||0, hp=t? (k.ton_pesi/maxT*100) : 0, hb=t? (k.ton_bande/maxT*100) : 0, hc=t? (k.ton_corpo/maxT*100) : 0;
+    return '<div class="sb'+(i===ks.length-1?" cur":"")+'" title="'+kfmt(t)+' kg">'+
+      '<i class="c" style="height:'+hc.toFixed(1)+'%"></i><i class="b" style="height:'+hb.toFixed(1)+'%"></i><i class="p" style="height:'+hp.toFixed(1)+'%"></i></div>'; }).join("")+'</div>';
+  h+='<div class="barlab">'+ks.map(function(k,i){ return '<span class="'+(i===ks.length-1?"cur":"")+'">'+k.w+'</span>'; }).join("")+'</div>';
+  h+='<div class="mmleg" style="margin-top:8px"><span><i style="background:var(--glow)"></i>pesi</span><span><i style="background:var(--amb)"></i>bande ~</span><span><i style="background:var(--ok)"></i>corpo libero ~</span></div>'+
+     '<div class="xs mut" style="margin-top:8px">Questa settimana: pesi '+kfmt(l.ton_pesi)+' kg'+(l.ton_bande? ' · bande ~'+kfmt(l.ton_bande)+' kg':'')+(l.ton_corpo? ' · corpo libero ~'+kfmt(l.ton_corpo)+' kg':'')+
+     '. Con ~ le stime: le bande dal loro valore nominale, il corpo libero come quota del tuo peso (push-up circa 70%). Per confrontare le settimane guarda le <b>serie dure</b>, che non dipendono dall\'attrezzo.</div></div>';
+  return h;
 }
