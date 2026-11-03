@@ -226,7 +226,7 @@ async function cibAddVoce(mk, v){
   var g=cibDay(), lst=g[mk]||(g[mk]=[]);
   var gia=lst.filter(function(x){ return !x.w && x.n===v.n && x.p===v.p && x.c===v.c && x.g===v.g; })[0];
   if(gia) gia.q=(gia.q||1)+1;
-  else lst.push({n:v.n, d:v.d||"", p:v.p, c:v.c, g:v.g, q:1});
+  else { var nv={n:v.n, d:v.d||"", p:v.p, c:v.c, g:v.g, q:1}; if(v.bc) nv.bc=v.bc; lst.push(nv); }   /* bc: prodotto letto col codice a barre */
   return cibSave(g);
 }
 function cibIeri(){ var d=s2d(cibDate()); d.setDate(d.getDate()-1); return d2s(d); }
@@ -476,9 +476,12 @@ function formPasto(mk, cat){
       esc(ieri.map(function(v){ return v.n; }).join(", ").slice(0,60))+'</button>';
   }
 
-  h+='<button class="btn" data-a="ciblib" data-m="'+mk+'">Scrivi quello che hai mangiato</button>'+
+  h+='<div class="grid2"><button class="btn" data-a="scan" data-m="'+mk+'">'+
+     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>Codice a barre</button>'+
+     '<button class="btn" data-a="ciblib" data-m="'+mk+'">Scrivi a parole</button></div>'+
      '<div class="xs mut" style="margin:6px 0 14px">Se l\'hai gi\u00e0 mangiato, te lo propongo con i valori veri mentre scrivi.</div>';
 
+  h+=prodottiCard(mk);
   _CIBR=cibStorico(mk).filter(function(v){ return v.same>0 || v.cnt>=2; }).slice(0,6);
   if(_CIBR.length){
     h+='<div class="eyebrow" style="margin-bottom:6px">Usati di recente</div><div class="card" style="padding:2px 12px;margin-bottom:14px">'+

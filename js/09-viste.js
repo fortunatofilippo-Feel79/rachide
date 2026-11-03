@@ -5,9 +5,10 @@ var V="oggi", app=document.getElementById("app"), rest=null, tick=null;
 
 function toast(m){ var t=document.getElementById("toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"), 2200); }
-function sheet(html){ document.getElementById("sheetIn").innerHTML='<div class="handle"></div>'+html;
+function sheet(html){ if(typeof SCAN!=="undefined" && SCAN.attivo) scanStop();
+  document.getElementById("sheetIn").innerHTML='<div class="handle"></div>'+html;
   document.getElementById("sheet").classList.add("on"); Fig.mount(); }
-function closeSheet(){ stopAnim(); document.getElementById("sheet").classList.remove("on"); }
+function closeSheet(){ stopAnim(); if(typeof SCAN!=="undefined" && SCAN.attivo) scanStop(); document.getElementById("sheet").classList.remove("on"); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
 

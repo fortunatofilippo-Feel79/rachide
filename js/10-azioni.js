@@ -22,6 +22,14 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="scan"){ scanApri(el.dataset.m); return; }
+  if(a==="scanman"){ scanManuale(); return; }
+  if(a==="scanmanok"){ var nn=document.getElementById("scann"); SCAN.letto=false; scanTrovato(nn? nn.value : ""); if(!SCAN.letto) toast("Il numero non è un codice a barre valido: controlla le cifre"); return; }
+  if(a==="prodg"){ PROD_G=+v; formProdotto(el.dataset.n, +v); return; }
+  if(a==="prodadd"){ prodottoAggiungi(el.dataset.n); return; }
+  if(a==="prodedit"){ formEtichetta(el.dataset.n, (S.prodotti||{})[el.dataset.n], ""); return; }
+  if(a==="etsave"){ etichettaSalva(el.dataset.n); return; }
+  if(a==="prodapri"){ SCAN.mk=el.dataset.m; PROD_G=null; formProdotto(el.dataset.n); return; }
   if(a==="sgen"){ var k=document.getElementById("syK"); if(k){ k.value=segretoCasuale(); copy(k.value, "Frase copiata: incollala nello script"); } return; }
   if(a==="ics"){ download("rachide-promemoria.ics", icsPromemoria(), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
   if(a==="suoni"){ S.suoni=!suoniOn(); cfgTocca("suoni"); save(); render(); if(S.suoni) setTimeout(function(){ suono("serie"); }, 50); return; }
@@ -870,3 +878,10 @@ function doImport(){
   }catch(e){ toast("File non valido: controlla di aver incollato tutto il .json"); }
 }
 
+
+/* foto del codice a barre e grammi esatti del prodotto */
+document.addEventListener("change", function(ev){
+  var t=ev.target;
+  if(t.id==="scanf" && t.files && t.files[0]){ scanFoto(t.files[0]); return; }
+  if(t.id==="prodgr"){ var g=num(t.value); if(g && g>0){ PROD_G=g; formProdotto(t.dataset.n, g); } return; }
+});
