@@ -1,0 +1,21 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test del motore, delle figure, della memoria e dello script del foglio
+        run: node --test tests/*.test.js
+      - name: Documentazione per il coach allineata al codice
+        run: node tools/genera-doc.js --controlla
