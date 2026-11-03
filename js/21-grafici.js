@@ -118,7 +118,7 @@ function kpiStoria(id){
   var pw=function(f){ return ws.map(function(w,i){ return {x:i, y:f(K[i],w), l:"s"+w}; }); };
   var bw=function(f,c){ return ws.map(function(w,i){ return {l:String(w), v:f(K[i],w)}; }); };
   var T={
-    aderenza:function(){ return {tipo:"bar", items:bw(function(k){ return k.target? Math.round(k.n/k.target*100) : 0; }), line:100, lineT:"100%", unit:"%", nota:"Sedute fatte sul bersaglio della settimana."}; },
+    aderenza:function(){ return {tipo:"bar", items:bw(function(k){ return k.previste? k.ader : 0; }), line:100, lineT:"100%", unit:"%", nota:"Sedute fatte su quelle previste dal piano della settimana (o sul bersaglio, se non c'era un piano)."}; },
     serie_gruppo:function(){ return {tipo:"bar", items:bw(function(k){ var n=0; Object.keys(TGT).forEach(function(g){ var v=k.grp[g]||0; if(v>=TGT[g][0]&&v<=TGT[g][1]) n++; }); return n; }), line:7, lineT:"7", nota:"Quanti gruppi su 7 sono nel range di serie."}; },
     serie_dure:function(){ return {tipo:"line", pts:pw(function(k){ return k.dure.pct; }), band:[85,100], unit:"%", min:50, max:100, nota:"Percentuale di serie dure: la fascia verde è il bersaglio."}; },
     top_range:function(){ return {tipo:"line", pts:pw(function(k){ return k.top; }), ref:[{y:70,t:"70%"}], unit:"%", nota:"Serie chiuse al massimo del range."}; },

@@ -81,7 +81,7 @@ function cardGruppi(){
   });
   var h='<div class="card"><div class="between"><div class="eyebrow">Serie dure per gruppo</div>'+
     '<div class="pills mini" style="padding:0"><button class="pill'+(PROG_OFF===0?" on":"")+'" data-a="progoff" data-v="0">Questa</button><button class="pill'+(PROG_OFF===1?" on":"")+'" data-a="progoff" data-v="1">Scorsa</button></div></div>'+
-    '<div class="xs mut" style="margin-top:4px">Settimana '+w+(inCorso? ' · in corso: il colore dice dove stai andando' : ' · conclusa')+'</div>'+
+    '<div class="xs mut" style="margin-top:4px">Settimana '+w+(inCorso? ' · in corso: il colore dice dove stai andando' : (PROG_OFF===0? ' · '+STATO_SETT[weekDone(w).stato].t : ' · conclusa'))+'</div>'+
     mappaCorpo(st);
   h+='<div class="gruppi">';
   Object.keys(TGT).forEach(function(g){

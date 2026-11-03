@@ -128,7 +128,7 @@ function kpiValori(){
   var sw="sett. "+wq+" · ";
   var k=kpi(wq), out={}, D={}; KPI.forEach(function(x){ D[x.id]=x; });
   var put=function(id, v, txt, stato){ out[id]={v:v, txt:txt, stato: stato || statoSoglia(D[id], v)}; };
-  put("aderenza", (ws.length && k.target)? Math.round(k.n/k.target*100) : null, sw+k.n+" su "+k.target);
+  put("aderenza", (ws.length && k.previste)? k.ader : null, sw+k.n+" su "+k.previste+(k.previste!==k.target? " previste dal piano" : ""));
   var nel=0, fuori=[]; Object.keys(TGT).forEach(function(g){ var v=k.grp[g]||0, t=TGT[g]; if(v>=t[0] && v<=t[1]) nel++; else fuori.push(g+" "+dec(v)); });
   put("serie_gruppo", (ws.length? nel : null), sw+nel+" su "+Object.keys(TGT).length+(fuori.length? " · fuori: "+fuori.join(", ") : ""));
   put("serie_dure", k.dure.pct, k.dure.pct==null? "–" : sw+k.dure.pct+"% ("+dec(k.dure.dure)+" su "+dec(k.dure.tot)+")");

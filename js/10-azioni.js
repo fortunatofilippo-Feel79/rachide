@@ -28,6 +28,8 @@ document.addEventListener("click", function(ev){
   if(a==="piano"){ pianoApri(); return; }
   if(a==="pricalcola"){ pianoRicalcola(); return; }
   if(a==="dispoP"||a==="dispoT"){ dispoTocca(el); return; }
+  if(a==="corpo30"){ avvia30(); return; }
+  if(a==="p30"){ piano30(); return; }
   if(a==="pposto"){ var dd=el.dataset.date; PS.dispo[dd]=v; if(PS.forza[dd] && !modOk(v, PS.forza[dd])) delete PS.forza[dd];
     Object.keys(PS.fissa).forEach(function(k){ if(PS.fissa[k]===dd && v==="no") delete PS.fissa[k]; }); pianoCalcola(); pianoSheet(); return; }
   if(a==="ptempo"){ PS.tempo[el.dataset.date]=+v; pianoCalcola(); pianoSheet(); return; }
@@ -331,10 +333,10 @@ function miniSheet(day){
    Gli altri restano nel piano e si possono aggiungere da «Aggiungi un esercizio».
    Il luogo (casa, bande, corpo libero) sostituisce gli esercizi con le alternative:
    ogni voce porta con se' la sua prescrizione (def), cosi' nulla si sfasa col piano. */
-function startSession(day, mini, rid, luogo){
+function startSession(day, mini, rid, luogo, lista0){
   var p=PLAN[day];
   luogo = (p.sede!=="Casa") ? "bande" : (luogo || luogoOggi());
-  var lista = (!mini && !rid && typeof listaPerOggi==="function") ? listaPerOggi(day, luogo) : eserciziPer(day, luogo, rid);
+  var lista = lista0 || ((!mini && !rid && typeof listaPerOggi==="function") ? listaPerOggi(day, luogo) : eserciziPer(day, luogo, rid));
   S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, luogo:luogo, warm:WARM.map(()=>false),
     ex:lista.map(function(x){
       var m=meta(x.n), load=x.b?0:suggestLoad(x);

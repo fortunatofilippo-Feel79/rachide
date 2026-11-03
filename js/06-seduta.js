@@ -129,7 +129,11 @@ function briefing(){
     pend.forEach(function(x){ L.push("- "+x.date+" \u00b7 "+x.m+": "+x.n); });
   }
   var stk2=streak();
-  L.push("- catena: "+stk2.n+" settimane consecutive a bersaglio"+(stk2.curOpen?" (quella in corso e' ancora aperta)":""));
+  var sw2=statoSettimana(weekOf(today()));
+  L.push("- catena: "+stk2.n+" settimane consecutive"+(stk2.tenute? " ("+stk2.tenute+" tenute, "+stk2.tenuteFila+" di fila in testa)" : ", tutte piene")+(stk2.curOpen?" · quella in corso e' ancora aperta":"")+
+    (stk2.avviso? " · ATTENZIONE: "+stk2.tenuteFila+" settimane tenute di fila, il mantenimento a lungo diventa regressione" : ""));
+  L.push("- settimana in corso: "+STATO_SETT[sw2.stato].t+" · "+sw2.real+" sedute su "+sw2.target+(sw2.piano? " · piano "+sw2.piano+" sedute, "+sw2.aperte+" da fare, "+sw2.saltate+" saltate" : " · nessun piano")+(sw2.sotto.length? " · gruppi sotto il minimo: "+sw2.sotto.join(", ") : "")+
+    " (piena = tutte le sedute del bersaglio o tutti i gruppi al minimo; tenuta = almeno 2 sedute e tutto il piano adattato; rotta = meno di 2 o una seduta del piano saltata senza ricalcolare)");
   var ml2=mobLast();
   L.push("");
   L.push("Mobilita'");

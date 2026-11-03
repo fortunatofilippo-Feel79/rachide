@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.2.0";
+var VERSIONE_APP = "4.3.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
@@ -461,7 +461,7 @@ var FONTI={
 };
 var KPI=[
   {id:"aderenza", area:"Allenamento", nome:"Aderenza", unita:"%", freq:"settimanale",
-   come:"Sedute fatte / bersaglio della settimana (4, oppure 2 in settimana di picco, meno i riposi programmati)", bersaglio:"100%", ok:100, att:75, verso:"su", fonte:"piano"},
+   come:"Sedute fatte / sedute previste: quelle del piano della settimana adattato ai tuoi giorni, se c'è; altrimenti il bersaglio (4, oppure 2 in settimana di picco, meno i riposi programmati). Massimo 100%", bersaglio:"100%", ok:100, att:75, verso:"su", fonte:"piano"},
   {id:"serie_gruppo", area:"Allenamento", nome:"Serie per gruppo nel range", unita:"gruppi", freq:"settimanale",
    come:"Serie settimanali per gruppo: dirette = 1, indirette = 0,5 (es. la panca per i tricipiti). Range 10-20, core 6-12", bersaglio:"7 gruppi su 7 nel range", ok:7, att:5, verso:"su", fonte:"bazvalle", fonti:["schoenfeld","bazvalle","pelland"]},
   {id:"serie_dure", area:"Allenamento", nome:"Serie dure sul totale", unita:"%", freq:"settimanale",
