@@ -19,7 +19,8 @@ var CFG_GRUPPI={
     volume:S.volume||"normale", target:S.target||{}, propFatta:S.propFatta||"", vistaTutte:!!S.vistaTutte}; },
   chiusure:  function(){ return S.chiusure||{}; },
   coach:     function(){ return S.cdone||{}; },
-  prodotti:  function(){ return S.prodotti||{}; }
+  prodotti:  function(){ return S.prodotti||{}; },
+  settimane: function(){ return {piano:S.pianoSett||{}, dispo:S.dispo||{}, tempo:S.tempo||{}}; }
 };
 var CFG_ALIAS={picco:"impostazioni", profilo:"impostazioni", orari:"impostazioni", suoni:"impostazioni",
   freeze:"impostazioni", cibo:"impostazioni", passo1:"impostazioni", target:"impostazioni", proposta:"impostazioni"};
@@ -33,6 +34,7 @@ function cfgApplica(g, v){
   }
   else if(g==="chiusure" && v && typeof v==="object") S.chiusure=v;
   else if(g==="coach" && v && typeof v==="object") S.cdone=v;
+  else if(g==="settimane" && v && typeof v==="object"){ S.pianoSett=v.piano||{}; S.dispo=v.dispo||{}; S.tempo=v.tempo||{}; }
   else if(g==="prodotti" && v && typeof v==="object") S.prodotti=Object.assign({}, S.prodotti||{}, v);   /* unione: un prodotto letto non si perde */
 }
 /* righe per App_Config: una per gruppo, spezzata se supera la cella di Sheets (50.000 caratteri) */

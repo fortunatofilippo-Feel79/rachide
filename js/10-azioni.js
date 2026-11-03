@@ -22,6 +22,21 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="progoff"){ PROG_OFF=+v||0; render(); return; }
+  if(a==="lift"){ liftSheet(el.dataset.n); return; }
+  if(a==="posf"){ posScegli(v); return; }
+  if(a==="piano"){ pianoApri(); return; }
+  if(a==="pricalcola"){ pianoRicalcola(); return; }
+  if(a==="dispoP"||a==="dispoT"){ dispoTocca(el); return; }
+  if(a==="pposto"){ var dd=el.dataset.date; PS.dispo[dd]=v; if(PS.forza[dd] && !modOk(v, PS.forza[dd])) delete PS.forza[dd];
+    Object.keys(PS.fissa).forEach(function(k){ if(PS.fissa[k]===dd && v==="no") delete PS.fissa[k]; }); pianoCalcola(); pianoSheet(); return; }
+  if(a==="ptempo"){ PS.tempo[el.dataset.date]=+v; pianoCalcola(); pianoSheet(); return; }
+  if(a==="pdispo1"){ var d1=el.dataset.date, w1=weekOf(d1); if(giorniFa(d1)>0) return; S.dispo=S.dispo||{}; var cc=["casa","fuori","fuori0","no"], cur=dispoGiorno(w1,d1);
+    S.dispo[w1]=S.dispo[w1]||{}; S.dispo[w1][d1]=cc[(cc.indexOf(cur)+1)%4]; cfgTocca("settimane"); save(); render(); toast(GG_NOME[ggDi(d1)]+" "+d1.slice(0,5)+": "+({casa:"a casa",fuori:"fuori con le bande",fuori0:"fuori senza attrezzi",no:"occupato"}[S.dispo[w1][d1]])+". Adatta la settimana per ricalcolare"); return; }
+  if(a==="psl"){ pianoFissaTutto(); PS.forza[PS.sedute[i].data]=v; pianoCalcola(); pianoSheet(); return; }
+  if(a==="psave"){ pianoSalva(); closeSheet(); render(); toast("Piano della settimana salvato"); return; }
+  if(a==="pics"){ pianoSalva(); download("rachide-sedute-sett"+PS.w+".ics", icsSedute(PS.w, PS.sedute), "text/calendar"); closeSheet(); render(); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
+  if(a==="pics0"){ var w0=weekOf(today()); download("rachide-sedute-sett"+w0+".ics", icsSedute(w0, seduteDelPiano(w0).filter(function(e){ return e.stato==="oggi"||e.stato==="futura"||e.stato==="saltata"; })), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
   if(a==="dz"){ dolTocca(el.dataset.p, el.dataset.z); return; }
   if(a==="dv"){ dolValore(el.dataset.p, el.dataset.z, +v); return; }
   if(a==="dnone"){ dolNessuno(el.dataset.p); return; }
@@ -72,7 +87,11 @@ document.addEventListener("click", function(ev){
     return;
   }
   if(a==="undo"){ e.sets.splice(j,1); save(); render(); return; }
-  if(a==="rir"){ e.rir=+v; save(); render(); if(+v===0 && meta(e.n).t==="comp") toast("Cedimento su un composto: la regola è RIR 1-2"); return; }
+  if(a==="rir"){ var jj=el.dataset.j!==undefined ? +el.dataset.j : e.sets.length-1; if(e.sets[jj]) e.sets[jj].rir=+v;
+    /* il RIR dell'esercizio e' quello dell'ultima serie che lo ha */
+    for(var q=e.sets.length-1;q>=0;q--){ if(e.sets[q].rir!=null){ e.rir=e.sets[q].rir; break; } }
+    save(); render(); suono("conto");
+    if(+v===0 && meta(e.n).t==="comp") toast("Cedimento su un composto: la regola è RIR 1-2"); return; }
   if(a==="duro"){ e.duro=v; save(); render(); return; }
   if(a==="fgo"){ var nk=+el.dataset.k; if(nk<0) nk=0; d.cur=nk; window._sy=0; save(); render(); return; }
   if(a==="vista"){ S.vistaTutte=!S.vistaTutte; window._sy=0; save(); render(); return; }
@@ -315,7 +334,7 @@ function miniSheet(day){
 function startSession(day, mini, rid, luogo){
   var p=PLAN[day];
   luogo = (p.sede!=="Casa") ? "bande" : (luogo || luogoOggi());
-  var lista = eserciziPer(day, luogo, rid);
+  var lista = (!mini && !rid && typeof listaPerOggi==="function") ? listaPerOggi(day, luogo) : eserciziPer(day, luogo, rid);
   S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, luogo:luogo, warm:WARM.map(()=>false),
     ex:lista.map(function(x){
       var m=meta(x.n), load=x.b?0:suggestLoad(x);
@@ -366,12 +385,12 @@ async function commitSession(){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
         S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
-          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
+          reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
       });
     } else {
       var reps=e.sets.map(s=>s.v);
       S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
-        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
+        reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
     }
   });
   var lu=d.luogo||"casa";
@@ -821,7 +840,7 @@ function patchPreview(raw, pid){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target","settimana"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p; _pendId=pid||null;
     var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
@@ -843,6 +862,7 @@ function patchApply(){
   (_pend.ops||[]).forEach(function(o){
     if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); cfgTocca("cibo"); }
     /* il coach puo' spostare il corridoio del peso: {"op":"target","peso":[150,250]} */
+    if(o.op==="settimana") pianoApplica(o);
     if(o.op==="target" && Array.isArray(o.peso) && o.peso.length===2){ S.target=Object.assign({}, S.target||{}, {peso:[+o.peso[0], +o.peso[1]]}); cfgTocca("target"); }
   });
   if(_pendId){ S.propFatta=_pendId; cfgTocca("proposta"); }
@@ -888,4 +908,13 @@ document.addEventListener("change", function(ev){
   var t=ev.target;
   if(t.id==="scanf" && t.files && t.files[0]){ scanFoto(t.files[0]); return; }
   if(t.id==="prodgr"){ var g=num(t.value); if(g && g>0){ PROD_G=g; formProdotto(t.dataset.n, g); } return; }
+});
+
+/* il giorno di una seduta, dal menu a tendina del pianificatore */
+document.addEventListener("change", function(ev){
+  var t=ev.target;
+  if(t.classList && t.classList.contains("psd") && PS){ var se=PS.sedute[+t.dataset.ps];
+    /* la seduta spostata resta dove l'hai messa; le altre si riorganizzano attorno */
+    PS.fissa={}; PS.fissa[se.d]=t.value; PS.pref=PS.sedute.filter(function(x){ return x!==se && x.data!==t.value; }).map(function(x){ return {data:x.data, d:x.d, ora:x.ora}; });
+    pianoCalcola(); pianoSheet(); }
 });

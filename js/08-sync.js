@@ -132,6 +132,7 @@ var SYNC = {
       return {id:r.id||uid("l"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, ex:r.ex, side:r.side||"", band:r.band||"",
         load:+r.load||0, reps:rp,
         rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||"",
+        rirs: (r.rirs===undefined||r.rirs===null||r.rirs==="") ? (loc&&loc.rirs? loc.rirs : null) : String(r.rirs).split("|").map(function(x){ return x===""? null : +x; }),
         rec:(r.rec===undefined||r.rec===null||r.rec==="") ? (loc&&loc.rec!=null?loc.rec:null) : num(r.rec),
         duro:(r.duro===undefined||r.duro===null||r.duro==="") ? (loc&&loc.duro?loc.duro:"") : String(r.duro),
         dolz:(r.dolz===undefined||r.dolz===null||r.dolz==="") ? (loc&&loc.dolz?loc.dolz:"") : String(r.dolz)};
@@ -195,7 +196,7 @@ var SYNC = {
     return {
       log: S.log.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,ex:r.ex,gruppo:meta(r.ex).g,side:r.side,band:r.band,
         load:r.load,reps:r.reps.join("|"),serie:r.reps.length,tot:r.reps.reduce((a,b)=>a+b,0),
-        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||"",dolz:r.dolz||""})),
+        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,rirs:(r.rirs||[]).map(function(x){ return x==null?"":x; }).join("|"),top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||"",dolz:r.dolz||""})),
       sess: S.sess.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,sede:r.sede,mod:r.mod,min:r.min,en:r.en,
         warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",dol:(r.dol==null?"":r.dol),dolz:r.dolz||"",note:r.note})),
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),

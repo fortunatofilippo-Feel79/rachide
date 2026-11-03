@@ -17,6 +17,7 @@ const COLONNE = {
     gruppo: 'gruppo muscolare principale', side: 'S sinistra, D destra, vuoto se bilaterale', band: 'banda usata',
     load: 'carico in kg per manubrio', reps: 'ripetizioni per serie, separate da |', serie: 'numero di serie', tot: 'ripetizioni totali',
     vol: 'volume in kg (carico × ripetizioni)', rir: 'ripetizioni di riserva nell\'ultima serie (0 = cedimento, 4 = 4 o più)',
+    rirs: 'ripetizioni di riserva di ogni serie, separate da | (es. 2|1|0)',
     top: 'Sì se il top del range è chiuso', note: 'nota libera', rec: 'secondi medi tra una serie e la successiva', duro: 'lato più duro: S, D, U (uguali)',
     dolz: 'dolore segnato durante l\'esercizio, zona:valore separati da ; (es. spalla_sx:4)'
   },
@@ -50,13 +51,16 @@ const COLONNE = {
   },
   stato: {
     w: 'settimana', dal: 'lunedì', al: 'domenica', sedute: 'sedute fatte', bersaglio: 'sedute previste (4, 2 in picco, meno i riposi)',
-    riposi: 'riposi programmati', min: 'durata media', en: 'energia media', top: '% serie al top del range', ton: 'tonnellaggio kg',
+    riposi: 'riposi programmati', min: 'durata media', en: 'energia media', top: '% serie al top del range', ton: 'kg sollevati con i pesi (esatti)',
+    ton_bande_stima: 'kg stimati con le bande (valore nominale × 0,7)', ton_corpo_stima: 'kg stimati a corpo libero (quota del peso; push-up circa 72%)',
+    serie_dure: 'serie dure della settimana, somma per gruppo col conteggio frazionario (RIR 4+ vale mezza)', serie_dure_pct: '% di serie chiuse a RIR 0-3 o senza RIR',
     duro: 'lato più duro (conteggio)', rir0: 'composti a cedimento / composti con RIR', peso: 'peso medio', peso_g: 'pendenza g/settimana',
     kcal: 'calorie medie', prot: 'proteine medie g', carb: 'carboidrati medi g', grassi: 'grassi medi g', hrv: 'HRV mediana', rhr: 'FC a riposo mediana',
     sonno: 'sonno medio h', sonno_fuori: 'sonno medio nelle notti fuori', rec_bassi: 'giorni con recupero basso', prog: 'progressione scelta',
     diagnosi: 'titoli della diagnosi automatica', prot_gkg: 'proteine g/kg', vita_altezza: 'rapporto vita/altezza',
     dolore_mattina: 'dolore al mattino, media dei massimi giornalieri 0-10', dolore_seduta_max: 'dolore in seduta, massimo 0-10',
     dolore_zone: 'zone di dolore della settimana con il numero di rilevazioni (es. lombare×3)',
+    piano_prog: 'piano della settimana: giorno, seduta, luogo e stato (fatta, oggi, futura, saltata)', fuori: 'giorni fuori casa della settimana successiva, con o senza bande (dalla chiusura)', occupati: 'giorni senza tempo della settimana successiva (dalla chiusura)',
     serie_gruppo: 'serie per gruppo, conteggio frazionario', picco: 'Sì se settimana di picco', kpi_fuori: 'KPI in attenzione o fuori (chiavi App_KPI)',
     bene: 'chiusura: cosa è andato bene', cambia: 'chiusura: una cosa da cambiare', piano_sett: 'giorni decisi per la settimana dopo', agg: 'data'
   },
@@ -65,7 +69,7 @@ const COLONNE = {
     bersaglio: 'bersaglio', fonte: 'fonte del bersaglio', link: 'link alla fonte', valore: 'valore attuale', testo: 'valore leggibile',
     stato: 'ok, attenzione, fuori, dati insufficienti', agg: 'data'
   },
-  cfg: { k: 'gruppo (e #parte se spezzato)', gruppo: 'patches, impostazioni, chiusure, coach, prodotti', parte: 'numero del pezzo', parti: 'pezzi totali',
+  cfg: { k: 'gruppo (e #parte se spezzato)', gruppo: 'patches, impostazioni, chiusure, coach, prodotti, settimane (piano e disponibilità)', parte: 'numero del pezzo', parti: 'pezzi totali',
     ts: 'orologio della modifica (ms): vince il più recente', v: 'contenuto JSON (o un suo pezzo)' }
 };
 const SCHEDE = { log: 'App_Log', sess: 'App_Sessioni', mis: 'App_Misure', ben: 'App_Benessere', sim: 'App_Simmetria', mob: 'App_Mobilita',
@@ -74,7 +78,7 @@ const SCHEDE = { log: 'App_Log', sess: 'App_Sessioni', mis: 'App_Misure', ben: '
 /* le colonne reali, dal codice: un campione di stato con ogni tipo di riga */
 function colonneReali() {
   const S = ctx.S, oggi = ctx.today();
-  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, top: true, note: '', rec: 120, duro: 'S', dolz: '' }];
+  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, rirs: [2], top: true, note: '', rec: 120, duro: 'S', dolz: '' }];
   S.sess = [{ id: 's', w: 40, date: oggi, day: 'A', sede: 'Casa', mod: 'Pesi', min: 60, en: 4, warm: true, sig: false, dol: 2, dolz: 'lombare:2', note: '' }];
   S.mis = [{ w: 40, date: oggi, peso: 66, torace: 95, bic: 33, coscia: 54, vita: 80, note: '' }];
   S.ben = [{ date: oggi, w: 40, hrv: 50 }];
@@ -110,7 +114,9 @@ function genera() {
    ['Durante la seduta', 'Serie (ripetizioni o secondi), carico o banda, RIR dell\'ultima serie, lato più duro, note', 'in seduta'],
    ['Fine seduta', 'Durata, energia 1-5, dolore per zona (il massimo, già compilato dagli esercizi), note', '30 secondi'],
    ['Prima di dormire', 'Reflusso 0-3, camminate dopo i pasti 0-2, respirazione 4-7, stress 0-3, testa 1-5', '30 secondi'],
-   ['Domenica', 'Chiusura della settimana (tre domande, giorni delle sedute), passi medi e ipopnea da Zepp', '2 minuti'],
+   ['Domenica', 'Chiusura della settimana (tre domande; per ogni giorno della settimana dopo: casa, fuori con le bande, fuori senza niente o occupato, e 30, 60 o 90 minuti), passi medi e ipopnea da Zepp', '2 minuti'],
+   ['Domenica sera', 'Il coach legge il briefing (con la proposta dell\'app per la settimana dopo) e scrive il piano di massima (operazione `settimana`); l\'app lo mostra in Oggi, adatta gli esercizi al tempo di ogni giorno e lo porta nel calendario', 'coach'],
+   ['Durante la settimana', 'Adatta la settimana: cambi luogo o tempo di un giorno e l\'app risceglie le sedute che mancano e ne adatta gli esercizi per chiudere tutti i gruppi', '1 minuto'],
    ['Ogni 14 giorni', 'Misure: peso, vita, torace, braccio, coscia (mattino, a digiuno)', '3 minuti'],
    ['Ogni 4 settimane', 'Check simmetria (dalla settimana 31); ogni 28 giorni i test di mobilità', '5 minuti']]
     .forEach(r => L.push(riga(r)));
@@ -140,7 +146,11 @@ function genera() {
     ['Carico suggerito', 'L\'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. I tetti per la spalla valgono sempre.'],
     ['Rientro dopo una pausa', 'Dopo 8-21 giorni senza l\'esercizio: stesso carico, la prima serie fa da prova. Oltre 21 giorni: un gradino sotto per una seduta ([McMaster 2013](' + ctx.FONTI.mcmaster.u + ')).'],
     ['Recupero', 'Livello 2 (carichi fermi, mai un invito a scendere): HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo.'],
+    ['Serie dure', 'L\'unità di volume è lo sforzo, non l\'attrezzo: una serie chiusa a RIR 0-3 conta 1, a RIR 4 o più conta 0,5, senza RIR conta 1. Vale per pesi, bande e corpo libero ([Schoenfeld 2017](' + ctx.FONTI.carichi.u + '): crescita simile con carichi leggeri se le serie sono vicine al cedimento). La soglia è una scelta del progetto.'],
+    ['Carico sollevato', 'Pesi: kg esatti. Bande: valore nominale della banda × 0,7 × ripetizioni (stima). Corpo libero: quota del peso × ripetizioni (stima; solo il push-up ha una misura, circa 69-75% del peso, [Suprak 2011](' + ctx.FONTI.suprak.u + ')). Le tenute e il core non hanno un carico. Per confrontare le settimane si usano le serie dure.'],
     ['Piano flessibile', 'Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.'],
+    ['Piano della settimana', 'Il coach scrive la domenica un piano di massima (giorno, seduta, luogo, ora, minuti). L\'app lo segue in Oggi e lo porta nel calendario (.ics, allarme 30 minuti prima). Per ogni giorno l\'utente indica dove è (`casa` = pesi, bande o niente; `fuori` = con le bande; `fuori0` = senza attrezzi; `no` = occupato) e quanto tempo ha (30, 60 o 90 minuti, riscaldamento compreso). Avvisa se passano 10 giorni senza pesi e non ne è previsto nessuno.'],
+    ['Generatore delle sedute', 'In *Adatta la settimana* (e per la proposta della domenica) l\'app prova tutte le combinazioni di sedute che mancano e giorni liberi e tiene quella con il punteggio migliore: 3 punti per ogni serie che manca al minimo di un gruppo, 1 per ogni serie oltre il massimo, penalità per sedute in giorni attaccati (di più se lavorano gli stessi gruppi, soprattutto le gambe) e per ogni seduta spostata rispetto al piano che c\'è già. Poi adatta gli esercizi: (1) toglie le serie oltre il massimo settimanale; (2) se la seduta non sta nel tempo toglie le serie che valgono meno per minuto risparmiato (prima i gruppi già pieni; mai sotto 2 serie; il primo esercizio resta: nei giorni corti contano i multiarticolari, [Iversen 2021](' + ctx.FONTI.iversen.u + ')); (3) se un gruppo resta sotto il minimo aggiunge una serie a un suo esercizio (al massimo +2 sul piano, 5 in tutto) o un esercizio nuovo da 2 serie, scelto fra quelli del piano o delle alternative per quell\'attrezzo; (4) se il tempo è finito scambia una serie di un gruppo già nel range con una del gruppo che manca. Al massimo 10 serie per gruppo nella stessa seduta: oltre circa 11 il guadagno non cresce ([Remmert et al. 2025, preprint](' + ctx.FONTI.remmert.u + ')). Tempo stimato: 40 s di lavoro per serie (doppio se unilaterale), recupero del tipo di esercizio (' + Object.keys(ctx.REST).map(k => k + ' ' + ctx.REST[k] + ' s').join(', ') + '), 30 s di cambio, 5 minuti di riscaldamento; tolleranza 5%. Le modifiche si salvano nel piano (`agg`, `ser`, `via`) e la seduta guidata le usa; se in un giorno cambi attrezzo la seduta si riadatta. La progressione di un esercizio con meno serie del solito si giudica sulle serie del piano.'],
     ['Settimana di picco', 'Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](' + ctx.FONTI.spiering.u + ')).'],
     ['Dolore', 'In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](' + ctx.FONTI.silbernagel.u + ')). Zone: ' + ctx.ZONE.map(z => '`' + z[0] + '`').join(', ') + '.'],
     ['Codice a barre', 'Valori per 100 g da [Open Food Facts](https://world.openfoodfacts.org) (licenza ODbL) o dall\'etichetta; il prodotto resta sul telefono e nel foglio (gruppo `prodotti` di App_Config). Le voci del pasto lette col codice hanno il campo `bc`.'],
@@ -173,7 +183,8 @@ function genera() {
    ['ricetta', '{"op":"ricetta","n":"Pranzo ufficio","m":"pra","v":[["Pollo",1],["Riso",1]]}', 'nuova ricetta'],
    ['stima', '{"op":"stima","n":"pizza con gli amici","p":20,"c":60,"g":12}', 'converte una voce scritta a parole nei grammi veri'],
    ['kcal', '{"op":"kcal","off":150}', 'sposta il target calorico (tutto sui carboidrati)'],
-   ['target', '{"op":"target","peso":[150,250]}', 'sposta il corridoio della pendenza del peso (g/settimana)']]
+   ['target', '{"op":"target","peso":[150,250]}', 'sposta il corridoio della pendenza del peso (g/settimana)'],
+   ['settimana', '{"op":"settimana","w":41,"nota":"Martedì in trasferta","giorni":{"lun":"casa 60","mar":"fuori 30","mer":"no","gio":"fuori0 60"},"sedute":[{"g":"lun","d":"A","l":"casa","ora":"07:30","t":60},{"g":"mar","d":"B","l":"bande","ora":"18:30","t":30}]}', 'piano di massima della settimana w: g = lun..dom (oppure data gg/mm/aaaa), d = giorno del piano (A B C D, E1 E2 in picco), l = casa (pesi), bande o corpo, ora e t (30, 60, 90 minuti) facoltativi. giorni (facoltativo): luogo e minuti di ogni giorno (casa, fuori = con le bande, fuori0 = senza niente, no). Le sedute restano dove le mette il coach; l\'app ne adatta gli esercizi al tempo e al bilancio dei gruppi']]
     .forEach(r => L.push(riga(['`' + r[0] + '`', '`' + r[1] + '`', r[2]])));
   L.push('');
   L.push('Giorni validi: ' + Object.keys(ctx.PLAN).join(', ') + '.');

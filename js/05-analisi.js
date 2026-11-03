@@ -8,7 +8,7 @@ function kpi(w){
   var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
   var target=bersaglio(w, rest);
   var dur=ss.filter(s=>s.min).map(s=>s.min), en=ss.filter(s=>s.en).map(s=>s.en);
-  var ton=ls.reduce((a,r)=>a + r.load*(r.reps.reduce((x,y)=>x+y,0)), 0);
+  var car=caricoSettimana(ls), dure=serieDure(ls);
   var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
   /* serie per gruppo: un esercizio unilaterale è UNA serie per il muscolo,
      non due. Le righe sinistra e destra descrivono lo stesso lavoro. */
@@ -39,7 +39,8 @@ function kpi(w){
   return {w:w, n:ss.length, rest:rest, target:target, ader:Math.round(ss.length/target*100),
     dur:dur.length?Math.round(dur.reduce((a,b)=>a+b,0)/dur.length):null,
     en:en.length?+(en.reduce((a,b)=>a+b,0)/en.length).toFixed(1):null,
-    top: tot? Math.round(top/tot*100):null, ton:Math.round(ton), grp:grp, asim:asim, duro:duro, rir0:rir0, rirN:rirN,
+    top: tot? Math.round(top/tot*100):null, ton:car.tot, ton_pesi:car.pesi, ton_bande:car.bande, ton_corpo:car.corpo,
+    dure:dure, sdure:Math.round(Object.keys(grp).reduce(function(a,g){ return a+grp[g]; },0)*2)/2, grp:grp, asim:asim, duro:duro, rir0:rir0, rirN:rirN,
     warm: ss.filter(s=>s.warm).length, sig: ss.filter(s=>s.sig).length,
     refl: b.length? +(b.reduce((a,x)=>a+x.refl,0)/b.length).toFixed(1) : null,
     peso: m?m.peso:null, vt: (m&&m.vita&&m.torace)? +(m.vita/m.torace).toFixed(3):null};
@@ -544,7 +545,8 @@ function statoRows(){
     var son=bb.filter(function(b){ return b.sonno; }).map(function(b){ return b.sonno; });
     var sonF=bb.filter(function(b){ return b.sonno && b.sede==="Fuori"; }).map(function(b){ return b.sonno; });
     return {w:w, dal:sd.dal, al:sd.al, sedute:k.n, bersaglio:k.target, riposi:k.rest,
-      min:vuotoSe(k.dur), en:vuotoSe(k.en), top:vuotoSe(k.top), ton:k.ton, duro:duroTxt(k.duro),
+      min:vuotoSe(k.dur), en:vuotoSe(k.en), top:vuotoSe(k.top), ton:k.ton_pesi, ton_bande_stima:k.ton_bande, ton_corpo_stima:k.ton_corpo,
+      serie_dure:k.sdure, serie_dure_pct: k.dure.pct==null? "" : k.dure.pct, duro:duroTxt(k.duro),
       rir0: k.rirN? k.rir0+"/"+k.rirN : "",
       peso: pes.length? r1(media(pes)) : "", peso_g: sl.ok? sl.g : "",
       kcal: cib.length? Math.round(media(cib.map(function(b){ return 4*(b.cibP||0)+4*(b.cibC||0)+9*(b.cibG||0); }))) : "",
@@ -565,7 +567,7 @@ function statoRows(){
         S.sess.filter(function(s){ return s.w===w; }).forEach(function(s){ var m=dolDi(s,"dolz","dol"); Object.keys(m).forEach(function(z){ if(m[z]>0) c[z]=(c[z]||0)+1; }); });
         return Object.keys(c).sort(function(x,y){ return c[y]-c[x]; }).map(function(z){ return z+"×"+c[z]; }).join(" "); })(),
       serie_gruppo: Object.keys(TGT).map(function(g){ return g+" "+(k.grp[g]||0); }).join(" · "),
-      picco: picco(w)? "Sì" : "",
+      picco: picco(w)? "Sì" : "", piano_prog: pianoRigheStato(w).piano_prog, fuori: pianoRigheStato(w).fuori, occupati: pianoRigheStato(w).occupati,
       kpi_fuori: cur? (function(){ var v=kpiValori(); return KPI.filter(function(d){ return v[d.id].stato==="ko"||v[d.id].stato==="att"; }).map(function(d){ return d.id; }).join(" "); })() : "",
       bene:ch.bene||"", cambia:ch.cambia||"",
       piano_sett: (ch.giorni&&ch.giorni.length)? ch.giorni.join(" ")+(ch.mom?" · "+ch.mom:"") : "",
@@ -765,6 +767,9 @@ function formChiusura(){
         return '<button class="pill'+((ch.giorni||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
     '<div class="pills" id="cwMo">'+["mattina","primo pomeriggio"].map(function(m){
         return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
+    '<div class="fld"><span class="eyebrow">Dove sei la settimana prossima e quanto tempo hai</span>'+
+      '<div class="xs mut" style="margin:2px 0 4px">Il coach ci costruisce il piano; l\'app adatta gli esercizi al tempo di ogni giorno.</div>'+
+      dispoEditor(w+1, "cw")+'</div>'+
     '<div class="flag info" style="margin-top:10px"><b>Se-allora</b><div>Pensa ogni giorno così: «se è lunedì mattina, allora alleno». '+
       'Un piano legato a un momento preciso regge meglio di un\'intenzione generica.</div></div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savechiusw">Salva</button>'+
@@ -774,14 +779,38 @@ async function saveChiusura(){
   var w=weekOf(today());
   var gg=[].map.call(document.querySelectorAll("#cwGg .pill.on"), function(b){ return b.dataset.gg; });
   var mo=document.querySelector("#cwMo .pill.on");
+  var disp=dispoLeggi("cw"), fu=[], oc=[];
+  Object.keys(disp.dispo).forEach(function(d){ var po=disp.dispo[d]; if(po==="fuori"||po==="fuori0") fu.push(ggDi(d)); if(po==="no") oc.push(ggDi(d)); });
+  S.dispo=S.dispo||{}; S.tempo=S.tempo||{}; S.dispo[w+1]=disp.dispo; S.tempo[w+1]=disp.tempo; cfgTocca("settimane");
   S.chiusure=S.chiusure||{};
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
-    giorni:gg, mom:mo?mo.dataset.mo:"", ts:today()};
+    giorni:gg, mom:mo?mo.dataset.mo:"", fuori:fu, occupati:oc, ts:today()};
   cfgTocca("chiusure");
   var ok=await save(); closeSheet(); render();
   if(SYNC.on()) doPush(false);
   toast(!ok? "NON salvata: vedi la scheda Coach" :
         (gg.length && gg.length<4)? "Salvata. Hai scelto "+gg.length+" giorni: il bersaglio è 4" : "Settimana chiusa: Jarvis la trova nella review");
+}
+/* editor dei giorni di una settimana: dove sei e quanto tempo hai (senza ridisegnare il resto del modulo) */
+function dispoEditor(w, id){
+  return '<div class="pgiorni" id="'+id+'Disp">'+dateSettimana(w).map(function(d, i){
+    var po=dispoGiorno(w, d), t=tempoGiorno(w, d);
+    return '<div class="pgg'+(po==="no"?" off":"")+'" data-date="'+d+'"><div class="pgn"><b>'+GG_NOME[GG[i]]+' '+(+d.slice(0,2))+'</b></div>'+
+      '<div class="pseg">'+POSTI.map(function(p){ return '<button class="'+(po===p[0]?"on":"")+'" data-a="dispoP" data-v="'+p[0]+'" aria-label="'+esc(p[2])+'">'+esc(p[1].replace("Fuori · ","Fuori "))+'</button>'; }).join("")+'</div>'+
+      '<div class="pseg t">'+TEMPI.map(function(x){ return '<button class="'+(t===x?"on":"")+'" data-a="dispoT" data-v="'+x+'">'+x+'′</button>'; }).join("")+'</div></div>';
+  }).join("")+'</div>';
+}
+function dispoTocca(el){
+  var riga=el.closest(".pgg"), seg=el.parentNode; if(!riga) return;
+  [].forEach.call(seg.querySelectorAll("button"), function(b){ b.classList.toggle("on", b===el); });
+  if(el.dataset.a==="dispoP") riga.classList.toggle("off", el.dataset.v==="no");
+}
+function dispoLeggi(id){
+  var out={dispo:{}, tempo:{}};
+  [].forEach.call(document.querySelectorAll("#"+id+"Disp .pgg"), function(r){
+    var p=r.querySelector('.pseg:not(.t) button.on'), t=r.querySelector('.pseg.t button.on');
+    out.dispo[r.dataset.date]=p? p.dataset.v : "casa"; out.tempo[r.dataset.date]=t? +t.dataset.v : TEMPO_STD; });
+  return out;
 }
 function pianoDeciso(w){
   var ch=(S.chiusure||{})[w-1]; if(!ch || !ch.giorni || !ch.giorni.length) return "";

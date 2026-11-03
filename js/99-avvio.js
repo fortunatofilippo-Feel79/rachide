@@ -87,8 +87,11 @@ function registraSW(){
     });
     setInterval(function(){ reg.update().catch(function(){}); }, 3600000);
   }).catch(function(){});
-  var ricaricata=false;
-  navigator.serviceWorker.addEventListener("controllerchange", function(){ if(ricaricata) return; ricaricata=true; location.reload(); });
+  /* si ricarica solo quando una versione NUOVA prende il posto di una vecchia, non alla prima installazione */
+  var ricaricata=false, aveva=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    if(!aveva){ aveva=true; return; }
+    if(ricaricata) return; ricaricata=true; location.reload(); });
 }
 /* applica la versione nuova: mai a seduta in corso senza chiederlo */
 function swApplica(){

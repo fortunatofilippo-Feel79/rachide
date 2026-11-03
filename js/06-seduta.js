@@ -72,6 +72,7 @@ function briefing(){
   });
   var lw=ws[ws.length-1], k=kpi(lw);
   L.push("");
+  L.push("Serie dure, settimana "+lw+": "+dec(k.sdure)+" (serie con RIR 4+ valgono mezza; "+(k.dure.pct==null?"-":k.dure.pct+"%")+" dure) · carico: pesi "+k.ton_pesi+" kg, bande ~"+k.ton_bande+", corpo libero ~"+k.ton_corpo+" (stime)");
   L.push("Serie per gruppo, settimana "+lw+": "+Object.keys(k.grp).map(g=>g+" "+k.grp[g]).join(" · "));
   L.push("Composti a cedimento, settimana "+lw+": "+k.rir0+" su "+k.rirN+" · lato più duro: "+(duroTxt(k.duro)||"non registrato"));
   var rc=recSettimana(lw);
@@ -94,6 +95,8 @@ function briefing(){
   var hl=[], seenH={};
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){ if(e.hold && !seenH[e.n]){ seenH[e.n]=1; hl.push("- "+e.n+": "+e.hold); } }); });
   if(hl.length){ L.push(""); L.push("In attesa (decisione presa: non proporre aumenti)"); hl.forEach(function(x){ L.push(x); }); }
+  L.push("");
+  L.push(briefingPiano());
   L.push("");
   L.push("Cruscotto KPI (definizioni e fonti nella scheda App_KPI)");
   var kv=kpiValori();
@@ -193,6 +196,7 @@ function applyOp(P, op){
   /* calorie: si applica una volta sola, quando approvi la patch (patchApply), non a ogni ricostruzione */
   if(op.op==="kcal") return;
   if(op.op==="target") return;   /* corridoio del peso: si applica una volta, in patchApply */
+  if(op.op==="settimana") return;   /* piano della settimana: si applica una volta, in patchApply */
   var day = P[op.d]; if(!day) return;
   if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
   if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
@@ -217,6 +221,10 @@ function previewPatch(pt){
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
     if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
+    if(o.op==="settimana"){ var pd=pianoDaOp(o), gd=Object.keys(pd.dispo||{}).length;
+      return "Piano della settimana "+(o.w||"?")+": "+(pd.sedute&&pd.sedute.length? pianoTesto(pd.w, pd.sedute) : "nessuna seduta valida")+
+        (gd? " · giorni: "+Object.keys(pd.dispo).map(function(d){ return ggDi(d)+" "+pd.dispo[d]+(pd.tempo[d]?" "+pd.tempo[d]+"′":""); }).join(", ") : "")+
+        " · gli esercizi si adattano al tempo di ogni giorno"+(pd.err&&pd.err.length? " · ATTENZIONE: "+pd.err.join("; ") : ""); }
     if(o.op==="target") return "Corridoio del peso: "+(o.peso? o.peso[0]+"-"+o.peso[1]+" g a settimana" : "invariato");
     if(o.op==="kcal") return "Calorie: target "+(2550+(+o.off||0))+" kcal al giorno ("+((+o.off||0)>0?"+":"")+(+o.off||0)+" sulla base, tutto sui carboidrati)";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;

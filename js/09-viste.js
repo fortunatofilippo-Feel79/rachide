@@ -47,6 +47,9 @@ function viewOggi(){
   var giorni=giorniSettimana(w), pk=picco(w);
   /* un giorno è "coperto" se allenato o segnato come riposo */
   var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
+  /* se il piano prevede una seduta per oggi, e' quella */
+  var peOggi=pianoDelGiorno(today());
+  if(peOggi && peOggi.stato!=="saltata" && giorni.indexOf(peOggi.d)>=0 && !sedutaCoperta(w, peOggi.d)) next=peOggi.d;
   var completa=!next;
   var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
@@ -92,12 +95,16 @@ function viewOggi(){
          '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
          esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
     }
-    var p=PLAN[next], lu=luogoOggi(), lista=eserciziPer(next, lu);
+    var p=PLAN[next], lu=luogoOggi(), lista=listaPerOggi(next, lu), vp=voceDelPiano(next), adattata=!!(vp && (vp.agg||vp.ser||vp.via)), minN=Math.round(minutiSeduta(lista));
+    var cambiOggi=[]; if(adattata){ var bOggi=eserciziPer(next, lu);
+      lista.forEach(function(x){ var b=bOggi.filter(function(y){ return y.n===x.n; })[0]; if(!b) cambiOggi.push("+ "+x.n); else if(x.s!==b.s) cambiOggi.push(x.n+" "+(x.s>b.s?"+":"−")+Math.abs(x.s-b.s)); });
+      bOggi.forEach(function(b){ if(!lista.some(function(x){ return x.n===b.n; })) cambiOggi.push("senza "+b.n); }); }
     h+='<div class="card hero-next">'+
-       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · '+p.min+'′</div></div>'+
+       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · circa '+minN+'′</div></div>'+
        '<h2 style="margin:5px 0 10px;font-size:19px">'+esc(p.name)+'</h2>'+
        segLuogo(lu, next)+
        stripEsercizi(lista)+
+       (cambiOggi.length? '<div class="xs" style="color:var(--glow);margin-top:8px"><b>Adattata alla settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> '+esc(cambiOggi.join(" · "))+'</div>' : '')+
        ((lu==="casa" && p.dischi!=="solo bande")? '<div class="xs" style="color:var(--amb);margin-top:8px">Dischi '+esc(p.dischi)+'</div>':"")+
        (lu!=="casa"? '<div class="xs mut" style="margin-top:8px">'+(lu==="bande"?"Con le bande":"Senza attrezzi")+': stesso schema di movimento, stesse serie. I carichi di casa restano dove sono.</div>':"")+
        ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
@@ -115,18 +122,20 @@ function viewOggi(){
   /* 3 · chiusura della settimana */
   h+=cardChiusura(w, completa);
 
-  /* 4 · la settimana a caselle */
-  var target=bersaglio(w, riposi.length);
+  /* 4 · la settimana: sette giorni, cosa e' fatto e cosa e' previsto */
+  var target=bersaglio(w, riposi.length), sedPiano=seduteDelPiano(w), salt=saltate(w);
   h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
      '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
-     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div><div class="wk'+(pk?" wk2":"")+'">';
-  giorni.forEach(function(d){
-    var s=tutte.filter(function(x){ return x.day===d; })[0];
-    var rp=s&&isRest(s);
-    h+='<div class="slot'+(s?(rp?" rest":" on"):"")+'"><div class="l">'+d+'</div>'+
-       '<div class="d">'+(s? (rp?"riposo":s.date.slice(0,5)) : "—")+'</div></div>';
-  });
-  h+='</div>';
+     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div>';
+  h+=cardSettimanaRail(w, sedPiano);
+  h+='<div class="xs mut" style="margin-top:6px">Tocca un giorno per segnarlo a casa, fuori con le bande, fuori senza niente o occupato. Il tempo di ogni giorno si sceglie in «Adatta la settimana».</div>';
+  if(salt.length) h+='<div class="flag disc" style="margin-top:10px">↻<div><b>'+(salt.length>1?'Sedute del piano non fatte: ':'Seduta del piano non fatta: ')+esc(salt.map(function(e){ return e.d+" ("+ggDi(e.data)+")"; }).join(", "))+'.</b> Nessun problema: adatta la settimana ai giorni che restano.</div></div>';
+  var pp=pianoSett(w);
+  if(pp){ var pr=sedPiano.filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; });
+    if(pr.length) h+='<div class="xs" style="margin-top:8px;color:var(--glow)">Piano'+(pp.da==="coach"?' del coach':'')+': '+esc(pianoTesto(w, pr))+'</div>';
+    if(pp.nota) h+='<div class="xs mut" style="margin-top:4px">'+esc(pp.nota)+'</div>'; }
+  if(!completa) h+='<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="piano">Adatta la settimana</button>'+
+    '<button class="btn sm ghost" data-a="pics0"'+(pp?'':' disabled')+'>Metti a calendario</button></div>';
   var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
   if(extra.length) h+='<div class="xs mut" style="margin-top:8px">Anche: '+
     extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';
@@ -284,8 +293,15 @@ function exCard(e,i,def){
     h+='<div class="sets" style="margin-top:10px">'+sets.map(function(s,j){
       var lab = def.u ? s.S+"·"+s.D : s.v;
       var isTopS = def.u ? (s.S>=def.hi && s.D>=def.hi) : s.v>=def.hi;
-      return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'">'+lab+'</button>';
+      return '<button class="chip '+(isTopS?"top":"done")+'" data-a="undo" data-i="'+i+'" data-j="'+j+'" aria-label="Serie '+(j+1)+', tocca per toglierla">'+lab+
+        (s.rir!=null? '<small>r'+(s.rir>=4?"4+":s.rir)+'</small>' : (m.sec? '' : '<small class="vuoto">r?</small>'))+'</button>';
     }).join("")+'</div>';
+    if(!m.sec){
+      var ls1=sets[sets.length-1], isC=m.t==="comp";
+      h+='<div class="rirrow"><span class="eyebrow">Serie '+sets.length+' · quante ne avevi ancora?</span><div class="pills" style="padding:0;margin-top:5px">'+
+        [0,1,2,3,4].map(function(v2){ return '<button class="pill '+(ls1.rir===v2?"on":"")+'" data-a="rir" data-i="'+i+'" data-j="'+(sets.length-1)+'" data-v="'+v2+'">'+(v2===0?"0 · cedimento":v2===4?"4+":v2)+'</button>'; }).join("")+'</div>'+
+        '<div class="xs mut" style="margin-top:3px">'+(isC? 'Composto: chiudi a 1-2. ' : '')+'Da 4 in su la serie era comoda e conta mezza.</div></div>';
+    }
     var iv=intervalli(sets);
     if(iv.length) h+='<div class="xs mut" style="margin-top:6px">Tempo fra le serie: '+iv.map(mmss).join(" · ")+
       ' <span style="color:var(--dim)">(previsto '+mmss(REST[m.t]||60)+' + la serie)</span></div>';
@@ -313,10 +329,6 @@ function exCard(e,i,def){
     h+='<button class="btn sm ghost" style="margin-top:8px" data-a="setmore" data-i="'+i+'">'+
        (e.more?"Basta così":"Registra una serie in più")+'</button>';
     var isComp=m.t==="comp";
-    h+='<div style="margin-top:12px"><div class="eyebrow">Quante ne avevi ancora nell\'ultima serie?</div>'+
-      '<div class="pills" style="margin-top:6px;padding:0">'+[0,1,2,3,4].map(v=>'<button class="pill '+(e.rir===v?"on":"")+'" data-a="rir" data-i="'+i+'" data-v="'+v+'">'+
-        (v===0?"0 · cedimento":v===4?"4+":v)+'</button>').join("")+'</div>'+
-      '<div class="xs mut">RIR 0 = non ne facevi un\'altra.'+(isComp?' Composto: chiudi a 1-2.':'')+'</div></div>';
     if(isComp && e.rir===0) h+='<div class="flag disc" style="margin-top:8px"><b>RIR</b><div>Cedimento su un composto. La prossima volta fermati quando la ripetizione rallenta: il top di oggi non vale per salire.</div></div>';
     if(def.u && !m.sec) h+='<div style="margin-top:12px"><div class="eyebrow">Lato più duro</div><div class="pills" style="margin-top:6px;padding:0">'+
       [["S","Sinistra"],["U","Uguali"],["D","Destra"]].map(function(x){ return '<button class="pill '+(e.duro===x[0]?"on":"")+'" data-a="duro" data-i="'+i+'" data-v="'+x[0]+'">'+x[1]+'</button>'; }).join("")+'</div></div>';
@@ -335,8 +347,8 @@ function stat(l,v,u,c){
 }
 function viewProg(){
   var ws=weeks().slice(-8), ks=ws.map(kpi), last=ks[ks.length-1];
-  var prev=null; for(var i=ks.length-2;i>=0;i--){ if(ks[i].ton){ prev=ks[i]; break; } }
-  var d = (prev&&prev.ton) ? Math.round((last.ton-prev.ton)/prev.ton*100) : null;
+  var prev=null; for(var i=ks.length-2;i>=0;i--){ if(ks[i].sdure){ prev=ks[i]; break; } }
+  var d = (prev&&prev.sdure) ? Math.round((last.sdure-prev.sdure)/prev.sdure*100) : null;
   var h=topbar("Progressi","Storico dalla settimana 24");
   h+='<div class="wrap">';
   /* stato vuoto: senza nemmeno una sessione non c'e' niente da riassumere,
@@ -371,8 +383,8 @@ function viewProg(){
   h+='<div class="hero">'+
      cell("Sessioni", last.n+"/"+last.target, last.rest?" +"+last.rest+"R":"", null,
           last.n>=last.target?"var(--ok)":"var(--amb)")+
-     cell("Tonnellaggio", kfmt(last.ton), " kg",
-          (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : null),
+     cell("Serie dure", dec(last.sdure), "",
+          (d!==null? (d>=0?"\u25b2 +":"\u25bc ")+d+"% vs "+prev.w : "pesi, bande e corpo libero"),
           d!==null? (d>=0?"var(--ok)":"var(--amb)") : null)+
      cell("Top del range", (last.top!==null?last.top:"\u2013"), last.top!==null?"%":"",
           "bersaglio 70%", (last.top!==null&&last.top>=70)?"var(--ok)":null)+
@@ -392,38 +404,12 @@ function viewProg(){
   /* cruscotto dei KPI: definizioni, bersagli e fonti in un posto solo */
   h+=cardCruscotto();
 
-  /* tonnellaggio */
-  var maxT=Math.max.apply(null,ks.map(function(k){return k.ton||0;}))||1;
-  h+='<div class="card"><div class="eyebrow">Tonnellaggio \u00b7 ultime '+ks.length+' settimane</div>';
-  h+='<div class="bars" style="margin-top:14px">'+ks.map(function(k,i){
-       return '<i class="'+(i===ks.length-1?"cur":(k.ton?"on":""))+'" style="height:'+
-         Math.max(3, Math.round((k.ton||0)/maxT*100))+'%"></i>'; }).join("")+'</div>';
-  h+='<div class="barlab">'+ks.map(function(k,i){
-       return '<span class="'+(i===ks.length-1?"cur":"")+'">'+k.w+'</span>'; }).join("")+'</div></div>';
+  /* carico sollevato, diviso per tipo: una settimana con le bande non e' una settimana leggera */
+  h+=cardCarico(ks);
 
-  /* serie per gruppo, con la fascia bersaglio disegnata */
-  var wInCorso = last.w===weekOf(today()) && last.n<last.target;
-  h+='<div class="card"><div class="between"><div class="eyebrow">Serie per gruppo</div>'+
-     '<div class="xs mut">settimana '+last.w+(wInCorso?" · in corso":"")+'</div></div>';
-  h+=mappaMuscoli(last.grp, wInCorso);
-  h+='<div class="mmleg"><span><i style="background:rgba(212,93,93,.78)"></i>sotto</span><span><i style="background:rgba(127,176,105,.88)"></i>nel target</span><span><i style="background:rgba(224,164,88,.88)"></i>sopra</span></div>';
-  Object.keys(TGT).forEach(function(g){
-    var v=last.grp[g]||0, t=TGT[g], pv=prev?(prev.grp[g]||0):null;
-    var max=Math.max(t[1]*1.3, v*1.15, 1);
-    var col = v<t[0]?"var(--alert)" : v>t[1]?"var(--amb)" : "var(--ok)";
-    var dl = (pv===null)?"" : (v-pv>0?"\u2191":v-pv<0?"\u2193":"");
-    h+='<div class="gr">'+
-      '<div class="nm">'+g+'</div>'+
-      '<div class="tr">'+
-        '<div class="zn" style="left:'+r1(t[0]/max*100)+'%;width:'+r1((t[1]-t[0])/max*100)+'%"></div>'+
-        '<div class="fl" style="width:'+r1(Math.min(100,v/max*100))+'%;background:'+col+'"></div>'+
-      '</div>'+
-      '<div class="vl" style="color:'+col+'">'+dec(v)+' <span>/'+t[0]+'\u2013'+t[1]+'</span>'+
-        (dl?'<span style="color:var(--dim)"> '+dl+'</span>':'')+'</div>'+
-    '</div>';
-  });
-  h+='<div class="xs mut" style="margin-top:12px">Fascia verde = 10-20 serie (core 6-12). Le serie indirette valgono metà: la panca conta anche per tricipiti e spalle, il rematore per i bicipiti. '+
-     'La freccia confronta con la settimana '+(prev?prev.w:"precedente")+'. Un esercizio unilaterale vale una serie, non due.</div></div>';
+  /* serie dure per gruppo: corpo, barre e dove stai andando */
+  h+=cardGruppi();
+  h+=cardForza();
 
   /* la spinta, in Progressi come striscia: il dettaglio vive in Corpo */
   if(slp.ok){
@@ -435,6 +421,11 @@ function viewProg(){
        (slp.skipped?' \u00b7 '+slp.skipped+' rientro escluso':'')+
        (slp.noisy?' \u00b7 include i rientri, dato indicativo':'')+'</div></div>';
   }
+
+  /* recupero, costanza, dolore */
+  h+=cardRecuperoGrafico();
+  h+=cardCostanza();
+  h+=cardDolore();
 
   /* andamento settimanale */
   h+='<div class="card"><div class="eyebrow">Andamento</div><table style="margin-top:8px"><tr>'+
@@ -818,11 +809,27 @@ function nav(){
 }
 
 function render(){
-  _PGC=null;
+  _PGC=null; if(typeof kpiCacheReset==="function") kpiCacheReset();
   if(!PLAN) PLAN=buildPlan();
   app.innerHTML = V==="oggi"?viewOggi() : V==="es"?viewEsercizi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
   nav();
   Fig.mount();
   aggiornaBadge();
   window.scrollTo(0, window._sy||0);
+}
+
+/* barre impilate: pesi (kg esatti) · bande e corpo libero (stime, con la tilde) */
+function cardCarico(ks){
+  var maxT=Math.max.apply(null,ks.map(function(k){ return k.ton||0; }))||1, l=ks[ks.length-1];
+  var h='<div class="card"><div class="between"><div class="eyebrow">Carico sollevato \u00b7 ultime '+ks.length+' settimane</div>'+
+    '<div class="xs" style="font-weight:700">'+kfmt(l.ton)+' kg'+((l.ton_bande||l.ton_corpo)?' <span class="mut">~</span>':'')+'</div></div>';
+  h+='<div class="bars stack" style="margin-top:14px">'+ks.map(function(k,i){
+    var t=k.ton||0, hp=t? (k.ton_pesi/maxT*100) : 0, hb=t? (k.ton_bande/maxT*100) : 0, hc=t? (k.ton_corpo/maxT*100) : 0;
+    return '<div class="sb'+(i===ks.length-1?" cur":"")+'" title="'+kfmt(t)+' kg">'+
+      '<i class="c" style="height:'+hc.toFixed(1)+'%"></i><i class="b" style="height:'+hb.toFixed(1)+'%"></i><i class="p" style="height:'+hp.toFixed(1)+'%"></i></div>'; }).join("")+'</div>';
+  h+='<div class="barlab">'+ks.map(function(k,i){ return '<span class="'+(i===ks.length-1?"cur":"")+'">'+k.w+'</span>'; }).join("")+'</div>';
+  h+='<div class="mmleg" style="margin-top:8px"><span><i style="background:var(--glow)"></i>pesi</span><span><i style="background:var(--amb)"></i>bande ~</span><span><i style="background:var(--ok)"></i>corpo libero ~</span></div>'+
+     '<div class="xs mut" style="margin-top:8px">Questa settimana: pesi '+kfmt(l.ton_pesi)+' kg'+(l.ton_bande? ' · bande ~'+kfmt(l.ton_bande)+' kg':'')+(l.ton_corpo? ' · corpo libero ~'+kfmt(l.ton_corpo)+' kg':'')+
+     '. Con ~ le stime: le bande dal loro valore nominale, il corpo libero come quota del tuo peso (push-up circa 70%). Per confrontare le settimane guarda le <b>serie dure</b>, che non dipendono dall\'attrezzo.</div></div>';
+  return h;
 }

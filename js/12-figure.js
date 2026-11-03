@@ -44,7 +44,7 @@ function fgPosa(p){
   var perp=[-u[1], u[0]], back=[u[1], -u[0]];
   var sw=p.sw||0, hw=p.hw||0, abs=p.abs||"", rf=p.rf||"";
   var S={n:fgSom(sh, perp, sw), f:fgSom(sh, perp, -sw)}, Hp={n:fgSom(p.hip, perp, hw), f:fgSom(p.hip, perp, -hw)};
-  var out={hip:p.hip, sh:sh, t:t, u:u, back:back, perp:perp, sp:p.sp||0, br:p.br||0, front:!!(sw||p.vf),
+  var out={hip:p.hip, sh:sh, t:t, u:u, back:back, perp:perp, sp:p.sp||0, br:p.br||0, tw:p.tw||9.5, front:!!(sw||p.vf),
     hc:fgSom(sh, fgDir(t+(p.nk||0)), (FL.nk+FL.hd*(p.hs||1))*(p.hk==null?1:p.hk)), braccia:{}, gambe:{}};
   ["n","f"].forEach(function(lato){
     var hv=p["h"+lato]||[0,FL.ua+FL.fa-1], tg=abs.indexOf(lato)>=0 ? hv : fgSom(S[lato], hv);
@@ -123,6 +123,10 @@ function fgPunto(P, ref){
     case "tn": return P.gambe.n.toe; case "tf": return P.gambe.f.toe;
     case "kn": return P.gambe.n.k; case "kf": return P.gambe.f.k;
     case "sh": return P.sh; case "hip": return P.hip; case "head": return P.hc;
+    case "back": return fgSom(fgSpina(P,0.55).q, fgSpina(P,0.55).nf, -7);
+    case "lomb": return fgSom(fgSpina(P,0.15).q, fgSpina(P,0.15).nf, -7);
+    case "chest": return fgSom(fgSpina(P,0.8).q, fgSpina(P,0.8).nf, 6);
+    case "belly": return fgSom(fgSpina(P,0.3).q, fgSpina(P,0.3).nf, 6);
     case "bk": return fgSom(P.sh, P.back, 6);
     case "bkh": return fgSom(fgSom(P.hip, P.u, 8), P.back, 7);
   }
@@ -155,13 +159,17 @@ function fgCaps(a,b,r1,r2){
   return 'M'+fgPt(p1)+'L'+fgPt(p2)+'A'+fgR(r2)+' '+fgR(r2)+' 0 0 0 '+fgPt(p3)+'L'+fgPt(p4)+'A'+fgR(r1)+' '+fgR(r1)+' 0 0 0 '+fgPt(p1)+'Z';
 }
 function fgPath(d, cl){ return '<path d="'+d+'" class="'+cl+'"/>'; }
-function fgBraccio(A, cl){
-  var o=fgPath(fgCaps(A.s, A.e, 3.7, 2.9), cl);
+/* colori: maglia, pelle, pantaloni, scarpe. Cosi' le braccia si leggono anche davanti al busto. */
+var PAL_N={sh:"fg-shirt", sk:"fg-skin", pt:"fg-pants", so:"fg-shoe"};
+var PAL_F={sh:"fg-shirt fg-far", sk:"fg-skin fg-far", pt:"fg-pants fg-far", so:"fg-shoe fg-far"};
+var PAL_OK={sh:"fg-okg", sk:"fg-okg", pt:"fg-okg", so:"fg-okg"};
+function fgBraccio(A, c){
+  var cl=c.sk, o=fgPath(fgCaps(A.s, A.e, 3.7, 2.9), (c.sh===PAL_OK.sh)? cl : c.sh.replace("fg-shirt","fg-shirt")+" fg-sleeve");
   if(A.av) return o+'<ellipse cx="'+fgR(A.e[0])+'" cy="'+fgR(A.e[1]+0.8)+'" rx="7" ry="2.9" class="'+cl+'"/>';
   return o+fgPath(fgCaps(A.e, A.h, 2.9, 2.2), cl)+'<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="3.1" class="'+cl+'"/>';
 }
-function fgGamba(G, cl){
-  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), cl)+fgPath(fgCaps(G.k, G.a, 3.8, 2.5), cl)+fgPath(fgCaps(G.a, G.toe, 2.7, 1.7), cl);
+function fgGamba(G, c){
+  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), c.pt)+fgPath(fgCaps(G.k, G.a, 3.8, 2.5), c.pt)+fgPath(fgCaps(G.a, G.toe, 2.7, 1.7), c.so);
 }
 /* punto della colonna (curva quadratica) a frazione s, con la normale verso la pancia */
 function fgSpina(P, s){
@@ -182,8 +190,8 @@ function fgBusto(P){
 }
 function fgBustoFronte(P){
   var w=fgSpina(P, 0.45).q;
-  var pts=[fgSom(P.gambe.n.h, P.perp, 4.5), fgSom(w, P.perp, 9.5), fgSom(P.braccia.n.s, P.perp, 3.2),
-           fgSom(P.braccia.f.s, P.perp, -3.2), fgSom(w, P.perp, -9.5), fgSom(P.gambe.f.h, P.perp, -4.5)];
+  var pts=[fgSom(P.gambe.n.h, P.perp, 4.5), fgSom(w, P.perp, P.tw), fgSom(P.braccia.n.s, P.perp, 3.2),
+           fgSom(P.braccia.f.s, P.perp, -3.2), fgSom(w, P.perp, -P.tw), fgSom(P.gambe.f.h, P.perp, -4.5)];
   return 'M'+pts.map(fgPt).join('L')+'Z';
 }
 function fgTesta(P, p, cl){
@@ -195,18 +203,17 @@ function fgTesta(P, p, cl){
   return o;
 }
 /* il corpo intero, nell'ordine giusto: lontano, busto, testa, vicino */
-function fgCorpo(P, p, def){
-  var fr=P.front, o='', db=(def&&def.db)||"";
-  var cf = fr ? "fg-b" : "fg-b fg-bf";
-  if(!fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
+function fgCorpo(P, p, def, ghost){
+  var fr=P.front, o='', db=(def&&def.db)||"", cn=(ghost && typeof ghost==='object')? ghost : (ghost? PAL_OK : PAL_N), cf=ghost? cn : (fr? PAL_N : PAL_F);
+  if(!ghost && !fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
   o+=fgGamba(P.gambe.f, cf)+fgBraccio(P.braccia.f, cf);
-  o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="fg-b fg-tf"/>' : fgPath(fgBusto(P), "fg-b");
-  o+=fgTesta(P, p, "fg-b");
-  if(fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
-  o+=fgGamba(P.gambe.n, "fg-b");
-  if(db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
-  o+=fgBraccio(P.braccia.n, "fg-b");
-  if(db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);
+  o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="'+cn.sh+' fg-tf"/>' : fgPath(fgBusto(P), cn.sh);
+  o+=fgTesta(P, p, cn.sk);
+  if(!ghost && fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
+  o+=fgGamba(P.gambe.n, cn);
+  if(!ghost && db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
+  o+=fgBraccio(P.braccia.n, cn);
+  if(!ghost && db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);
   return o;
 }
 
@@ -303,7 +310,9 @@ function fgDisegna(def, p, opt){
   (def.props||[]).forEach(function(pr){ o+=fgProp(pr); });
   o+=fgOmbra(P);
   if(opt.traccia) o+=opt.traccia;
-  o+=fgCorpo(P, p, def);
+  if(opt.ghost){ var Pg=fgPosa(opt.ghost); o+='<g opacity=".42">'+fgCorpo(Pg, opt.ghost, def, true)+'</g>'; }
+  if(opt.pre) o+=opt.pre(P);
+  o+= opt.ghost ? '<g class="fg-errg">'+fgCorpo(P, p, def)+'</g>' : fgCorpo(P, p, def);
   if(P.br){ /* respiro: le costole si allargano */
     var rc=fgSom(fgSom(P.hip, P.u, FL.tr*0.62), P.perp, 2);
     o+='<ellipse cx="'+fgR(rc[0])+'" cy="'+fgR(rc[1])+'" rx="'+fgR(8+6*P.br)+'" ry="'+fgR(10+3*P.br)+'" class="fg-breath" opacity="'+fgR(0.25+0.6*P.br)+'"/>';
@@ -318,6 +327,7 @@ function fgDisegna(def, p, opt){
   });
   if(opt.sec!=null && opt.nome) o+=fgFreccia(def, opt.sec);
   o+=fgInset(def, opt.vb);
+  if(opt.post) o+=opt.post(P);
   return o;
 }
 /* traiettoria del punto chiave lungo un ciclo intero, tratteggiata */
@@ -397,8 +407,8 @@ var FIG={
    {p:pIn({an:[172,326], af:[170,326]}), h:0.3, d:1, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
    {p:pIn({an:[172,176], af:[170,176]}), h:0.2, d:2, c:"Distendi le braccia senza aprire i gomiti, ritorno in 2 secondi"}]},
  "Side plank":{fx:"core", k:[
-   {p:fgM(fgLinea([156,129], 112, -1), {vf:1, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[104,112], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Gomito sotto la spalla, bacino alto: linea retta spalla-caviglia"},
-   {p:fgM(fgLinea([156,129], 111.2, -1), {vf:1, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[104,111], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Sinistra 60 s, destra 40 s: la convessità lombare è a sinistra"}]},
+   {p:fgM(fgLinea([156,129], 112, -1), {vf:1, tw:6.5, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[74,76], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:1}}), h:0.5, d:2.5, c:"Gomito sotto la spalla, bacino alto: linea retta spalla-caviglia"},
+   {p:fgM(fgLinea([156,129], 111.2, -1), {vf:1, tw:6.5, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[74,76], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:1}}), h:0.5, d:2.5, c:"Sinistra 60 s, destra 40 s: la convessità lombare è a sinistra"}]},
 
  /* ---------- giorno C ---------- */
  "Pullover manubrio":{fx:"trunk", db:"2", tr:"hn", k:[
@@ -427,7 +437,7 @@ var FIG={
  "Affondi indietro manubri":{fx:"leg", db:"nf", tr:"hip", k:[
    {p:pIn({fn:[116,FG_ANK], ff:[108,FG_ANK]}), h:0.3, d:0.7, c:"In piedi, manubri lungo i fianchi"},
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:1.3, c:"Passo INDIETRO"},
-   {p:pIn({hip:[103,109], t:176, fn:[118,FG_ANK], ff:[74,130], tf:40}), h:0.2, d:1, c:"Scendi con le ginocchia a 90°, poi spingi con la gamba davanti"},
+   {p:pIn({hip:[96,108], t:176, fn:[118,FG_ANK], ff:[72,130], tf:40}), h:0.2, d:1, c:"Scendi con le ginocchia a 90°, poi spingi con la gamba davanti"},
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:0.7, c:"Torna su"}]},
  "Reverse Fly":{fx:"arm", db:"nf", inset:{p:pPiegato({hn:[2,35], hf:[-1,35]}), t:"busto a 45°"}, k:[
    {p:pChino(), h:0.2, d:1.3, c:"Visto di fronte, busto a 45°: manubri che pendono"},
