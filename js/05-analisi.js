@@ -6,7 +6,7 @@ function weeks(){ return [...new Set(S.sess.map(s=>s.w))].sort((a,b)=>a-b); }
 function kpi(w){
   var ss=S.sess.filter(s=>s.w===w && !isRest(s)), ls=S.log.filter(r=>r.w===w);
   var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
-  var target=Math.max(1, 4-rest);
+  var target=bersaglio(w, rest);
   var dur=ss.filter(s=>s.min).map(s=>s.min), en=ss.filter(s=>s.en).map(s=>s.en);
   var ton=ls.reduce((a,r)=>a + r.load*(r.reps.reduce((x,y)=>x+y,0)), 0);
   var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
@@ -250,7 +250,7 @@ function weekDone(w){
   var ss=S.sess.filter(function(s){ return s.w===w; });
   var real=ss.filter(function(s){ return !isRest(s); }).length;
   var rp=ss.filter(isRest).length;
-  return {real:real, target:Math.max(1,4-rp), ok:real>=Math.max(1,4-rp)};
+  return {real:real, target:bersaglio(w, rp), ok:real>=bersaglio(w, rp)};
 }
 function streak(){
   var wNow=weekOf(today()), c=0, cur=weekDone(wNow).ok;
@@ -275,7 +275,7 @@ function diagnose(){
     if(w<PLAN_W0) return false;
     var real=S.sess.filter(s=>s.w===w && !isRest(s)).length;
     var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
-    return real+rest>=4; }).pop();
+    return real+rest>=giorniSettimana(w).length; }).pop();
   /* 1. stallo o carico troppo alto */
   var seen={};
   Object.keys(PLAN).forEach(function(d){

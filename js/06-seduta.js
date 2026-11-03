@@ -3,13 +3,16 @@ function warmCard(d){
   var wdone=d.warm.filter(Boolean).length, h="";
   h+='<div class="card"><div class="between"><div class="eyebrow '+(wdone===WARM.length?"":"amb")+'">Riscaldamento · 6 minuti · '+wdone+"/"+WARM.length+'</div>'+
      '<button class="btn sm ghost" data-a="wall">'+(wdone===WARM.length?"Azzera":"Tutti")+'</button></div>';
-  if(wdone<WARM.length) h+='<div class="xs mut" style="margin:6px 0 2px">È il blocco scoliosi. Se la sessione è corta, taglia un isolamento, non questo.</div>';
+  if(wdone<WARM.length){
+    h+='<div class="xs mut" style="margin:6px 0 2px">È il blocco scoliosi. Se la sessione è corta, taglia un isolamento, non questo.</div>';
+    h+='<button class="btn amb" style="margin:10px 0 4px" data-a="wgo">▶ Riscaldamento guidato · 6 minuti a tempo</button>';
+  }
   WARM.forEach(function(x,i){
-    var dd = x.var ? x.var[d.day] : x.d;
-    h+='<div class="check '+(d.warm[i]?"on":"")+'"><div class="box" data-a="warm" data-i="'+i+'" style="cursor:pointer">✓</div>'+
+    var dd = x.var ? x.var[d.day] : x.d, fn=warmNome(i, d.day);
+    h+='<div class="check '+(d.warm[i]?"on":"")+'"><div class="box" data-a="warm" data-i="'+i+'" style="cursor:pointer" role="checkbox" aria-checked="'+(!!d.warm[i])+'" aria-label="'+esc(x.n)+' fatto">✓</div>'+
        '<div class="t" data-a="warm" data-i="'+i+'" style="flex:1"><div style="font-weight:600;font-size:14.5px">'+esc(x.n)+'</div>'+
        '<div class="xs mut">'+esc(dd)+'</div></div>'+
-       (G[x.n]?'<button class="btn sm ghost" data-a="gwarm" data-i="'+i+'" style="min-width:38px">?</button>':"")+'</div>';
+       (figHas(fn)||G[fn]? '<button class="wmini" data-a="gwarm" data-i="'+i+'" aria-label="Come si fa: '+esc(x.n)+'">'+figMini(fn)+'</button>' : "")+'</div>';
   });
   return h+'</div>';
 }

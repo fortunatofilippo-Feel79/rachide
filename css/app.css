@@ -1,6 +1,6 @@
 :root{
   --bg:#0A0F14; --surf:#131C24; --surf2:#1B2833; --line:#26343F;
-  --bone:#E9EEF3; --mut:#7D8D9B; --dim:#4E5F6D;
+  --bone:#E9EEF3; --mut:#A2B1BD; --dim:#8292A0; --faint:#4E5F6D;
   --amb:#E0A458; --glow:#6FB3C4; --alert:#D45D5D; --ok:#7FB069;
   --r:14px;
 }
@@ -346,3 +346,87 @@ details.more[open]>summary::after{transform:rotate(-90deg)}
 .prv{font-size:16px;font-weight:700;margin-top:4px;letter-spacing:-.01em;line-height:1.3}
 .clock{white-space:nowrap}
 
+
+/* ---------- figure degli esercizi ---------- */
+:root{ --fig:#DDE5EC }
+.fg{width:100%;height:auto;display:block;overflow:hidden}
+.fg line,.fg path,.fg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.fg .fg-floor{stroke:var(--line);stroke-width:1.5}
+.fg .fg-body{stroke:var(--fig)}
+.fg .fg-far{opacity:.36}
+.fg .fg-hot{stroke:var(--glow)}
+.fg .fg-head,.fg .fg-hand{fill:var(--fig)}
+.fg .fg-hotf{fill:var(--glow)}
+.fg .fg-db{fill:var(--amb)}
+.fg .fg-dbc{fill:#6B4B22}
+.fg .fg-prop{fill:var(--surf2);stroke:var(--dim);stroke-width:1}
+.fg .fg-mat{fill:rgba(111,179,196,.28)}
+.fg .fg-tr{fill:none;stroke:var(--amb);stroke-width:1.2;stroke-dasharray:2 3;opacity:.75}
+.fg .fg-breath{fill:rgba(111,179,196,.16);stroke:var(--glow);stroke-width:1.2;stroke-dasharray:3 2}
+
+/* ---------- v4: contrasto ----------
+   --dim era 2,6:1 sullo sfondo delle schede (WCAG AA chiede 4,5:1 per il testo).
+   Ora 5,4:1. --faint resta per bordi e decorazioni, mai per il testo. */
+.box{border-color:var(--faint)}
+.slot .l,.slot .d{color:var(--dim)}
+
+/* ---------- v4: navigazione a cinque ---------- */
+nav.tabs .lb{font-size:10px}
+
+/* ---------- v4: prossima seduta ---------- */
+.hero-next{border-color:var(--glow);background:linear-gradient(180deg,rgba(111,179,196,.10),rgba(111,179,196,.02) 60%)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.seg button{border-radius:9px;padding:7px 4px 6px;text-align:center;min-height:44px;color:var(--mut)}
+.seg button b{display:block;font-size:13.5px;font-weight:700}
+.seg button span{display:block;font-size:10.5px;color:var(--dim);margin-top:1px}
+.seg button.on{background:var(--surf2);color:var(--bone);box-shadow:inset 0 0 0 1px var(--glow)}
+.seg button.on span{color:var(--glow)}
+.figstrip{display:flex;gap:8px;overflow-x:auto;margin:10px -2px 0;padding:2px 2px 4px;scrollbar-width:none}
+.figstrip::-webkit-scrollbar{display:none}
+.figstrip .fs{flex:none;width:92px;text-align:left}
+.figstrip .fs span{display:block;font-size:10.5px;line-height:1.25;color:var(--mut);margin-top:4px;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.figmini{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;aspect-ratio:22/15;overflow:hidden}
+.figmini.vuota{opacity:.4}
+.wk.wk2{grid-template-columns:repeat(2,1fr)}
+
+/* ---------- v4: figura animata ---------- */
+.figwrap{margin:10px 0 4px}
+.figbox{background:radial-gradient(120% 90% at 50% 100%,rgba(111,179,196,.10),transparent 60%),var(--bg);
+  border:1px solid var(--line);border-radius:14px;padding:4px 6px;overflow:hidden}
+.figwrap.compatta .figbox{max-height:170px}
+.figwrap.compatta .figbox svg{max-height:160px;margin:0 auto}
+.figbar{height:3px;background:var(--surf2);border-radius:2px;margin:6px 2px 0;overflow:hidden}
+.figbar i{display:block;height:100%;width:0;background:var(--amb);border-radius:2px}
+.figcap{font-size:13px;font-weight:600;line-height:1.35;color:var(--bone);margin:7px 2px 0;min-height:36px}
+.figctl{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 4px}
+.figctl .btn{width:100%}
+.exfig{cursor:pointer;margin-top:4px}
+.exfig.mini .figmini{max-width:140px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 4px}
+.chips span{font-size:11px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.gsez{margin-top:14px}
+.gsez .eyebrow{margin-bottom:4px}
+.altrow{display:flex;flex-direction:column;gap:6px}
+.altrow .btn{width:100%;justify-content:flex-start}
+.wmini{flex:none;width:72px}
+.wmini .figmini{padding:1px}
+
+/* ---------- v4: riscaldamento guidato e tenute ---------- */
+.wgtimer{display:flex;align-items:center;gap:14px;margin-top:10px}
+.ring{width:64px;height:64px;transform:rotate(-90deg)}
+.ring .rb{fill:none;stroke:var(--surf2);stroke-width:4}
+.ring .rf{fill:none;stroke:var(--amb);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .25s linear}
+.hold{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:10px 12px;
+  border:1px solid var(--amb);border-radius:12px;background:rgba(224,164,88,.07)}
+.hold.ok{border-color:var(--ok);background:rgba(127,176,105,.1)}
+.hold.ok .rclk{color:var(--ok)}
+
+/* ---------- v4: libreria degli esercizi ---------- */
+input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--line);border-radius:11px;padding:12px;min-height:46px;outline:none}
+.libgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.libc{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:6px 6px 9px;text-align:left}
+.libc b{display:block;font-size:13px;font-weight:650;line-height:1.25;margin:6px 3px 0}
+.libc span{display:block;font-size:11px;color:var(--dim);margin:2px 3px 0}
+.libc:active{transform:scale(.985)}
+@media (min-width:520px){ .libgrid{grid-template-columns:repeat(3,1fr)} }

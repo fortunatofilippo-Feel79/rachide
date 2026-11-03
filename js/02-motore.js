@@ -261,3 +261,48 @@ function readiness(exDef){
   return {ready:true, why:cur+" → "+(cur+step)+" kg", next:cur+step};
 }
 
+
+/* ============================================================
+   PIANO FLESSIBILE — dove ti alleni e quanto tempo hai
+   ============================================================ */
+/* definizione di un'alternativa: dal giorno di trasferta se c'e', altrimenti ALTDEF */
+function altDef(n){
+  var trovata=null;
+  ["T1","T2"].forEach(function(d){ if(trovata || !PLAN || !PLAN[d]) return;
+    PLAN[d].ex.forEach(function(x){ if(!trovata && x.n===n) trovata=x; }); });
+  if(trovata) return Object.assign({}, trovata);
+  var a=ALTDEF[n];
+  if(a) return Object.assign({n:n, s:3}, a);
+  return extraDef(n);
+}
+/* gli esercizi della seduta: il giorno del piano, adattato al luogo e al tempo */
+var RIDOTTA_N=4, RIDOTTA_MIN=45;
+function eserciziPer(day, luogo, rid){
+  var p=PLAN[day]; if(!p) return [];
+  var lista = rid ? p.ex.slice(0, RIDOTTA_N) : p.ex;
+  if(!luogo || luogo==="casa" || p.sede!=="Casa") return lista.slice();
+  var visti={}, out=[];
+  lista.forEach(function(x){
+    var m=ALT[x.n], a = (m && (luogo in m)) ? m[luogo] : x.n;
+    if(!a) return;
+    /* stesso sostituto per due esercizi: si sommano le serie (al massimo 5), il volume non si perde */
+    if(visti[a]){ var gia=out.filter(function(y){ return y.n===a; })[0]; if(gia) gia.s=Math.min(5, (gia.s||3)+(x.s||3)); return; }
+    visti[a]=1;
+    if(a===x.n){ out.push(Object.assign({}, x)); return; }
+    out.push(Object.assign(altDef(a), {n:a, s:x.s, da:x.n}));
+  });
+  return out;
+}
+/* luogo scelto per oggi: quello toccato oggi, altrimenti dal benessere (notte fuori = bande) */
+function luogoOggi(){
+  if(S.luogo && S.luogo.date===today()) return S.luogo.v;
+  var b=benOn(today());
+  return (b && b.sede==="Fuori") ? "bande" : "casa";
+}
+/* settimana di picco: due sedute essenziali invece di quattro */
+function picco(w){ return !!(S.picco && S.picco[w]); }
+function giorniSettimana(w){ return picco(w) ? ["E1","E2"] : ["A","B","C","D"]; }
+function bersaglio(w, riposi){ return Math.max(1, giorniSettimana(w).length - (riposi||0)); }
+
+/* un'impostazione cambiata qui: la memoria sul foglio deve sapere che e' piu' recente */
+function cfgTocca(k){ S.cfgTs=S.cfgTs||{}; S.cfgTs[k]=Date.now(); }

@@ -4,6 +4,7 @@ setInterval(function(){
   if(c && S.draft){ c.textContent=clockTxt(); c.classList.toggle("warn", sessEta().late); }
   if(rest){
     var left=(rest.end-Date.now())/1000, r=document.getElementById("rclock");
+    if(left>0 && left<=3.2 && Math.ceil(left)!==rest.cc){ rest.cc=Math.ceil(left); suono("conto"); }
     if(left<=0 && !rest.over){ rest.over=true; bip(1); if(navigator.vibrate) navigator.vibrate(200); toast("Recupero finito: si riparte");
       if(V==="oggi"&&S.draft) render(); }
     else if(left<=-30 && !rest.late){ rest.late=true; bip(2); if(navigator.vibrate) navigator.vibrate([150,80,150]);

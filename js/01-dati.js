@@ -42,11 +42,23 @@ var EX = {
   "Band curl bicipiti":         {g:"Bicipiti",t:"iso",  band:true},
   "Hammer curl con banda":      {g:"Bicipiti",t:"iso",  band:true},
   "Dead bug":                   {g:"Core",    t:"core", uni:true},
+  /* alternative per la trasferta e le settimane piene (v4) */
+  "Push-up piedi rialzati":     {g:"Petto",   t:"compl"},
+  "Rematore al telaio della porta":{g:"Dorso", t:"compl", uni:true},
+  "Shoulder press con banda":   {g:"Spalle",  t:"compl", band:true},
+  "Box squat alla sedia 3s":    {g:"Gambe",   t:"compl"},
+  "Curl isometrico asciugamano":{g:"Bicipiti",t:"iso",  sec:true},
+  "Alzate laterali con banda":  {g:"Spalle",  t:"iso",  band:true},
+  "Y-T-W a busto inclinato":    {g:"Spalle",  t:"iso"},
+  "Hip thrust a una gamba":     {g:"Gambe",   t:"compl",uni:true},
+  "Affondi indietro":           {g:"Gambe",   t:"compl",uni:true},
+  "Band pull-down":             {g:"Dorso",   t:"compl",band:true},
+  "Glute bridge":               {g:"Gambe",   t:"iso"},
   /* storici, non più nel piano v5 */
   "Chest Press manubri":{g:"Petto",t:"comp"}, "Incline Press manubri":{g:"Petto",t:"compl"},
   "RDL (Romanian Deadlift)":{g:"Gambe",t:"comp"}, "Bulgarian split squat (BW)":{g:"Gambe",t:"compl",uni:true},
   "Calf raise":{g:"Gambe",t:"iso"}, "Calf raise (BW)":{g:"Gambe",t:"iso"},
-  "Band pull-down":{g:"Dorso",t:"compl",band:true}, "Rematore un braccio manubrio":{g:"Dorso",t:"compl",uni:true}, "Reverse Fly leggero":{g:"Spalle",t:"iso"},
+  "Rematore un braccio manubrio":{g:"Dorso",t:"compl",uni:true}, "Reverse Fly leggero":{g:"Spalle",t:"iso"},
   "Reverse Fly manubri":{g:"Spalle",t:"iso"}, "Kick back tricipiti":{g:"Tricipiti",t:"iso"},
   "Face pull con banda":{g:"Spalle",t:"iso"}, "Isometria push-up":{g:"Petto",t:"compl",sec:true},
   "Push-up piedi rialzati o deficit":{g:"Petto",t:"compl"}
@@ -64,8 +76,13 @@ var WARM = [
   {n:"Respirazione costale asimmetrica", d:"5 respiri · mano sn attiva sulle costole, mano dx passiva sul gibbo"},
   {n:"Attivazione del giorno", d:"", var:{A:"15 band pull-apart + 10 cerchi braccia", C:"15 band pull-apart + 10 cerchi braccia",
     B:"10 glute bridge + 10 squat lenti", D:"10 glute bridge + 10 squat lenti",
-    T1:"10 glute bridge + 10 squat lenti", T2:"15 band pull-apart + 10 cerchi braccia"}}
+    T1:"10 glute bridge + 10 squat lenti", T2:"15 band pull-apart + 10 cerchi braccia",
+    E1:"10 glute bridge + 10 squat lenti", E2:"15 band pull-apart + 10 cerchi braccia"},
+   fig:{A:"Band pull-apart", C:"Band pull-apart", T2:"Band pull-apart", E2:"Band pull-apart",
+        B:"Glute bridge", D:"Glute bridge", T1:"Glute bridge", E1:"Glute bridge"}}
 ];
+/* secondi indicativi di ogni blocco del riscaldamento, per la versione guidata (6 minuti) */
+var WARM_SEC = [55, 70, 95, 60, 75];
 
 /* ---------- i 4 giorni + 2 trasferte ---------- */
 /* s = serie · lo/hi = range rep · L = carico di partenza · b = banda · u = unilaterale */
@@ -121,7 +138,64 @@ var BASEPLAN = {
    {n:"Band tricep extension", s:3, lo:12, hi:12, b:"rossa"},
    {n:"Dead bug", s:3, lo:10, hi:10, u:true, tip:"La lombare deve restare schiacciata a terra. È l'unico errore che conta."},
    {n:"Side plank", s:3, lo:40, hi:60, sec:true, u:true, asym:true}
+ ]},
+ /* settimana di picco: due sedute brevi a tutto corpo. Con l'intensita' mantenuta
+    bastano poche serie a settimana per conservare forza e massa (Spiering 2021,
+    J Strength Cond Res 35:1449). Le serie sono 2: qui non si cerca la progressione. */
+ E1:{name:"Essenziale · spinta e gambe", sede:"Casa", dischi:"20 › 28", min:30, ess:true, ex:[
+   {n:"Floor Press manubri", s:2, lo:8, hi:10, L:20, tip:"Settimana di picco: due serie vere, stesso carico, RIR 1-2."},
+   {n:"Rematore manubri", s:2, lo:8, hi:10, L:20},
+   {n:"Box Squat", s:2, lo:8, hi:10, L:28},
+   {n:"Side plank", s:2, lo:40, hi:60, sec:true, u:true, asym:true}
+ ]},
+ E2:{name:"Essenziale · catena posteriore e spalle", sede:"Casa", dischi:"14 › 12 › 16 › 6", min:30, ess:true, ex:[
+   {n:"Shoulder Press manubri", s:2, lo:8, hi:10, L:14, tip:"Settimana di picco: stesso carico, due serie, RIR 1-2."},
+   {n:"Split-stance RDL", s:2, lo:8, hi:8, L:12, u:true},
+   {n:"Bulgarian Split Squat manubri", s:2, lo:10, hi:10, L:16, u:true},
+   {n:"Face pull", s:2, lo:15, hi:15, L:6}
  ]}
+};
+
+/* ---------- dove ti alleni oggi: casa, bande, corpo libero ----------
+   Ogni esercizio di casa ha un sostituto con lo stesso schema di movimento.
+   null = si salta (il suo lavoro e' gia' coperto da un altro esercizio del giorno).
+   Le serie restano quelle del piano; ripetizioni e tecnica sono del sostituto,
+   che si registra col suo nome: lo storico di casa resta pulito. */
+var LUOGHI=[["casa","Casa","manubri"],["bande","Bande","in trasferta"],["corpo","Corpo libero","nessun attrezzo"]];
+var ALT={
+  "Floor Press manubri":            {bande:"Push-up piedi rialzati con banda", corpo:"Push-up piedi rialzati"},
+  "Floor Press (volume)":          {bande:"Push-up", corpo:"Push-up"},
+  "Rematore manubri":              {bande:"Band row seduto", corpo:"Rematore al telaio della porta"},
+  "Rematore manubri (volume)":     {bande:"Band row un braccio", corpo:"Rematore al telaio della porta"},
+  "Shoulder Press manubri":        {bande:"Shoulder press con banda", corpo:"Pike push-up"},
+  "Push-up piedi rialzati con banda":{corpo:"Push-up"},
+  "French Press":                  {bande:"Band tricep extension", corpo:"Push-up stretti"},
+  "Overhead extension 1 braccio":  {bande:"Band tricep extension", corpo:"Push-up stretti"},
+  "Band tricep extension":         {corpo:"Push-up stretti"},
+  "Box Squat":                     {bande:"Box squat alla sedia 3s", corpo:"Box squat alla sedia 3s"},
+  "Bulgarian Split Squat manubri": {bande:"Bulgarian split squat 3s", corpo:"Bulgarian split squat 3s"},
+  "Pullover manubrio":             {bande:"Band pull-down", corpo:null},
+  "Curl bicipiti manubri":         {bande:"Band curl bicipiti", corpo:"Curl isometrico asciugamano"},
+  "Hammer Curl":                   {bande:"Hammer curl con banda", corpo:null},
+  "Alzate laterali":               {bande:"Alzate laterali con banda", corpo:"Y-T-W a busto inclinato"},
+  "Face pull":                     {bande:"Band pull-apart", corpo:"Y-T-W a busto inclinato"},
+  "Reverse Fly":                   {bande:"Band pull-apart", corpo:"Y-T-W a busto inclinato"},
+  "Hip thrust con banda":          {corpo:"Hip thrust a una gamba"},
+  "Split-stance RDL":              {bande:"Hip hinge una gamba", corpo:"Hip hinge una gamba"},
+  "Affondi indietro manubri":      {bande:"Affondi indietro", corpo:"Affondi indietro"}
+};
+/* prescrizione delle alternative che non hanno un giorno di trasferta proprio */
+var ALTDEF={
+  "Push-up piedi rialzati":        {lo:8,  hi:15, tip:"Piedi su letto o sedia bassa. Se arrivi a 15 pulite, rallenta la discesa a 3 secondi."},
+  "Rematore al telaio della porta":{lo:10, hi:15, u:true, tip:"Più i piedi sono vicini al telaio, più è duro. Controlla prima che la porta sia ferma."},
+  "Shoulder press con banda":      {lo:10, hi:15, b:"verde", tip:"Banda sotto entrambi i piedi. Fastidio alla spalla sinistra: ferma la serie."},
+  "Box squat alla sedia 3s":       {lo:12, hi:15, tip:"3 secondi in discesa, 1 secondo di pausa sfiorando la sedia."},
+  "Curl isometrico asciugamano":   {lo:20, hi:30, sec:true, tip:"Tieni con tutta la forza: non è una tenuta comoda."},
+  "Alzate laterali con banda":     {lo:12, hi:20, b:"gialla", tip:"Ritorno in 2 secondi. Le spalle non salgono alle orecchie."},
+  "Y-T-W a busto inclinato":       {lo:8,  hi:12, tip:"Una ripetizione = Y + T + W. Lenta, senza pesi: conta la posizione."},
+  "Hip thrust a una gamba":        {lo:10, hi:15, u:true, tip:"Parti dal lato debole e pareggia l'altro su quel numero."},
+  "Affondi indietro":              {lo:12, hi:15, u:true, tip:"Discesa in 2 secondi. Senza manubri lo stimolo viene dal tempo."},
+  "Band pull-down":                {lo:12, hi:15, b:"verde", tip:"Banda fissata in alto alla porta chiusa."}
 };
 
 /* ---------- i tre segnali che fermano la serie ---------- */
@@ -307,4 +381,50 @@ var G = {
  f:"L'addome profondo che lavora per tenere la schiena a terra. È anti-estensione: il lavoro è nel non muoversi.",
  e:"La lombare si stacca dal pavimento. È l'unico errore che conta: nel momento in cui si stacca, l'esercizio ha smesso di funzionare.",
  c:"Metti una mano sotto la lombare: se senti che si alleggerisce hai perso la posizione. Muovi la gamba di soli 20 cm se serve."}
+,
+/* ---------- v4: riscaldamento e alternative fuori casa ---------- */
+"Glute bridge":{p:"Supino, ginocchia piegate, piedi a terra alla larghezza delle anche, braccia lungo i fianchi. Spingi coi talloni e solleva il bacino fino alla linea spalle-ginocchia, pausa 1 secondo, scendi.",
+ f:"Glutei che si contraggono in alto. Addome attivo.",
+ e:"La lombare si inarca invece che il bacino salire. Senti i femorali che crampano più dei glutei.",
+ c:"Mento verso il petto e contrai i glutei prima di salire. Se crampano i femorali, avvicina i piedi al bacino."},
+"Push-up piedi rialzati":{p:"Piedi sul bordo del letto o su una sedia bassa, mani poco più larghe delle spalle, corpo in linea. Scendi in blocco con i gomiti a 45°, spingi.",
+ f:"Petto, soprattutto la parte alta, e tricipiti. Il corpo si muove come un blocco unico.",
+ e:"Il bacino cede o sale a punta. Senti la spalla più del petto.",
+ c:"Rialzo troppo alto se senti le spalle: abbassalo. Bacino: stringi glutei e addome, è un plank che si muove."},
+"Rematore al telaio della porta":{p:"Porta aperta e ferma. Afferra il telaio con una mano all'altezza del petto, piedi vicini alla base, corpo dritto inclinato indietro col braccio teso. Tira il petto verso il telaio, torna giù lento.",
+ f:"Il dorso del lato che tira, fra la scapola e la colonna.",
+ e:"Il bacino cede e il corpo si piega. Il busto ruota seguendo il braccio. Tiri solo col bicipite.",
+ c:"Più i piedi sono vicini al telaio più è duro: regola così la difficoltà. Pensa «gomito verso la tasca». Parti dal lato debole e pareggia."},
+"Shoulder press con banda":{p:"In piedi sulla banda, piedi alla larghezza delle anche, estremità in mano all'altezza delle spalle. Spingi in alto espirando, scendi controllato fino al mento.",
+ f:"Deltoidi e tricipiti. Addome attivo.",
+ e:"La lombare si inarca per spingere. Compare fastidio alla spalla sinistra.",
+ c:"Contrai addome e glutei prima di spingere. Fastidio alla spalla sinistra: ferma la serie e attiva il flag, come per lo Shoulder Press."},
+"Box squat alla sedia 3s":{p:"Davanti a una sedia, braccia avanti per l'equilibrio. Scendi in 3 secondi spingendo i fianchi indietro fino a sfiorare la sedia, pausa 1 secondo senza sederti, risali coi talloni.",
+ f:"Quadricipiti e glutei, con bruciore che arriva dalla durata.",
+ e:"Ti siedi e scarichi il peso. Le ginocchia cadono dentro. I talloni si alzano.",
+ c:"Se 15 sono facili, allunga la discesa a 4 secondi o aggiungi 2 secondi di pausa in basso."},
+"Curl isometrico asciugamano":{p:"In piedi sul centro di un asciugamano, un capo per mano, gomiti a 90° accanto al busto. Tira verso l'alto con tutta la forza e tieni il tempo indicato respirando.",
+ f:"Bicipiti in contrazione piena, avambracci.",
+ e:"Ti inarchi o ti alzi sulle punte per tirare. Trattieni il respiro.",
+ c:"Schiena contro il muro. Conta a voce: se non riesci a parlare, molla un po' la tensione."},
+"Alzate laterali con banda":{p:"In piedi su una banda leggera, un'estremità per mano, gomiti appena piegati. Solleva lateralmente fino all'altezza delle spalle, scendi in 2 secondi.",
+ f:"Il deltoide laterale.",
+ e:"Le spalle salgono verso le orecchie. Superi l'altezza delle spalle. Il braccio sinistro sale meno.",
+ c:"Se le spalle salgono usa una banda più leggera o allarga i piedi meno. Mignolo appena più alto del pollice."},
+"Y-T-W a busto inclinato":{p:"In piedi, ginocchia morbide, busto inclinato a 45° con la schiena dritta. Braccia a Y in alto, poi a T aperte, poi a W coi gomiti piegati indietro. Una ripetizione = le tre lettere, lente.",
+ f:"Parte posteriore delle spalle e zona fra le scapole.",
+ e:"La schiena si arrotonda o il busto si raddrizza. Senti il collo. Il braccio sinistro arriva meno in alto.",
+ c:"Riduci l'inclinazione se la schiena si arrotonda. Senza pesi conta la posizione: tieni 1 secondo ogni lettera."},
+"Hip thrust a una gamba":{p:"Scapole sul bordo del letto o di un divano, un piede a terra sotto il ginocchio, l'altra gamba distesa. Spingi col tallone e sali fino alla linea retta spalle-ginocchio, pausa 1 secondo.",
+ f:"Gluteo della gamba a terra.",
+ e:"Il bacino ruota verso il lato della gamba sollevata. La lombare si inarca.",
+ c:"Mani sulle creste iliache: devono restare alla stessa altezza. Parti dal lato debole e pareggia l'altro."},
+"Affondi indietro":{p:"In piedi, mani sui fianchi. Passo indietro, scendi in 2 secondi con entrambe le ginocchia a 90°, spingi con la gamba davanti per tornare.",
+ f:"Quadricipite e gluteo della gamba davanti.",
+ e:"Il busto si inclina avanti. Perdi l'equilibrio sempre dallo stesso lato.",
+ c:"Sguardo su un punto fisso all'altezza degli occhi. Se perdi l'equilibrio sempre dallo stesso lato annotalo: è informazione."},
+"Band pull-down":{p:"Banda fissata in alto (sopra la porta chiusa), braccia tese verso l'ancoraggio. Tira i gomiti verso i fianchi abbassando le scapole, torna lento.",
+ f:"Gran dorsale, sotto le ascelle.",
+ e:"Ti pieghi indietro per aiutarti. Le spalle salgono verso le orecchie.",
+ c:"Busto fermo, pensa «gomiti nelle tasche posteriori». Ritorno in 2 secondi."}
 };

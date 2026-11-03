@@ -6,7 +6,7 @@ var V="oggi", app=document.getElementById("app"), rest=null, tick=null;
 function toast(m){ var t=document.getElementById("toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"), 2200); }
 function sheet(html){ document.getElementById("sheetIn").innerHTML='<div class="handle"></div>'+html;
-  document.getElementById("sheet").classList.add("on"); }
+  document.getElementById("sheet").classList.add("on"); Fig.mount(); }
 function closeSheet(){ stopAnim(); document.getElementById("sheet").classList.remove("on"); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
@@ -20,31 +20,46 @@ function topbar(title, sub){
 }
 
 /* ---------- OGGI ---------- */
+/* scelta del luogo: tre bottoni affiancati */
+function segLuogo(sel, day){
+  return '<div class="seg" role="radiogroup" aria-label="Dove ti alleni">'+LUOGHI.map(function(l){
+    return '<button role="radio" aria-checked="'+(sel===l[0])+'" class="'+(sel===l[0]?"on":"")+'" data-a="luogo" data-v="'+l[0]+'"'+(day?' data-d="'+day+'"':'')+'>'+
+      '<b>'+l[1]+'</b><span>'+l[2]+'</span></button>'; }).join("")+'</div>';
+}
+/* striscia di miniature: cosa ti aspetta nella seduta */
+function stripEsercizi(lista){
+  return '<div class="figstrip">'+lista.map(function(x){
+    return '<button class="fs" data-a="guida" data-n="'+esc(x.n)+'" aria-label="Come si fa: '+esc(x.n)+'">'+figMini(x.n)+
+      '<span>'+esc(x.n.replace(" manubri","").replace(" con banda"," (banda)"))+'</span></button>'; }).join("")+'</div>';
+}
 function viewOggi(){
   if(S.draft) return viewSession();
   var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
   var fatte=tutte.filter(function(s){ return !isRest(s); });
   var riposi=tutte.filter(isRest);
-  var giorni=["A","B","C","D"];
+  var giorni=giorniSettimana(w), pk=picco(w);
   /* un giorno è "coperto" se allenato o segnato come riposo */
   var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
   var completa=!next;
-  var h=topbar("Settimana "+w, dayName(today())+" "+today());
+  var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
   h+=cardProposta(true);
 
   if(Store.ok===false) h+=storageAlarm();
-  if(!S.log.length){
-    h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Prima cosa da fare</div>'+
-      '<h2 style="margin:4px 0 6px">Riporta il tuo storico</h2>'+
-      '<div class="sm mut">Questa copia è vuota. Apri il backup .json che hai scaricato dall\'altra versione: tornano log, sessioni, misure e modifiche al piano.</div>'+
-      '<button class="btn pri" style="margin-top:12px" data-a="imp">Ripristina il backup</button></div>'; }
+  if(!S.log.length && !S.ben.length){
+    h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Telefono nuovo o prima volta?</div>'+
+      '<h2 style="margin:4px 0 6px">Riporta i tuoi dati</h2>'+
+      '<div class="sm mut">Collega il foglio: storico, piano e impostazioni tornano da lì. In alternativa apri il backup .json.</div>'+
+      '<div class="grid2" style="margin-top:12px"><button class="btn pri" data-a="scfg">Collega il foglio</button><button class="btn" data-a="imp">Apri un backup</button></div></div>'; }
   var bk=backupState();
   if(bk.due) h+='<div class="flag '+(bk.safe?"disc":"stop")+'" style="margin-top:12px"><b>⤓</b><div>'+
-    (bk.safe ? "Lo storico è nel foglio, ma piano e check simmetria vivono solo qui: un backup ogni due mesi li mette al sicuro."
+    (bk.safe ? "Il foglio ha già tutto. Un backup .json ogni due mesi resta la copia di riserva."
       : (bk.never? "Non hai ancora fatto un backup." : "Ultimo backup "+bk.days+" giorni fa")+
         (bk.since? " · "+bk.since+" sessioni registrate da allora." : "."))+
     ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scaricalo ora</button></div></div>';
+
+  /* 0 · cosa registrare oggi, e quando */
+  if(typeof cardAgenda==="function") h+=cardAgenda();
 
   /* recupero: oggi o, al mattino, il dato più fresco entro 2 giorni */
   var recB=benOn(today());
@@ -55,7 +70,7 @@ function viewOggi(){
   /* 1 · la prossima seduta, in testa */
   if(completa){
     h+='<div class="card" style="border-color:var(--ok)"><div class="eyebrow" style="color:var(--ok)">Settimana completa</div>'+
-       '<h2 style="margin:5px 0 6px">Quattro su quattro</h2>'+
+       '<h2 style="margin:5px 0 6px">'+(pk?"Due su due":"Quattro su quattro")+'</h2>'+
        '<div class="sm mut">Il recupero fa parte del programma quanto le sessioni. Se vuoi allenarti lo stesso, apri le altre sedute qui sotto.</div></div>';
   } else {
     if(rc && rc.lvl>=1){
@@ -68,17 +83,20 @@ function viewOggi(){
          '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
          esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
     }
-    var p=PLAN[next];
-    h+='<button class="card" data-a="open" data-d="'+next+'" style="display:block;width:100%;text-align:left;border-color:var(--glow);background:rgba(111,179,196,.06)">'+
-       '<div class="eyebrow glow">Prossima · giorno '+next+'</div>'+
-       '<h2 style="margin:5px 0 5px;font-size:18px">'+esc(p.name)+'</h2>'+
-       '<div class="sm mut">'+p.ex.length+' esercizi · '+p.min+' minuti</div>'+
-       (p.dischi!=="solo bande"? '<div class="xs" style="color:var(--amb);margin-top:7px">Dischi '+esc(p.dischi)+'</div>':"")+
+    var p=PLAN[next], lu=luogoOggi(), lista=eserciziPer(next, lu);
+    h+='<div class="card hero-next">'+
+       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · '+p.min+'′</div></div>'+
+       '<h2 style="margin:5px 0 10px;font-size:19px">'+esc(p.name)+'</h2>'+
+       segLuogo(lu, next)+
+       stripEsercizi(lista)+
+       ((lu==="casa" && p.dischi!=="solo bande")? '<div class="xs" style="color:var(--amb);margin-top:8px">Dischi '+esc(p.dischi)+'</div>':"")+
+       (lu!=="casa"? '<div class="xs mut" style="margin-top:8px">'+(lu==="bande"?"Con le bande":"Senza attrezzi")+': stesso schema di movimento, stesse serie. I carichi di casa restano dove sono.</div>':"")+
        ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
           ' · HRV '+(recB.hrv||"–")+' · sonno '+(recB.sonno||"–")+' h</div>' : "")+
-       '<div class="btn pri" style="margin-top:12px">Inizia</div></button>';
-    h+='<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" style="width:100%" data-a="ridotta" data-d="'+next+'">Poco tempo · 45′</button>'+
-       '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>';
+       '<button class="btn pri" style="margin-top:12px" data-a="open" data-d="'+next+'">Inizia</button>'+
+       (p.ess? '' : '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" style="width:100%" data-a="ridotta" data-d="'+next+'">Poco tempo · 45′</button>'+
+       '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>')+
+       '</div>';
     h+=coachBadge(next);
   }
 
@@ -88,11 +106,11 @@ function viewOggi(){
   /* 3 · chiusura della settimana */
   h+=cardChiusura(w, completa);
 
-  /* 4 · la settimana in quattro caselle */
-  var target=Math.max(1, 4-riposi.length);
+  /* 4 · la settimana a caselle */
+  var target=bersaglio(w, riposi.length);
   h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
      '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
-     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div><div class="wk">';
+     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div><div class="wk'+(pk?" wk2":"")+'">';
   giorni.forEach(function(d){
     var s=tutte.filter(function(x){ return x.day===d; })[0];
     var rp=s&&isRest(s);
@@ -101,7 +119,7 @@ function viewOggi(){
   });
   h+='</div>';
   var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
-  if(extra.length) h+='<div class="xs mut" style="margin-top:8px">In trasferta: '+
+  if(extra.length) h+='<div class="xs mut" style="margin-top:8px">Anche: '+
     extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';
   h+=pianoDeciso(w);
   var chw=(S.chiusure||{})[w];
@@ -115,28 +133,27 @@ function viewOggi(){
        '<div class="xs mut" style="margin-top:6px">'+
        (stk.n>0? '<b style="color:var(--ok)">'+stk.n+' settiman'+(stk.n>1?'e':'a')+' di fila</b> chiuse a bersaglio.'
                : 'La catena si conta a settimane, non a giorni: un giorno saltato non rompe niente.')+
-       (stk.curOpen&&!completa?' Questa \u00e8 ancora aperta.':'')+'</div>';
+       (stk.curOpen&&!completa?' Questa è ancora aperta.':'')+'</div>';
   }
   if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
+  h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="picco">'+
+     (pk? "Torna alle 4 sedute questa settimana" : "Settimana piena di impegni? Passa a 2 sedute essenziali")+'</button>';
+  if(pk) h+='<div class="xs mut" style="margin-top:6px">Due sedute brevi a tutto corpo, carichi invariati: con l\'intensità mantenuta bastano a conservare forza e massa per settimane (Spiering 2021).</div>';
   h+='</div>';
 
   /* 5 · cibo */
   h+=cardCibo();
 
   /* 6 · tutto il resto, chiuso in una riga */
-  var altre=giorni.filter(function(d){ return d!==next; });
+  var altre=["A","B","C","D","E1","E2"].filter(function(d){ return d!==next; });
   h+='<details class="more"><summary>Altre sedute e trasferta</summary>';
   h+='<div class="card">';
-  altre.forEach(function(d){
-    var p=PLAN[d];
+  altre.concat(["T1","T2"]).forEach(function(d){
+    var p=PLAN[d]; if(!p) return;
+    var trasf=p.sede!=="Casa";
     h+='<button class="item" data-a="open" data-d="'+d+'"><div class="badge">'+d+'</div>'+
-       '<div class="t"><b>'+esc(p.name)+'</b><span class="xs mut">'+p.ex.length+' esercizi · '+p.min+' min</span></div>'+
-       '<div class="ch">›</div></button>';
-  });
-  ["T1","T2"].forEach(function(d){
-    var p=PLAN[d];
-    h+='<button class="item" data-a="open" data-d="'+d+'"><div class="badge">'+d+'</div>'+
-       '<div class="t"><b>'+esc(p.name.replace("Trasferta · ","In trasferta · "))+'</b><span class="xs mut">solo bande · '+p.min+' min</span></div>'+
+       '<div class="t"><b>'+esc(trasf? p.name.replace("Trasferta · ","In trasferta · ") : p.name)+'</b><span class="xs mut">'+
+       (trasf? 'solo bande · ' : '')+p.ex.length+' esercizi · '+p.min+' min</span></div>'+
        '<div class="ch">›</div></button>';
   });
   h+='</div></details>';
@@ -144,7 +161,7 @@ function viewOggi(){
   var reali=S.sess.filter(function(s){ return !isRest(s); });
   var ls=reali[reali.length-1];
   if(ls) h+='<div class="card flat"><div class="between"><div><div class="eyebrow">Ultima sessione</div>'+
-    '<div class="sm" style="margin-top:3px">Giorno '+ls.day+' · '+ago(ls.date)+'</div></div>'+
+    '<div class="sm" style="margin-top:3px">Giorno '+ls.day+' · '+ago(ls.date)+(ls.mod&&ls.mod!=="Pesi"?' · '+esc(ls.mod.toLowerCase()):'')+'</div></div>'+
     '<div class="xs mut" style="text-align:right">'+ls.min+' min<br>energia '+ls.en+'</div></div></div>';
   h+='<div style="height:24px"></div></div>';
   return h;
@@ -217,9 +234,14 @@ function exCard(e,i,def){
   if(e.extra) h+='<div class="between" style="margin-bottom:6px"><div class="eyebrow amb">Solo per oggi</div>'+
     '<button class="btn sm ghost" data-a="exrm" data-i="'+i+'" style="min-height:30px;padding:0 10px">Togli</button></div>';
   h+='<div class="between"><div style="flex:1"><h2>'+esc(e.n)+'</h2>'+
-     '<div class="xs mut" style="margin-top:2px">'+esc(m.g)+' · '+target+(def.u?" · per lato":"")+'</div></div>';
-  if(G[e.n]||def.tip) h+='<button class="btn sm ghost" data-a="tip" data-i="'+i+'" style="min-width:40px">?</button>';
+     '<div class="xs mut" style="margin-top:2px">'+esc(m.g)+' · '+target+(def.u?" · per lato":"")+'</div>'+
+     (def.da? '<div class="xs" style="margin-top:2px;color:var(--glow)">Al posto di: '+esc(def.da)+'</div>' : '')+'</div>';
+  if(G[e.n]||def.tip||figHas(e.n)) h+='<button class="btn sm ghost" data-a="tip" data-i="'+i+'" aria-label="Come si fa">Come si fa</button>';
   h+='</div>';
+  if(figHas(e.n) && !full){
+    h+= S.vistaTutte ? '<div class="exfig mini" data-a="tip" data-i="'+i+'">'+figMini(e.n)+'</div>'
+                     : '<div class="exfig" data-a="tip" data-i="'+i+'">'+figBox(e.n, {cls:"compatta"})+'</div>';
+  }
 
   var lt=lastTwo(e.n);
   if(lt.length) h+='<div class="xs mut" style="margin-top:7px">'+lt.map(r=>r.date.slice(0,5)+" · "+(r.load?r.load+" kg · ":"")+r.reps.join("/")).join("  |  ")+'</div>';
@@ -273,6 +295,7 @@ function exCard(e,i,def){
         '<div class="step" style="flex:1"><button data-a="v-" data-i="'+i+'">−</button><div class="val">'+e.cur.v+'</div>'+
         '<button data-a="v+" data-i="'+i+'">+</button></div></div>';
     }
+    if(m.sec) h+=holdBox(i, Object.assign({n:e.n}, def));
     h+='<button class="btn amb" style="margin-top:10px" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+(full?" (extra)":"")+' fatta</button>';
   }
   if(full){
@@ -744,6 +767,8 @@ function nav(){
   var ICO={
     /* piastra da carico: il disco con il foro al centro */
     oggi:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="2.4"/>',
+    /* una figura in movimento: come si fanno gli esercizi */
+    es:'<circle cx="12.5" cy="4.6" r="2.1"/><path d="M12 7.6l-1.2 6.4M11.3 9.4l-4.3 2.4M11.3 9.4l4.6 1.6M10.8 14l-3.1 5.8M10.8 14l4.3 2.2 .4 4"/>',
     /* andamento nel tempo */
     prog:'<path d="M3.5 19.5V4.5"/><path d="M3.5 19.5h17"/><path d="M6.5 16l4-4.5 3.2 2.6L20 7.5"/>',
     /* il rachide: linea a S con le vertebre. E' il soggetto dell'app */
@@ -751,9 +776,10 @@ function nav(){
     /* scambio con il coach */
     coach:'<path d="M20 13.2c0 2.2-1.9 4-4.3 4H9.3L4 20.5l1.3-3.7C4.5 16 4 14.7 4 13.2 4 11 5.9 9.2 8.3 9.2h7.4c2.4 0 4.3 1.8 4.3 4z"/><path d="M8.4 4.2h7.2"/>'
   };
-  var items=[["oggi","Oggi"],["prog","Progressi"],["corpo","Corpo"],["coach","Coach"]];
+  var items=[["oggi","Oggi"],["es","Esercizi"],["prog","Progressi"],["corpo","Corpo"],["coach","Coach"]];
+  var daFare = (typeof agendaConta==="function") ? agendaConta() : 0;
   document.getElementById("nav").innerHTML = items.map(function(i){
-    var badge = (i[0]==="coach" && backupState().due) ? '<span class="badge"></span>' : "";
+    var badge = ((i[0]==="coach" && backupState().due) || (i[0]==="oggi" && daFare>0 && V!=="oggi")) ? '<span class="badge"></span>' : "";
     return '<button data-a="nav" data-v="'+i[0]+'" class="'+(V===i[0]?"on":"")+'"'+
       ' aria-label="'+i[1]+'" aria-current="'+(V===i[0]?"page":"false")+'">'+
       '<svg viewBox="0 0 24 24" aria-hidden="true">'+ICO[i[0]]+'</svg>'+badge+
@@ -764,7 +790,8 @@ function nav(){
 function render(){
   _PGC=null;
   if(!PLAN) PLAN=buildPlan();
-  app.innerHTML = V==="oggi"?viewOggi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
+  app.innerHTML = V==="oggi"?viewOggi() : V==="es"?viewEsercizi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
   nav();
+  Fig.mount();
   window.scrollTo(0, window._sy||0);
 }

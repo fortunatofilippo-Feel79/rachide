@@ -12,9 +12,25 @@ document.addEventListener("click", function(ev){
   if(a==="warm"){ d.warm[i]=!d.warm[i]; render(); return; }
   if(a==="wall"){ var all=d.warm.every(Boolean); d.warm=d.warm.map(()=>!all); render(); return; }
   if(a==="tip"){ guideSheet(def.n, def.tip); return; }
-  if(a==="gwarm"){ guideSheet(WARM[i].n, ""); return; }
+  if(a==="gwarm"){ guideSheet(warmNome(i, d? d.day : "A"), WARM[i].var? WARM[i].var[d? d.day : "A"] : ""); return; }
+  if(a==="guida"){ guideSheet(el.dataset.n, ""); return; }
+  if(a==="errtip"){ erroreTipico(el.dataset.n); return; }
+  if(a==="figvel"){ Fig.vel=+v||1; Fig.pausa=false; Fig.riparti(); return; }
+  if(a==="figpausa"){ Fig.pausa=!Fig.pausa; el.textContent=Fig.pausa?"Riprendi":"Pausa"; return; }
+  if(a==="luogo"){ S.luogo={v:v, date:today()}; save(); render(); return; }
+  if(a==="picco"){ var wk=weekOf(today()); S.picco=S.picco||{}; if(S.picco[wk]) delete S.picco[wk]; else S.picco[wk]=true; cfgTocca("picco"); save(); render();
+    toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
+  if(a==="libf"){ LIB_F=v; render(); return; }
+  if(a==="wgo"){ warmGuidato(0); return; }
+  if(a==="wgnext"){ warmFatto(WG? WG.i : 0); warmAvanti(); return; }
+  if(a==="wgprev"){ if(WG && WG.i>0){ WG={i:WG.i-1, t0:Date.now(), pausa:0, fermo:null}; warmPasso(); } return; }
+  if(a==="wgpausa"){ if(!WG) return; if(WG.fermo){ WG.pausa+=Date.now()-WG.fermo; WG.fermo=null; el.textContent="Pausa"; Fig.pausa=false; } else { WG.fermo=Date.now(); el.textContent="Riprendi"; Fig.pausa=true; } return; }
+  if(a==="wgstop"){ WG=null; Fig.pausa=false; closeSheet(); render(); return; }
+  if(a==="hold"){ holdStart(i, v); return; }
+  if(a==="holdok"){ holdStop(true); return; }
+  if(a==="hold0"){ holdStop(false); return; }
   if(a==="full"){ var f=document.getElementById("gfull"); if(f) f.style.display = f.style.display==="none"?"block":"none"; return; }
-  if(a==="x"){ CIB_DAY=0; closeSheet(); render(); return; }
+  if(a==="x"){ CIB_DAY=0; WG=null; Fig.pausa=false; closeSheet(); render(); return; }
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
     var m=meta(e.n), st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
@@ -25,7 +41,7 @@ document.addEventListener("click", function(ev){
   if(a==="l+"||a==="l-"){ e.cur.S=Math.max(0,e.cur.S+(a==="l+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
   if(a==="r+"||a==="r-"){ e.cur.D=Math.max(0,e.cur.D+(a==="r+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
   if(a==="set"){
-    suonoPronto();
+    suonoPronto(); suono("serie"); if(hold && hold.i===i) hold=null;
     var rec0=recordLive(e, def);
     e.sets.push(def.u ? {S:e.cur.S, D:e.cur.D, t:Date.now()} : {v:e.cur.v, t:Date.now()});
     startRest(meta(e.n).t, e.n); save(); render();
@@ -145,32 +161,14 @@ document.addEventListener("click", function(ev){
 document.addEventListener("input", function(ev){
   var t=ev.target;
   if(t.id==="cibTxt"){ cibSuggerisci(t.value, t.dataset.m); return; }
+  if(t.id==="libq"){ libFiltra(t.value); return; }
   if(t.dataset.note!==undefined && S.draft){ S.draft.ex[+t.dataset.note].note=t.value; save(); }
 });
 
 /* ---------- sessione ---------- */
-function guideSheet(n, tip){
-  var g=G[n];
-  var h='<div class="eyebrow amb">Guida tecnica</div><h2 style="margin:3px 0 12px">'+esc(n)+'</h2>';
-  if(tip) h+='<div class="flag info"><b>Piano</b><div>'+esc(tip)+'</div></div>';
-  if(ANIM[n]) h+=animBlock(n);
-  if(g){
-    h+='<div style="margin-top:14px"><div class="eyebrow" style="color:var(--ok)">Devi sentire</div>'+
-       '<div class="sm" style="margin-top:4px">'+esc(g.f)+'</div></div>';
-    h+='<div style="margin-top:14px"><div class="eyebrow" style="color:var(--alert)">Stai sbagliando se</div>'+
-       '<div class="sm" style="margin-top:4px">'+esc(g.e)+'</div></div>';
-    h+='<div style="margin-top:14px"><div class="eyebrow amb">Correzione</div>'+
-       '<div class="sm" style="margin-top:4px">'+esc(g.c)+'</div></div>';
-    h+='<button class="btn ghost sm" style="width:100%;margin-top:16px" data-a="full">Setup ed esecuzione</button>'+
-       '<div id="gfull" style="display:none;margin-top:10px"><div class="sm mut">'+esc(g.p)+'</div></div>';
-  } else if(!tip){ h+='<div class="sm mut">Nessuna scheda tecnica per questo esercizio.</div>'; }
-  h+='<button class="btn" style="margin-top:16px" data-a="x">Chiudi</button>';
-  sheet(h);
-  if(ANIM[n]) startAnim(n);
-}
 function restForm(){
   var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
-  var liberi=["A","B","C","D"].filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); });
+  var liberi=giorniSettimana(w).filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); });
   if(!liberi.length){ toast("La settimana è già coperta."); return; }
   sheet('<div class="eyebrow amb">Riposo programmato</div><h2 style="margin:4px 0 8px">Un giorno deciso a tavolino</h2>'+
     '<div class="sm mut">Non è una sessione saltata: è recupero previsto. Non conta come mancata e abbassa il bersaglio della settimana. Così l\'aderenza resta onesta.</div>'+
@@ -276,7 +274,7 @@ async function delBen(date){
    compreso. Conta come sessione fatta, perche' quello che protegge
    non e' il volume di oggi ma l'identita' di chi si allena. */
 function miniSheet(day){
-  var p=PLAN[day], keep=p.ex.slice(0,2).map(function(x){ return x.n; });
+  var p=PLAN[day], keep=eserciziPer(day, luogoOggi()).slice(0,2).map(function(x){ return x.n; });
   sheet('<div class="eyebrow amb">Sessione minima</div><h2 style="margin:4px 0 8px">Giorno '+day+' \u00b7 due esercizi</h2>'+
     '<div class="sm">Riscaldamento completo, poi solo <b>'+esc(keep.join(" e "))+'</b>. Quindici minuti.</div>'+
     '<div class="sm mut" style="margin-top:8px">Conta come sessione fatta e non spezza la catena. '+
@@ -286,16 +284,19 @@ function miniSheet(day){
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
 /* versione ridotta (45'): i primi 4 esercizi del giorno, cioe' i composti.
-   Gli altri restano nel piano e si possono aggiungere da «Aggiungi un esercizio». */
-var RIDOTTA_N=4, RIDOTTA_MIN=45;
-function startSession(day, mini, rid){
-  var p=PLAN[day], lista = rid ? p.ex.slice(0, RIDOTTA_N) : p.ex;
-  S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, warm:WARM.map(()=>false),
+   Gli altri restano nel piano e si possono aggiungere da «Aggiungi un esercizio».
+   Il luogo (casa, bande, corpo libero) sostituisce gli esercizi con le alternative:
+   ogni voce porta con se' la sua prescrizione (def), cosi' nulla si sfasa col piano. */
+function startSession(day, mini, rid, luogo){
+  var p=PLAN[day];
+  luogo = (p.sede!=="Casa") ? "bande" : (luogo || luogoOggi());
+  var lista = eserciziPer(day, luogo, rid);
+  S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, luogo:luogo, warm:WARM.map(()=>false),
     ex:lista.map(function(x){
       var m=meta(x.n), load=x.b?0:suggestLoad(x);
       var rt=(!x.b && !m.sec && load>0)? rientro(x.n) : null;
       if(rt && rt.taglio) load=Math.max(0, load-stepOf(x.n));
-      return {n:x.n, load: load, band: x.b?lastBand(x.n,x.b):"", rientro:rt,
+      return {n:x.n, def:Object.assign({}, x), load: load, band: x.b?lastBand(x.n,x.b):"", rientro:rt,
         sets:[], rir:null, note:"", duro:null,
         cur: x.u ? (m.sec ? {S:x.hi, D:x.lo} : {S:Math.min(lastSideRep(x.n,"S",x.lo),x.hi), D:Math.min(lastSideRep(x.n,"D",x.lo),x.hi)}) : {v:(m.sec?x.hi:x.lo)}};
     }), cur:0};
@@ -347,12 +348,13 @@ async function commitSession(){
         reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets)});
     }
   });
-  S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:p.sede,
-    mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.sede==="Casa"?"Pesi":"Bande"))),
+  var lu=d.luogo||"casa";
+  S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:(lu==="casa"? p.sede : "Trasferta"),
+    mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.ess?"Essenziale":(lu==="corpo"?"Corpo libero":((lu==="bande"||p.sede!=="Casa")?"Bande":"Pesi"))))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
     warm:d.warm.every(Boolean), sig: sg? sg.dataset.sig==="1":false,
     note:document.getElementById("fNote").value});
-  S.draft=null; stopRest(); var okS=await save(); closeSheet(); V="prog"; window._sy=0; render();
+  S.draft=null; stopRest(); hold=null; WG=null; var okS=await save(); closeSheet(); V="prog"; window._sy=0; render(); suono("salvata");
   if(SYNC.on()){
     var sent=await doPush(false);
     toast(sent? "Sessione salvata sul foglio" : "Foglio non raggiunto: usa Coach → Invia tutto");
