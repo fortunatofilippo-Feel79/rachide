@@ -5,11 +5,11 @@ Registro personale di allenamento, cibo e salute. È una web app statica (HTML, 
 ## Cosa fa
 
 - **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR e lato più duro.
-- **Come si fa**: figura animata, tecnica, errori tipici e alternative fuori casa per ogni esercizio e per il riscaldamento (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
+- **Come si fa**: figura animata con il muscolo che lavora, il verso del movimento e i secondi delle fasi lente; tecnica, errori tipici e alternative fuori casa per ogni esercizio e per il riscaldamento (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
 - **Piano flessibile**: Casa, Bande o Corpo libero sulla prossima seduta; versione da 45′ e da 15′; settimana di picco con due sedute essenziali.
 - **Progressione automatica**: doppia progressione con RIR, una salita alla volta, tetti per la spalla, carichi fermi quando il recupero è basso, rientro dopo una pausa.
-- **Cibo**: pasti da catalogo, ricette, «come ieri» o a parole; target ricalibrato sulla pendenza del peso.
-- **Salute**: HRV e FC a riposo con fascia personale, sonno, stress, reflusso, spalla sinistra 0-10, misure, mobilità, simmetria.
+- **Cibo**: codice a barre (Open Food Facts, oppure valori dall'etichetta), catalogo, ricette, «come ieri» o a parole; target ricalibrato sulla pendenza del peso.
+- **Salute**: HRV e FC a riposo con fascia personale, sonno, stress, reflusso, dolore 0-10 in qualsiasi zona (mattino, seduta, singolo esercizio), misure, mobilità, simmetria.
 - **Cruscotto KPI** con definizione, bersaglio e fonte di ogni indicatore; agenda di cosa registrare oggi; promemoria nel calendario del telefono.
 
 Tutte le definizioni (KPI, schede del foglio, regole del motore, operazioni di patch) sono in [`docs/DATI_E_KPI.md`](docs/DATI_E_KPI.md), generato dal codice.
@@ -34,6 +34,9 @@ js/13-guida.js          scheda Come si fa, riscaldamento guidato, timer, suoni, 
 js/14-kpi.js            cruscotto KPI, agenda, profilo
 js/15-promemoria.js     promemoria nel calendario (.ics)
 js/16-memoria.js        memoria sul foglio v3
+js/17-codici.js         codice a barre e Open Food Facts
+js/18-dolore.js         dolore per zona, mappa del corpo
+js/vendor/              ZXing 0.23.0 (lettura dei codici a barre, Apache 2.0)
 js/99-avvio.js          avvio, service worker
 sw.js                   funzionamento offline
 apps-script/            script del foglio Google (v3) e istruzioni
@@ -56,6 +59,16 @@ npm run controlla
 Il primo esegue i test (motore, piano flessibile, figure, KPI, promemoria, script del foglio contro un finto Google Sheets, integrazione app-foglio con due telefoni). Il secondo controlla anche che la documentazione per il coach sia allineata al codice. Gli stessi controlli girano su GitHub a ogni push.
 
 Quando cambi un file dell'app, aumenta la versione in due punti uguali: `VERSIONE_APP` in `js/01-dati.js` e `VERSIONE` in `sw.js` (un test verifica che coincidano). I telefoni scaricano la versione nuova da soli e mostrano «Nuova versione pronta».
+
+## Come aggiornare
+
+1. **Unisci il ramo nel `main`** su GitHub (pull request → *Merge*). GitHub Pages ripubblica in un paio di minuti; i test girano da soli (tab *Actions*).
+2. **Sul telefono**, la prima volta dopo la 4.0: apri l'app e vai su Coach → *Aggiorna app*. Dalla 4.0 in poi l'aggiornamento arriva da solo: compare «Nuova versione pronta» in Oggi, tocchi *Aggiorna ora*. I dati restano dove sono.
+3. **Script del foglio v3**, una volta sola: [`apps-script/LEGGIMI.md`](apps-script/LEGGIMI.md). Poi Coach → *Invia tutto*.
+4. **Una volta sola nell'app**: altezza (la lista di Oggi la chiede), promemoria nel calendario (Coach → Promemoria), prova dei suoni.
+5. **Al coach**: carica [`docs/DATI_E_KPI.md`](docs/DATI_E_KPI.md) nelle conoscenze del progetto (sostituisci la versione precedente quando cambia).
+
+Per pubblicare una modifica: cambia il codice, aumenta `VERSIONE_APP` in `js/01-dati.js` e `VERSIONE` in `sw.js`, esegui `npm run controlla`, unisci nel `main`.
 
 ## Memoria e telefono nuovo
 
