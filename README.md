@@ -80,7 +80,14 @@ Per pubblicare una modifica: cambia il codice, aumenta `VERSIONE_APP` in `js/01-
 
 ## Memoria e telefono nuovo
 
-Il foglio Google è la memoria. Con lo script v3 ci finiscono anche piano personalizzato, impostazioni e chiusure: su un telefono nuovo si apre l'app, si tocca *Collega il foglio* e torna tutto. Installazione dello script: [`apps-script/LEGGIMI.md`](apps-script/LEGGIMI.md).
+L'app ha una memoria sua: il tuo foglio Google, con lo script v3 ([`apps-script/LEGGIMI.md`](apps-script/LEGGIMI.md)). Ci finisce tutto: storico delle serie (con il RIR di ogni serie), sedute, benessere, pasti e prodotti letti col codice a barre, misure, mobilità, simmetria, modifiche al piano, piano della settimana con luoghi, tempi e sedute adattate, chiusure, impostazioni. Il telefono tiene una copia locale per funzionare anche senza rete e invia le modifiche appena può.
+
+**Telefono nuovo, con il vecchio in mano**
+1. Sul vecchio: Coach → Collegamento al foglio → *Telefono nuovo: copia il codice di collegamento*. Mettilo dove tieni le password.
+2. Sul nuovo: apri l'indirizzo dell'app in Safari (o Chrome) e aggiungila alla schermata Home.
+3. Apri l'app **dalla Home**, tocca *Collega il foglio*, incolla il codice nel primo campo, *Salva e prova*. Su iPhone l'app sulla Home ha una memoria separata da Safari: il codice va incollato lì.
+
+**Telefono perso**: indirizzo e frase sono nello script. Apri il foglio da un computer → Estensioni → Apps Script: l'indirizzo è in *Distribuisci → Gestisci distribuzioni* (URL che finisce con `/exec`), la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Sul telefono nuovo incollali nei due campi di *Collega il foglio*.
 
 Il backup `.json` (Coach → Backup) resta la copia di riserva.
 

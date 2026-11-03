@@ -112,7 +112,7 @@ hr.hair{border:0;border-top:1px solid var(--line);margin:12px 0}
 .pill.on{background:var(--bone);color:#0A0F14;border-color:var(--bone)}
 
 /* ---------- inputs ---------- */
-input[type=text],input[type=number],input[type=date],select,textarea{
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
   width:100%;background:var(--surf2);border:1px solid var(--line);border-radius:11px;
   padding:12px;min-height:46px;outline:none;
 }
@@ -642,3 +642,24 @@ input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--lin
 .stchip{display:inline-block;margin-left:6px;padding:1px 7px;border:1px solid;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
 .stprev{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;border:1.5px solid;border-radius:12px;font-size:13px}
 .stprev b{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+
+/* ---------- v4.4: revisione ---------- */
+.libf{display:grid;gap:6px;margin-top:10px}
+.libf .pills{flex-wrap:wrap;overflow:visible;align-items:center}
+.libf .pills .xs{margin-right:2px}
+.grid3 .fld input[type=time]{min-width:0;width:100%;padding-left:6px;padding-right:4px}
+.grid3>*{min-width:0}
+details.altro{margin-top:10px}
+details.altro>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--mut);padding:8px 0;list-style:none}
+details.altro>summary::-webkit-details-marker{display:none}
+details.altro>summary::after{content:" ›";color:var(--dim)}
+details.altro[open]>summary::after{content:" ⌄"}
+.lnk{color:var(--glow);font-weight:700;text-decoration:underline;padding:0;font-size:inherit}
+
+.ptabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:10px -4px 4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.ptabs button{position:relative;min-height:40px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--mut);padding:0 2px}
+.ptabs button.on{background:var(--surf2);color:var(--bone);box-shadow:inset 0 0 0 1px var(--glow)}
+.ptabs button i{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--amb)}
+.ptabs button i.g{background:var(--alert)}
+.libf .pill{padding:7px 12px;font-size:13px}
+html{color-scheme:dark}

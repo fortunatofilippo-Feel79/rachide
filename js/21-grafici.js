@@ -97,8 +97,19 @@ function kpiW(w){ var c=_KS[w]; if(!c || c.t!==_KSV){ c=_KS[w]={t:_KSV, v:kpi(w)
 var _KSV=0; function kpiCacheReset(){ _KSV++; }
 function giorniN(n){ var out=[]; for(var i=n-1;i>=0;i--){ var d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()-i); out.push(d2s(d)); } return out; }
 /* media mobile a 7 giorni di un campo del benessere, per ogni giorno (usa i giorni con dato nei 7 precedenti) */
+/* stesso risultato di benFinestra(campo, d, 7, true) giorno per giorno, ma con le date lette una volta sola */
 function mm7(campo, giorni, minimo){
-  return giorni.map(function(d){ var v=benFinestra(campo, d, 7, true); return v.length>=(minimo||2)? media(v) : null; });
+  var arr=[];
+  S.ben.forEach(function(b){
+    if(b[campo]==null || b[campo]==="" || !dataOk(b.date)) return;
+    if(PLAUS[campo] && !plaus(campo, b[campo])) return;
+    arr.push({t:s2d(b.date).getTime(), v:+b[campo]});
+  });
+  return giorni.map(function(d){
+    var t1=s2d(d).getTime()+86400000, t0=t1-7*86400000, v=[];
+    for(var i=0;i<arr.length;i++){ if(arr[i].t>=t0 && arr[i].t<t1) v.push(arr[i].v); }
+    return v.length>=(minimo||2)? media(v) : null;
+  });
 }
 function lblData(d){ return d.slice(0,5); }
 function ptsDaily(giorni, vals){ return giorni.map(function(d,i){ return {x:i, y:vals[i], l:lblData(d)}; }); }

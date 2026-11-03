@@ -60,7 +60,7 @@ function viewOggi(){
   if(!S.log.length && !S.ben.length){
     h+='<div class="card" style="border-color:var(--glow)"><div class="eyebrow glow">Telefono nuovo o prima volta?</div>'+
       '<h2 style="margin:4px 0 6px">Riporta i tuoi dati</h2>'+
-      '<div class="sm mut">Collega il foglio: storico, piano e impostazioni tornano da lì. In alternativa apri il backup .json.</div>'+
+      '<div class="sm mut">Collega il foglio e incolla il codice di collegamento del vecchio telefono (Coach → Telefono nuovo): storico, piano, settimane e impostazioni tornano da lì. In alternativa apri il backup .json.</div>'+
       '<div class="grid2" style="margin-top:12px"><button class="btn pri" data-a="scfg">Collega il foglio</button><button class="btn" data-a="imp">Apri un backup</button></div></div>'; }
   var bk=backupState();
   if(bk.due) h+='<div class="flag '+(bk.safe?"disc":"stop")+'" style="margin-top:12px"><b>⤓</b><div>'+
@@ -157,13 +157,14 @@ function viewOggi(){
        (stk.n>0? '<b style="color:var(--ok)">'+stk.n+' settiman'+(stk.n>1?'e':'a')+' di fila</b>'+(stk.tenute? ', di cui '+stk.tenute+' tenut'+(stk.tenute>1?'e':'a')+' (barra a righe).' : ' piene.')
                : 'La catena si conta a settimane, non a giorni: un giorno saltato non rompe niente.')+
        (stk.curOpen&&!completa?' Questa è ancora aperta.':'')+
-       ' Piena: tutte le sedute o tutti i gruppi al minimo. Tenuta: almeno 2 sedute e tutto il piano adattato ai tuoi giorni.</div>';
+       ' <button class="lnk" data-a="catinfo">Come si conta?</button></div>';
     if(stk.avviso) h+='<div class="flag disc" style="margin-top:8px">⚠<div><b>'+stk.tenuteFila+' settimane tenute di fila.</b> Tenere va bene per qualche settimana, ma il mantenimento a lungo diventa regressione: prova a liberare un giorno o a dare 90′ a una seduta per chiudere tutti i gruppi.</div></div>';
   }
-  if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="restday">Segna un giorno come riposo programmato</button>';
+  h+='<details class="altro"'+(pk?' open':'')+'><summary>Altre opzioni della settimana</summary>';
+  if(!completa) h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="restday">Segna un giorno come riposo programmato</button>';
   h+='<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="picco">'+
-     (pk? "Torna alle 4 sedute questa settimana" : "Settimana piena di impegni? Passa a 2 sedute essenziali")+'</button>';
-  if(pk) h+='<div class="xs mut" style="margin-top:6px">Due sedute brevi a tutto corpo, carichi invariati: con l\'intensità mantenuta bastano a conservare forza e massa per settimane (Spiering 2021).</div>';
+     (pk? "Torna alle 4 sedute questa settimana" : "Settimana di picco: 2 sedute essenziali da 30′")+'</button>';
+  h+='<div class="xs mut" style="margin-top:6px">'+(pk? 'Due sedute brevi a tutto corpo, carichi invariati: con l\'intensità mantenuta bastano a conservare forza e massa per settimane (Spiering 2021).' : 'Il riposo programmato abbassa il bersaglio di una seduta. La settimana di picco sostituisce le 4 sedute con 2 essenziali. Per i giorni pieni di solito basta «Adatta la settimana».')+'</div></details>';
   h+='</div>';
 
   /* 5 · cibo */
@@ -385,6 +386,9 @@ function viewProg(){
       '<div class="v"'+(col?' style="color:'+col+'"':'')+'>'+v+(u?'<small>'+u+'</small>':'')+'</div>'+
       (sub?'<div class="s">'+sub+'</div>':'')+'</div>';
   };
+  var dg=diagnose();
+  h+=progTabs(dg);
+  if(PROG_TAB==="sett"){
   h+='<div class="between" style="margin:14px 0 0"><div class="eyebrow glow">Settimana '+last.w+'</div>'+
      '<div class="xs mut">'+(stk.n>0? stk.n+' settimane di fila'+(stk.tenute? ' · '+stk.tenute+' tenute' : '') : 'catena da riavviare')+'</div></div>';
   var stl=statoSettimana(last.w);
@@ -409,44 +413,26 @@ function viewProg(){
        ((last.duro&&(last.duro.S||last.duro.D))?"var(--amb)":"inherit")+'">'+(duroTxt(last.duro)||"–")+'</div></div>'+
      '</div></div>';
 
-  /* cruscotto dei KPI: definizioni, bersagli e fonti in un posto solo */
-  h+=cardCruscotto();
-
-  /* carico sollevato, diviso per tipo: una settimana con le bande non e' una settimana leggera */
-  h+=cardCarico(ks);
-
-  /* serie dure per gruppo: corpo, barre e dove stai andando */
+  /* serie dure per gruppo: corpo, barre e dove stai andando; carico per tipo; costanza */
   h+=cardGruppi();
-  h+=cardForza();
-
-  /* la spinta, in Progressi come striscia: il dettaglio vive in Corpo */
-  if(slp.ok){
-    h+='<div class="card"><div class="between"><div class="eyebrow">Spinta \u00b7 peso</div>'+
-       '<div class="xs" style="font-weight:700;color:'+(slp.stato==="dentro"?"var(--ok)":"var(--amb)")+'">'+
-       (slp.g>0?"+":"")+kfmt(slp.g)+' g/sett</div></div>'+
-       '<div style="margin-top:8px">'+pesoChart(slp)+'</div>'+
-       '<div class="xs mut">'+slp.n+' pesate su '+slp.days+' giorni'+
-       (slp.skipped?' \u00b7 '+slp.skipped+' rientro escluso':'')+
-       (slp.noisy?' \u00b7 include i rientri, dato indicativo':'')+'</div></div>';
+  h+=cardCarico(ks);
+  h+=cardCostanza();
+  /* sessioni recenti — tocca per correggere data, durata, energia, note o cancellare */
+  var recent=S.sess.slice().sort(function(a,b){ return s2d(b.date)-s2d(a.date); }).slice(0,8);
+  if(recent.length){
+    h+='<div class="between" style="margin:20px 0 6px"><div class="eyebrow">Sessioni recenti</div><div class="xs mut">tocca per correggere</div></div><div class="card">';
+    recent.forEach(function(s){
+      var rp=isRest(s);
+      h+='<button class="item" data-a="esess" data-id="'+esc(s.id)+'"><div class="badge"'+(rp?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+s.day+'</div>'+
+         '<div class="t"><b>'+s.date+(rp?' · riposo':'')+'</b><span class="xs mut">'+(rp?esc(s.note||"riposo programmato"):(s.min||"–")+' min · energia '+(s.en||"–")+(s.sig?' · segnale':''))+'</span></div>'+
+         '<div class="ch">›</div></button>';
+    });
+    h+='</div>';
   }
 
-  /* recupero, costanza, dolore */
-  h+=cardRecuperoGrafico();
-  h+=cardCostanza();
-  h+=cardDolore();
-
-  /* andamento settimanale */
-  h+='<div class="card"><div class="eyebrow">Andamento</div><table style="margin-top:8px"><tr>'+
-     '<th>Sett.</th><th class="n">Sess</th><th class="n">Min</th><th class="n">Energia</th><th class="n">Top</th><th class="n">Lato</th></tr>'+
-     ks.slice().reverse().map(function(k){
-       return '<tr><td style="font-weight:700">'+k.w+'</td>'+
-       '<td class="n">'+k.n+'/'+k.target+'</td>'+
-       '<td class="n" style="color:'+(k.dur>75?"var(--alert)":"inherit")+'">'+(k.dur||"–")+'</td>'+
-       '<td class="n" style="color:'+((k.en&&k.en<4)?"var(--amb)":"inherit")+'">'+dec(k.en)+'</td>'+
-       '<td class="n">'+(k.top!==null?k.top+"%":"–")+'</td>'+
-       '<td class="n" style="color:'+((k.duro&&(k.duro.S||k.duro.D))?"var(--amb)":"inherit")+'">'+duroBreve(k.duro)+'</td></tr>'; }).join("")+
-     '</table></div>';
-
+  }
+  else if(PROG_TAB==="forza"){
+  h+=cardForza();
   /* carichi chiave con variazione */
   h+='<div class="card"><div class="eyebrow">Carichi chiave</div><table style="margin-top:8px">'+
      '<tr><th>Esercizio</th><th class="n">Oggi</th><th class="n">Inizio</th><th class="n">Δ</th></tr>';
@@ -461,32 +447,32 @@ function viewProg(){
   h+='</table></div>';
 
   h+=cardRecord();
+  /* andamento settimanale */
+  h+='<div class="card"><div class="eyebrow">Andamento</div><table style="margin-top:8px"><tr>'+
+     '<th>Sett.</th><th class="n">Sess</th><th class="n">Min</th><th class="n">Energia</th><th class="n">Top</th><th class="n">Lato</th></tr>'+
+     ks.slice().reverse().map(function(k){
+       var sk=statoSettimana(k.w).stato;
+       return '<tr><td style="font-weight:700">'+k.w+'</td>'+
+       '<td class="n" style="color:'+STATO_SETT[sk].c+'" title="'+STATO_SETT[sk].t+'">'+k.n+'/'+k.previste+'</td>'+
+       '<td class="n" style="color:'+(k.dur>75?"var(--alert)":"inherit")+'">'+(k.dur||"–")+'</td>'+
+       '<td class="n" style="color:'+((k.en&&k.en<4)?"var(--amb)":"inherit")+'">'+dec(k.en)+'</td>'+
+       '<td class="n">'+(k.top!==null?k.top+"%":"–")+'</td>'+
+       '<td class="n" style="color:'+((k.duro&&(k.duro.S||k.duro.D))?"var(--amb)":"inherit")+'">'+duroBreve(k.duro)+'</td></tr>'; }).join("")+
+     '</table></div>';
 
-  /* sessioni recenti — tocca per correggere data, durata, energia, note o cancellare */
-  var recent=S.sess.slice().sort(function(a,b){ return s2d(b.date)-s2d(a.date); }).slice(0,8);
-  if(recent.length){
-    h+='<div class="between" style="margin:20px 0 6px"><div class="eyebrow">Sessioni recenti</div><div class="xs mut">tocca per correggere</div></div><div class="card">';
-    recent.forEach(function(s){
-      var rp=isRest(s);
-      h+='<button class="item" data-a="esess" data-id="'+esc(s.id)+'"><div class="badge"'+(rp?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+s.day+'</div>'+
-         '<div class="t"><b>'+s.date+(rp?' · riposo':'')+'</b><span class="xs mut">'+(rp?esc(s.note||"riposo programmato"):(s.min||"–")+' min · energia '+(s.en||"–")+(s.sig?' · segnale':''))+'</span></div>'+
-         '<div class="ch">›</div></button>';
-    });
-    h+='</div>';
   }
-
-  /* diagnosi */
-  var dg=diagnose();
-  h+='<div class="between" style="margin:20px 0 6px"><div class="eyebrow">Diagnosi</div>'+
-     '<div class="xs" style="font-weight:700;color:'+(dg.length?"var(--amb)":"var(--ok)")+'">'+
-     (dg.length? dg.length+" da leggere" : "nulla da segnalare")+'</div></div>';
-  dg.forEach(function(x){
-    var cls = (x.k==="segnale"||x.k==="stallo"||x.k==="crollo") ? "stop"
-            : (x.k==="leggero"||x.k==="volume"||x.k==="rir") ? "disc" : "info";
-    h+='<div class="flag '+cls+'"><b>'+esc(x.t)+'</b><div>'+esc(x.m)+'</div></div>';
-  });
-  h+='<div class="xs mut" style="margin:12px 0 30px">La diagnosi legge solo i numeri. Cambiare esercizio o ridistribuire il volume è una decisione da portare al coach.</div>';
-  h+='</div>';
+  else if(PROG_TAB==="salute"){
+  h+=cardRecuperoGrafico();
+  h+=cardDolore();
+  h+='<button class="card" data-a="nav" data-v="corpo" style="display:block;width:100%;text-align:left"><div class="eyebrow">Peso, misure, mobilità</div><div class="sm mut" style="margin-top:4px">Sono nella scheda Corpo, con la spinta del peso e il corridoio.</div></button>';
+  }
+  else if(PROG_TAB==="diag"){
+  h+=cardDiagnosi(dg);
+  }
+  else {
+  h+=cardCruscotto();
+  }
+  h+='<div style="height:24px"></div></div>';
   return h;
 }
 /* ---------- CORPO ---------- */
@@ -601,9 +587,7 @@ function viewCorpo(){
   if(uSim) h+='<div class="sm" style="margin-top:9px">Ultimo: '+esc(uSim.date)+'</div>';
   h+='</div>';
 
-  h+='<div class="eyebrow" style="margin:16px 0 6px">I tre segnali che fermano la serie</div><div class="card">';
-  STOPS.forEach(s=>h+='<div class="flag stop">•<div>'+esc(s)+'</div></div>');
-  h+='</div><div style="height:24px"></div></div>';
+  h+='<div style="height:24px"></div></div>';
   return h;
 }
 function fallbackSheet(){
@@ -704,7 +688,8 @@ function viewCoach(){
        '<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="spull">Rileggi dal foglio</button>'+
        '<button class="btn sm" data-a="spush">Invia tutto</button></div>'+
        '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" data-a="scfg">Modifica</button>'+
-       '<button class="btn sm ghost" data-a="sdiag">Diagnostica</button></div>';
+       '<button class="btn sm ghost" data-a="sdiag">Diagnostica</button></div>'+
+       '<button class="btn sm" style="width:100%;margin-top:8px" data-a="snuovo">Telefono nuovo: copia il codice di collegamento</button>';
   } else {
     h+='<div class="sm" style="margin-top:7px">Senza collegamento i dati dipendono dalla memoria del browser, che qui dentro non è affidabile. Con il collegamento la memoria diventa il foglio.</div>'+
        '<button class="btn pri" style="margin-top:10px" data-a="scfg">Collega il foglio</button>';
@@ -712,6 +697,25 @@ function viewCoach(){
   h+='</div>';
   h+='<button class="btn pri" data-a="brief">Copia il briefing per il coach</button>';
   h+='<div class="xs mut" style="margin:8px 0 16px">Facoltativo: Claude legge da solo il foglio, anche le schede App_Piano e App_Stato. Il briefing serve se vuoi incollare un riassunto in chat.</div>';
+  h+='<div class="eyebrow" style="margin:4px 0 6px">Aggiornamenti del piano</div>';
+  h+='<div class="card"><div class="sm">La proposta della domenica compare da sola in cima a questa pagina e in Oggi. Se non arriva, copia il codice dalla scheda Settimana del documento e tocca qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
+     (S.propScript===false ? '<div class="xs mut" style="margin-top:6px">Lo script del foglio non passa ancora le proposte: per ora vale il copia e incolla.</div>' : '')+
+     '<button class="btn pri" style="margin-top:10px" data-a="pincolla">Incolla e vedi cosa cambia</button>'+
+     '<textarea id="patchT" style="margin-top:10px" placeholder=\'oppure incolla qui a mano: {"nota":"…","ops":[…]}\'></textarea>'+
+     '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button>'+
+     (SYNC.on() ? '<button class="btn ghost" style="margin-top:8px" data-a="propcheck">Controlla se c\'è una proposta</button>' : '')+'</div>';
+  var ps=S.patches||[];
+  if(ps.length){
+    h+='<div class="card"><div class="between"><div class="eyebrow">Storico modifiche · '+ps.length+'</div>'+
+       '<button class="btn sm ghost" data-a="prev">Annulla ultima</button></div>';
+    ps.slice().reverse().forEach(function(p){
+      h+='<div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--line)">'+
+         '<div class="sm" style="font-weight:600">'+esc(p.nota||"senza nota")+'</div>'+
+         '<div class="xs mut">'+esc(p.ts)+' · '+(p.ops||[]).length+' modifiche</div></div>';
+    });
+    h+='</div>';
+  }
+
 
   /* quando registrare: promemoria nel calendario, suoni */
   h+=cardPromemoria();
@@ -749,24 +753,6 @@ function viewCoach(){
   h+='<div class="xs mut" style="margin-top:8px">Il formato per Sheets usa la tabulazione: si incolla in colonne separate in Log_Esercizi. Il backup .json è l\'unica copia che sopravvive a tutto: fallo una volta al mese.</div>';
   h+='<div class="grid2" style="margin-top:10px"><button class="btn ghost" data-a="imp">Ripristina backup</button><button class="btn ghost" data-a="dlt">Scarica .tsv</button></div>';
 
-  h+='<div class="eyebrow" style="margin:22px 0 6px">Aggiornamenti del piano</div>';
-  h+='<div class="card"><div class="sm">La proposta della domenica compare da sola in cima a questa pagina e in Oggi. Se non arriva, copia il codice dalla scheda Settimana del documento e tocca qui: vedi l\'anteprima e decidi tu se applicarlo.</div>'+
-     (S.propScript===false ? '<div class="xs mut" style="margin-top:6px">Lo script del foglio non passa ancora le proposte: per ora vale il copia e incolla.</div>' : '')+
-     '<button class="btn pri" style="margin-top:10px" data-a="pincolla">Incolla e vedi cosa cambia</button>'+
-     '<textarea id="patchT" style="margin-top:10px" placeholder=\'oppure incolla qui a mano: {"nota":"…","ops":[…]}\'></textarea>'+
-     '<button class="btn amb" style="margin-top:10px" data-a="pprev">Vedi cosa cambia</button>'+
-     (SYNC.on() ? '<button class="btn ghost" style="margin-top:8px" data-a="propcheck">Controlla se c\'è una proposta</button>' : '')+'</div>';
-  var ps=S.patches||[];
-  if(ps.length){
-    h+='<div class="card"><div class="between"><div class="eyebrow">Storico modifiche · '+ps.length+'</div>'+
-       '<button class="btn sm ghost" data-a="prev">Annulla ultima</button></div>';
-    ps.slice().reverse().forEach(function(p){
-      h+='<div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--line)">'+
-         '<div class="sm" style="font-weight:600">'+esc(p.nota||"senza nota")+'</div>'+
-         '<div class="xs mut">'+esc(p.ts)+' · '+(p.ops||[]).length+' modifiche</div></div>';
-    });
-    h+='</div>';
-  }
   var st = Store.ok===false ? ["var(--alert)","non funziona"] : Store.ok===true ? ["var(--ok)","verificato"] : ["var(--mut)","non ancora testato"];
   h+='<div class="card" style="margin-top:18px;border-color:'+(Store.ok===false?"var(--alert)":"var(--line)")+'">'+
      '<div class="between"><div class="eyebrow">Salvataggio</div><div class="xs" style="color:'+st[0]+';font-weight:700">'+st[1].toUpperCase()+'</div></div>'+

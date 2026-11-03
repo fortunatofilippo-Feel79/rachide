@@ -22,6 +22,7 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="ptab"){ progTab(v); return; }
   if(a==="progoff"){ PROG_OFF=+v||0; render(); return; }
   if(a==="lift"){ liftSheet(el.dataset.n); return; }
   if(a==="posf"){ posScegli(v); return; }
@@ -29,6 +30,12 @@ document.addEventListener("click", function(ev){
   if(a==="pricalcola"){ pianoRicalcola(); return; }
   if(a==="dispoP"||a==="dispoT"){ dispoTocca(el); return; }
   if(a==="corpo30"){ avvia30(); return; }
+  if(a==="catinfo"){ sheet('<div class="eyebrow glow">La catena</div><h2 style="margin:4px 0 8px">Come si conta una settimana</h2>'+
+    '<div class="flag info" style="border-color:var(--ok)"><b style="color:var(--ok)">Piena</b><div>Hai fatto tutte le sedute del bersaglio, oppure hai portato tutti e 7 i gruppi al minimo di serie dure, con qualsiasi numero di sedute.</div></div>'+
+    '<div class="flag info"><b>Tenuta</b><div>Almeno 2 sedute e tutte quelle del piano adattato ai tuoi giorni, ma qualche gruppo resta sotto. Conta nella catena (barra a righe). Dopo 3 di fila l\'app avvisa.</div></div>'+
+    '<div class="flag stop"><b>Rotta</b><div>Meno di 2 sedute, nessun piano, oppure una seduta del piano saltata senza ricalcolare la settimana. Se manca una seduta, l\'app propone 30′ a corpo libero.</div></div>'+
+    '<div class="xs mut" style="margin-top:8px">A parità di volume la frequenza conta poco (Iversen 2021); con l\'intensità mantenuta poche sedute conservano forza e massa per qualche settimana (Spiering 2021).</div>'+
+    '<button class="btn ghost" style="margin-top:12px" data-a="x">Chiudi</button>'); return; }
   if(a==="p30"){ piano30(); return; }
   if(a==="pposto"){ var dd=el.dataset.date; PS.dispo[dd]=v; if(PS.forza[dd] && !modOk(v, PS.forza[dd])) delete PS.forza[dd];
     Object.keys(PS.fissa).forEach(function(k){ if(PS.fissa[k]===dd && v==="no") delete PS.fissa[k]; }); pianoCalcola(); pianoSheet(); return; }
@@ -175,6 +182,8 @@ document.addEventListener("click", function(ev){
   if(a==="stest"){ storageTest(); return; }
   if(a==="scfg"){ syncForm(); return; }
   if(a==="ssave"){ syncSave(); return; }
+  if(a==="snuovo"){ sheetTelefonoNuovo(); return; }
+  if(a==="scodcopia"){ copy(codiceCollegamento(), "Codice copiato: mettilo dove tieni le password"); return; }
   if(a==="sdiag"){ syncDiag(); return; }
   if(a==="spull"){ doPull(true); return; }
   if(a==="spush"){ doPush(true); return; }
@@ -685,10 +694,10 @@ async function syncDiag(){
 }
 function syncForm(){
   var c=S.sync||{};
-  sheet('<div class="eyebrow glow">Collegamento al foglio</div><h2 style="margin:4px 0 10px">Due valori</h2>'+
+  sheet('<div class="eyebrow glow">Collegamento al foglio</div><h2 style="margin:4px 0 10px">Collega questo telefono</h2>'+
     '<div class="sm mut">Li ottieni installando lo script nel foglio: Estensioni → Apps Script, incolli il codice, Distribuisci come app web.</div>'+
-    '<div class="flag info" style="margin-top:8px">•<div>Puoi incollare qui sotto direttamente il link di prova completo di <b>?k=</b> stampato da <i>verifica</i>: l\'app separa da sola indirizzo e segreto, così non c\'è niente da ricopiare a mano.</div></div>'+
-    '<label class="fld"><span class="eyebrow">URL della distribuzione (finisce con /exec)</span>'+
+    '<div class="flag info" style="margin-top:8px">•<div><b>Telefono nuovo?</b> Incolla nel primo campo il <b>codice di collegamento</b> (inizia con RACHIDE1:) preso dal vecchio telefono in Coach → Telefono nuovo: basta quello. Va bene anche il link di prova con <b>?k=</b> stampato da <i>verifica</i>.</div></div>'+
+    '<label class="fld"><span class="eyebrow">Codice di collegamento, oppure URL della distribuzione (finisce con /exec)</span>'+
     '<input type="text" id="syU" value="'+esc(c.url||"")+'" placeholder="https://script.google.com/macros/s/…/exec"></label>'+
     '<label class="fld"><span class="eyebrow">Frase segreta (la stessa dello script)</span>'+
     '<input type="text" id="syK" value="'+esc(c.secret||"")+'" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'+
@@ -697,8 +706,35 @@ function syncForm(){
     '<button class="btn pri" style="margin-top:14px" data-a="ssave">Salva e prova</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
+/* ---------- telefono nuovo: un codice solo con indirizzo e frase segreta ---------- */
+var CODICE_PRE="RACHIDE1:";
+function codiceCollegamento(){
+  var c=S.sync||{}; if(!c.url) return "";
+  return CODICE_PRE+btoa(unescape(encodeURIComponent(JSON.stringify({u:c.url, k:c.secret||""})))).replace(/=+$/,"");
+}
+function leggiCodice(txt){
+  var m=String(txt||"").match(/RACHIDE1:([A-Za-z0-9+\/_-]+)/); if(!m) return null;
+  try{ var b=m[1].replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4) b+="=";
+    var o=JSON.parse(decodeURIComponent(escape(atob(b)))); return (o && o.u)? {url:o.u, secret:o.k||""} : null; }catch(e){ return null; }
+}
+function sheetTelefonoNuovo(){
+  var cod=codiceCollegamento(); if(!cod){ toast("Prima collega il foglio"); return; }
+  sheet('<div class="eyebrow glow">Telefono nuovo</div><h2 style="margin:4px 0 8px">Il codice di collegamento</h2>'+
+    '<div class="sm">Contiene l\'indirizzo del foglio e la frase segreta. Sul telefono nuovo lo incolli in <b>Collega il foglio</b> e torna tutto: storico, piano, settimane, cibo, impostazioni.</div>'+
+    '<textarea id="codT" readonly style="margin-top:10px;min-height:86px;font-size:12px">'+esc(cod)+'</textarea>'+
+    '<button class="btn pri" style="margin-top:10px" data-a="scodcopia">Copia il codice</button>'+
+    '<div class="flag disc" style="margin-top:10px">⚠<div>Chi ha il codice può leggere e scrivere il tuo foglio. Tienilo dove tieni le password (Portachiavi, gestore password o una nota bloccata), non mandarlo in chat a nessuno.</div></div>'+
+    '<div class="eyebrow" style="margin:14px 0 4px">Sul telefono nuovo</div>'+
+    '<ol class="poslist"><li><i>1</i><span>Apri l\'indirizzo dell\'app nel browser (Safari su iPhone) e aggiungila alla schermata Home.</span></li>'+
+    '<li><i>2</i><span>Apri l\'app dalla Home, tocca <b>Collega il foglio</b> e incolla il codice nel primo campo.</span></li>'+
+    '<li><i>3</i><span>Tocca <b>Salva e prova</b>: in pochi secondi tornano tutti i dati.</span></li></ol>'+
+    '<div class="xs mut" style="margin-top:8px">Su iPhone l\'app sulla Home ha una memoria separata da Safari: il codice va incollato dentro l\'app aperta dalla Home, non nella pagina di Safari.</div>'+
+    '<button class="btn ghost" style="margin-top:12px" data-a="x">Chiudi</button>');
+}
 async function syncSave(){
   var u=document.getElementById("syU").value.trim(), k=document.getElementById("syK").value.trim();
+  /* codice di collegamento dal vecchio telefono: contiene indirizzo e frase */
+  var cod=leggiCodice(u)||leggiCodice(k); if(cod){ u=cod.url; k=cod.secret; }
   /* se hanno incollato il link completo, estraggo il segreto e pulisco l'URL */
   var m=u.match(/[?&]k=([^&#\s]*)/);
   if(m){ k=decodeURIComponent(m[1]); u=u.split("?")[0]; }

@@ -183,6 +183,7 @@ function libIndice(){
       add(x.n, /^T/.test(d)?"trasf":/^E/.test(d)?"picco":d);
       var al=ALT[x.n]; if(al){ add(al.bande,"bande"); add(al.corpo,"corpo"); }
       if(/^T/.test(d)) add(x.n, "bande");
+      else if(!/^T/.test(d) && (x.L>0 || (EX[x.n] && EX[x.n].cap))) add(x.n, "pesi");
     });
   });
   return Object.keys(idx).map(function(k){ return idx[k]; });
@@ -191,15 +192,20 @@ function viewEsercizi(){
   var h=topbar("Esercizi","Come si fanno, quando ti serve");
   h+='<div class="wrap">';
   h+='<input type="search" id="libq" placeholder="Cerca un esercizio" value="'+esc(LIB_Q)+'" style="margin-top:12px" aria-label="Cerca un esercizio">';
-  var F=[["tutti","Tutti"],["risc","Riscaldamento"],["A","A"],["B","B"],["C","C"],["D","D"],["picco","Picco"],["trasf","Trasferta"],["bande","Bande"],["corpo","Corpo libero"]];
-  h+='<div class="pills" style="margin-top:10px">'+F.map(function(f){ return '<button class="pill'+(LIB_F===f[0]?" on":"")+'" data-a="libf" data-v="'+f[0]+'">'+f[1]+'</button>'; }).join("")+'</div>';
+  var F1=[["tutti","Tutti"],["risc","Riscaldamento"],["pesi","Pesi"],["bande","Bande"],["corpo","Corpo libero"]];
+  var F2=[["A","A"],["B","B"],["C","C"],["D","D"],["picco","Picco"],["trasf","Trasferta"]];
+  var pill=function(f){ return '<button class="pill'+(LIB_F===f[0]?" on":"")+'" data-a="libf" data-v="'+f[0]+'">'+f[1]+'</button>'; };
+  h+='<div class="libf"><div class="pills">'+F1.map(pill).join("")+'</div><div class="pills"><span class="xs mut">Seduta</span>'+F2.map(pill).join("")+'</div></div>';
   var lista=libIndice().filter(function(x){ return LIB_F==="tutti" || x.tag[LIB_F]; });
   h+='<div class="libgrid" id="libgrid">'+lista.map(function(x){
     var m=meta(x.n);
-    return '<button class="libc" data-a="guida" data-n="'+esc(x.n)+'" data-s="'+esc(x.n.toLowerCase())+'">'+figMini(x.n)+
+    return '<button class="libc" data-a="guida" data-n="'+esc(x.n)+'" data-s="'+esc((x.n+" "+(m.g||"")).toLowerCase())+'">'+figMini(x.n)+
       '<b>'+esc(x.n)+'</b><span>'+esc(x.tag.risc?"riscaldamento":(m.g&&m.g!=="—"?m.g:""))+'</span></button>';
   }).join("")+'</div>';
-  h+='<div class="xs mut" style="margin:12px 0 30px">Tocca un esercizio per la figura animata, la tecnica e gli errori da evitare. Le linee tratteggiate seguono il punto che si muove.</div>';
+  h+='<div class="xs mut" style="margin:12px 0 4px">Tocca un esercizio: partenza e arrivo con i punti da controllare, l\'errore tipico, l\'animazione, cosa devi sentire. Puoi cercare anche per gruppo (es. «petto»).</div>';
+  h+='<div class="eyebrow" style="margin:16px 0 6px">I tre segnali che fermano la serie</div><div class="card">';
+  STOPS.forEach(function(s){ h+='<div class="flag stop">•<div>'+esc(s)+'</div></div>'; });
+  h+='</div><div style="height:24px"></div>';
   h+='</div>';
   return h;
 }

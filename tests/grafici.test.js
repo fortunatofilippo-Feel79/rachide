@@ -72,3 +72,15 @@ test('il valore breve del cruscotto', () => {
   assert.equal(ctx.kpiBreve(d('proteine'), { v: 1.8 }), '1,8 g/kg');
   assert.equal(ctx.kpiBreve(d('aderenza'), { v: null }), '–');
 });
+
+test('media mobile a 7 giorni: uguale al calcolo giorno per giorno', () => {
+  const ctx = carica();
+  ctx.S.ben = [];
+  for (let i = 0; i < 40; i++) if (i % 3) ctx.S.ben.push({ date: giorno(ctx, -i), w: ctx.weekOf(giorno(ctx, -i)), hrv: 40 + (i * 7) % 25, sonno: i % 5 ? 6 + (i % 4) / 2 : null });
+  const g = ctx.giorniN(30);
+  for (const campo of ['hrv', 'sonno']) {
+    const veloce = ctx.mm7(campo, g, 2);
+    const lento = g.map(d => { const v = ctx.benFinestra(campo, d, 7, true); return v.length >= 2 ? ctx.media(v) : null; });
+    assert.deepEqual([...veloce], [...lento], campo);
+  }
+});

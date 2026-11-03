@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.3.0";
+var VERSIONE_APP = "4.4.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
@@ -163,7 +163,7 @@ var BASEPLAN = {
    null = si salta (il suo lavoro e' gia' coperto da un altro esercizio del giorno).
    Le serie restano quelle del piano; ripetizioni e tecnica sono del sostituto,
    che si registra col suo nome: lo storico di casa resta pulito. */
-var LUOGHI=[["casa","Casa","manubri"],["bande","Bande","in trasferta"],["corpo","Corpo libero","nessun attrezzo"]];
+var LUOGHI=[["casa","Pesi","manubri"],["bande","Bande","elastici"],["corpo","Corpo libero","nessun attrezzo"]];
 var ALT={
   "Floor Press manubri":            {bande:"Push-up piedi rialzati con banda", corpo:"Push-up piedi rialzati"},
   "Floor Press (volume)":          {bande:"Push-up", corpo:"Push-up"},
