@@ -228,6 +228,9 @@ function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente
 function simDue(){ var w=weekOf(today()); return w>=31 && (w-31)%4===0 && !(S.sim||[]).some(function(x){ return x.w===w; }); }
 function agendaVoci(){
   var oggi=today(), b=benOn(oggi), now=oraMin(), o=orari(), dom=new Date().getDay()===0, w=weekOf(oggi), v=[];
+  var pe=pianoDelGiorno(oggi);
+  if(pe && pe.stato==="oggi") v.push({k:"seduta", t:"Seduta "+pe.d+" · "+PLAN[pe.d].name, q:(pe.ora||"")+" · "+({casa:"a casa",bande:"con le bande",corpo:"a corpo libero"}[pe.l]||""), d:PLAN[pe.d].ex.length+" esercizi, "+PLAN[pe.d].min+" minuti",
+    fatto:false, dovuto: now>=hm(pe.ora||"07:30")-60, a:"seduta", m:pe.d});
   v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, dolori",
     fatto:mattinaFatta(b), dovuto: now>=hm(o.mattina)-90, a:"benm"});
   var g=cibDay(oggi), attesi=[["col",600],["sm",720],["pra",900],["sp",1080],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });
@@ -275,6 +278,7 @@ function agendaApri(a, m){
   if(a==="mob") return formMob();
   if(a==="sim") return formSim();
   if(a==="profilo") return formProfilo();
+  if(a==="seduta"){ V="oggi"; startSession(m, false, false, luogoOggi()); return; }
 }
 /* badge sull'icona dell'app (dove il sistema lo permette) */
 function aggiornaBadge(){

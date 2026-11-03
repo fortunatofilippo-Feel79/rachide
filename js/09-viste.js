@@ -47,6 +47,9 @@ function viewOggi(){
   var giorni=giorniSettimana(w), pk=picco(w);
   /* un giorno è "coperto" se allenato o segnato come riposo */
   var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
+  /* se il piano prevede una seduta per oggi, e' quella */
+  var peOggi=pianoDelGiorno(today());
+  if(peOggi && peOggi.stato!=="saltata" && giorni.indexOf(peOggi.d)>=0 && !sedutaCoperta(w, peOggi.d)) next=peOggi.d;
   var completa=!next;
   var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
@@ -115,18 +118,20 @@ function viewOggi(){
   /* 3 · chiusura della settimana */
   h+=cardChiusura(w, completa);
 
-  /* 4 · la settimana a caselle */
-  var target=bersaglio(w, riposi.length);
+  /* 4 · la settimana: sette giorni, cosa e' fatto e cosa e' previsto */
+  var target=bersaglio(w, riposi.length), sedPiano=seduteDelPiano(w), salt=saltate(w);
   h+='<div class="card"><div class="between"><div class="eyebrow">La settimana</div>'+
      '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
-     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div><div class="wk'+(pk?" wk2":"")+'">';
-  giorni.forEach(function(d){
-    var s=tutte.filter(function(x){ return x.day===d; })[0];
-    var rp=s&&isRest(s);
-    h+='<div class="slot'+(s?(rp?" rest":" on"):"")+'"><div class="l">'+d+'</div>'+
-       '<div class="d">'+(s? (rp?"riposo":s.date.slice(0,5)) : "—")+'</div></div>';
-  });
-  h+='</div>';
+     fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div>';
+  h+=cardSettimanaRail(w, sedPiano);
+  h+='<div class="xs mut" style="margin-top:6px">Tocca un giorno per segnarlo libero, fuori casa o occupato.</div>';
+  if(salt.length) h+='<div class="flag disc" style="margin-top:10px">↻<div><b>'+(salt.length>1?'Sedute del piano non fatte: ':'Seduta del piano non fatta: ')+esc(salt.map(function(e){ return e.d+" ("+ggDi(e.data)+")"; }).join(", "))+'.</b> Nessun problema: adatta la settimana ai giorni che restano.</div></div>';
+  var pp=pianoSett(w);
+  if(pp){ var pr=sedPiano.filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; });
+    if(pr.length) h+='<div class="xs" style="margin-top:8px;color:var(--glow)">Piano'+(pp.da==="coach"?' del coach':'')+': '+esc(pianoTesto(w, pr))+'</div>';
+    if(pp.nota) h+='<div class="xs mut" style="margin-top:4px">'+esc(pp.nota)+'</div>'; }
+  if(!completa) h+='<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="piano">Adatta la settimana</button>'+
+    '<button class="btn sm ghost" data-a="pics0"'+(pp?'':' disabled')+'>Metti a calendario</button></div>';
   var extra=fatte.filter(function(s){ return giorni.indexOf(s.day)<0; });
   if(extra.length) h+='<div class="xs mut" style="margin-top:8px">Anche: '+
     extra.map(function(s){ return s.day+" il "+s.date.slice(0,5); }).join(" · ")+'</div>';

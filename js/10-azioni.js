@@ -22,6 +22,15 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="piano"){ pianoApri(); return; }
+  if(a==="pricalcola"){ pianoRicalcola(); return; }
+  if(a==="pdispo"){ var dd=el.dataset.date, cicli=["casa","fuori","no"]; PS.dispo[dd]=cicli[(cicli.indexOf(PS.dispo[dd])+1)%3]; pianoRicalcola(); return; }
+  if(a==="pdispo1"){ var d1=el.dataset.date, w1=weekOf(d1); if(giorniFa(d1)>0) return; S.dispo=S.dispo||{}; var cc=["casa","fuori","no"], cur=dispoGiorno(w1,d1);
+    S.dispo[w1]=S.dispo[w1]||{}; S.dispo[w1][d1]=cc[(cc.indexOf(cur)+1)%3]; cfgTocca("settimane"); save(); render(); toast(GG_NOME[ggDi(d1)]+" "+d1.slice(0,5)+": "+({casa:"libero",fuori:"fuori casa",no:"occupato"}[S.dispo[w1][d1]])); return; }
+  if(a==="psl"){ PS.sedute[i].l=v; pianoSheet(); return; }
+  if(a==="psave"){ pianoSalva(); closeSheet(); render(); toast("Piano della settimana salvato"); return; }
+  if(a==="pics"){ pianoSalva(); download("rachide-sedute-sett"+PS.w+".ics", icsSedute(PS.w, PS.sedute), "text/calendar"); closeSheet(); render(); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
+  if(a==="pics0"){ var w0=weekOf(today()); download("rachide-sedute-sett"+w0+".ics", icsSedute(w0, seduteDelPiano(w0).filter(function(e){ return e.stato==="oggi"||e.stato==="futura"||e.stato==="saltata"; })), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
   if(a==="dz"){ dolTocca(el.dataset.p, el.dataset.z); return; }
   if(a==="dv"){ dolValore(el.dataset.p, el.dataset.z, +v); return; }
   if(a==="dnone"){ dolNessuno(el.dataset.p); return; }
@@ -825,7 +834,7 @@ function patchPreview(raw, pid){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target","settimana"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p; _pendId=pid||null;
     var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
@@ -847,6 +856,7 @@ function patchApply(){
   (_pend.ops||[]).forEach(function(o){
     if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); cfgTocca("cibo"); }
     /* il coach puo' spostare il corridoio del peso: {"op":"target","peso":[150,250]} */
+    if(o.op==="settimana") pianoApplica(o);
     if(o.op==="target" && Array.isArray(o.peso) && o.peso.length===2){ S.target=Object.assign({}, S.target||{}, {peso:[+o.peso[0], +o.peso[1]]}); cfgTocca("target"); }
   });
   if(_pendId){ S.propFatta=_pendId; cfgTocca("proposta"); }
@@ -892,4 +902,10 @@ document.addEventListener("change", function(ev){
   var t=ev.target;
   if(t.id==="scanf" && t.files && t.files[0]){ scanFoto(t.files[0]); return; }
   if(t.id==="prodgr"){ var g=num(t.value); if(g && g>0){ PROD_G=g; formProdotto(t.dataset.n, g); } return; }
+});
+
+/* il giorno di una seduta, dal menu a tendina del pianificatore */
+document.addEventListener("change", function(ev){
+  var t=ev.target;
+  if(t.classList && t.classList.contains("psd") && PS){ PS.sedute[+t.dataset.ps].data=t.value; pianoSheet(); }
 });

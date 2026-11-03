@@ -567,7 +567,7 @@ function statoRows(){
         S.sess.filter(function(s){ return s.w===w; }).forEach(function(s){ var m=dolDi(s,"dolz","dol"); Object.keys(m).forEach(function(z){ if(m[z]>0) c[z]=(c[z]||0)+1; }); });
         return Object.keys(c).sort(function(x,y){ return c[y]-c[x]; }).map(function(z){ return z+"×"+c[z]; }).join(" "); })(),
       serie_gruppo: Object.keys(TGT).map(function(g){ return g+" "+(k.grp[g]||0); }).join(" · "),
-      picco: picco(w)? "Sì" : "",
+      picco: picco(w)? "Sì" : "", piano_prog: pianoRigheStato(w).piano_prog, fuori: pianoRigheStato(w).fuori, occupati: pianoRigheStato(w).occupati,
       kpi_fuori: cur? (function(){ var v=kpiValori(); return KPI.filter(function(d){ return v[d.id].stato==="ko"||v[d.id].stato==="att"; }).map(function(d){ return d.id; }).join(" "); })() : "",
       bene:ch.bene||"", cambia:ch.cambia||"",
       piano_sett: (ch.giorni&&ch.giorni.length)? ch.giorni.join(" ")+(ch.mom?" · "+ch.mom:"") : "",
@@ -767,6 +767,11 @@ function formChiusura(){
         return '<button class="pill'+((ch.giorni||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
     '<div class="pills" id="cwMo">'+["mattina","primo pomeriggio"].map(function(m){
         return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
+    '<label class="fld"><span class="eyebrow">Dove sei la settimana prossima · il coach ci costruisce il piano</span>'+
+      '<div class="xs mut" style="margin:2px 0 5px">Giorni fuori casa</div><div class="pills" id="cwFu" style="flex-wrap:wrap">'+GG.map(function(g){
+        return '<button class="pill'+((ch.fuori||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div>'+
+      '<div class="xs mut" style="margin:6px 0 5px">Giorni senza tempo</div><div class="pills" id="cwOc" style="flex-wrap:wrap">'+GG.map(function(g){
+        return '<button class="pill'+((ch.occupati||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
     '<div class="flag info" style="margin-top:10px"><b>Se-allora</b><div>Pensa ogni giorno così: «se è lunedì mattina, allora alleno». '+
       'Un piano legato a un momento preciso regge meglio di un\'intenzione generica.</div></div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savechiusw">Salva</button>'+
@@ -776,9 +781,11 @@ async function saveChiusura(){
   var w=weekOf(today());
   var gg=[].map.call(document.querySelectorAll("#cwGg .pill.on"), function(b){ return b.dataset.gg; });
   var mo=document.querySelector("#cwMo .pill.on");
+  var fu=[].map.call(document.querySelectorAll("#cwFu .pill.on"), function(b){ return b.dataset.gg; });
+  var oc=[].map.call(document.querySelectorAll("#cwOc .pill.on"), function(b){ return b.dataset.gg; });
   S.chiusure=S.chiusure||{};
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
-    giorni:gg, mom:mo?mo.dataset.mo:"", ts:today()};
+    giorni:gg, mom:mo?mo.dataset.mo:"", fuori:fu, occupati:oc, ts:today()};
   cfgTocca("chiusure");
   var ok=await save(); closeSheet(); render();
   if(SYNC.on()) doPush(false);

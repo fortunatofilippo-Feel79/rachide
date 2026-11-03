@@ -296,6 +296,8 @@ function eserciziPer(day, luogo, rid){
 /* luogo scelto per oggi: quello toccato oggi, altrimenti dal benessere (notte fuori = bande) */
 function luogoOggi(){
   if(S.luogo && S.luogo.date===today()) return S.luogo.v;
+  var pe=(typeof pianoDelGiorno==="function") ? pianoDelGiorno(today()) : null;
+  if(pe && pe.stato!=="saltata") return pe.l;
   var b=benOn(today());
   return (b && b.sede==="Fuori") ? "bande" : "casa";
 }

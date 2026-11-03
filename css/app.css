@@ -507,3 +507,26 @@ input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--lin
 .bars.stack .sb i.b{background:var(--amb)}
 .bars.stack .sb i.c{background:var(--ok)}
 .bars.stack .sb.cur{box-shadow:0 0 0 1px var(--amb)}
+
+/* ---------- v4.2: la settimana in sette giorni e il pianificatore ---------- */
+.rail7{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.r7{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 5px;border-radius:10px;border:1px solid var(--line);background:var(--surf2);min-height:74px;color:var(--dim)}
+.r7 .g{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.r7 .n{font-size:11px;font-weight:600;color:var(--mut)}
+.r7 b{font-size:16px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+.r7 .b{font-size:9.5px;font-weight:600;line-height:1.15;text-align:center}
+.r7.oggi{box-shadow:inset 0 0 0 1.5px var(--bone)}
+.r7.fatta{border-color:rgba(127,176,105,.6);background:rgba(127,176,105,.1);color:var(--ok)}
+.r7.prev{border-color:var(--glow);background:rgba(111,179,196,.1);color:var(--glow)}
+.r7.prev.salt{border-color:var(--amb);background:rgba(224,164,88,.1);color:var(--amb);border-style:dashed}
+.r7.riposo{border-color:var(--amb);border-style:dashed;color:var(--amb)}
+.r7.no{opacity:.55}
+.r7.fuori{color:var(--amb);border-style:dashed}
+.rail7.edit .r7{min-height:64px}
+.rail7.edit .r7.d-casa{color:var(--ok)}
+.rail7.edit .r7.d-fuori{color:var(--amb);border-style:dashed}
+.rail7.edit .r7.d-no{opacity:.55;text-decoration:line-through}
+.psr{margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surf2)}
+.psd{width:auto;min-height:40px;padding:6px 10px;border-radius:10px}
+.gr .fl.pv{opacity:.4}
+.gr .vl{width:66px;white-space:nowrap}

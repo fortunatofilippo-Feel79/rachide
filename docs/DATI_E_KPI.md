@@ -14,7 +14,9 @@ Riferimento per il coach: che cosa misura l'app, quando, con quale formula e qua
 | Durante la seduta | Serie (ripetizioni o secondi), carico o banda, RIR dell'ultima serie, lato più duro, note | in seduta |
 | Fine seduta | Durata, energia 1-5, dolore per zona (il massimo, già compilato dagli esercizi), note | 30 secondi |
 | Prima di dormire | Reflusso 0-3, camminate dopo i pasti 0-2, respirazione 4-7, stress 0-3, testa 1-5 | 30 secondi |
-| Domenica | Chiusura della settimana (tre domande, giorni delle sedute), passi medi e ipopnea da Zepp | 2 minuti |
+| Domenica | Chiusura della settimana (tre domande, giorni delle sedute, giorni fuori casa e senza tempo), passi medi e ipopnea da Zepp | 2 minuti |
+| Domenica sera | Il coach legge il briefing e scrive il piano di massima della settimana (operazione `settimana`); l'app lo mostra in Oggi e lo porta nel calendario | coach |
+| Durante la settimana | Adatta la settimana: l'app ridistribuisce le sedute che mancano sui giorni che restano e mostra il bilancio delle serie | 1 minuto |
 | Ogni 14 giorni | Misure: peso, vita, torace, braccio, coscia (mattino, a digiuno) | 3 minuti |
 | Ogni 4 settimane | Check simmetria (dalla settimana 31); ogni 28 giorni i test di mobilità | 5 minuti |
 
@@ -77,6 +79,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 - **Serie dure.** L'unità di volume è lo sforzo, non l'attrezzo: una serie chiusa a RIR 0-3 conta 1, a RIR 4 o più conta 0,5, senza RIR conta 1. Vale per pesi, bande e corpo libero ([Schoenfeld 2017](https://pubmed.ncbi.nlm.nih.gov/28834797/): crescita simile con carichi leggeri se le serie sono vicine al cedimento). La soglia è una scelta del progetto.
 - **Carico sollevato.** Pesi: kg esatti. Bande: valore nominale della banda × 0,7 × ripetizioni (stima). Corpo libero: quota del peso × ripetizioni (stima; solo il push-up ha una misura, circa 69-75% del peso, [Suprak 2011](https://pubmed.ncbi.nlm.nih.gov/20179649)). Le tenute e il core non hanno un carico. Per confrontare le settimane si usano le serie dure.
 - **Piano flessibile.** Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.
+- **Piano della settimana.** Il coach scrive la domenica un piano di massima (giorno, seduta, luogo, ora). L'app lo segue in Oggi e, se salti una seduta o cambia la disponibilità, ridistribuisce quelle che mancano sui giorni liberi (evitando i giorni occupati; fuori casa = bande), mostra il bilancio delle serie dure per gruppo a fine settimana e suggerisce dove aggiungere serie se un gruppo resta sotto 10. Se i giorni non bastano restano i composti (A, B, D, C). Avvisa se passano 10 giorni senza pesi e non ne è previsto nessuno. Le sedute si esportano nel calendario (.ics, allarme 30 minuti prima).
 - **Settimana di picco.** Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](https://pubmed.ncbi.nlm.nih.gov/33629972/)).
 - **Dolore.** In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](https://search.pedro.org.au/search-results/record-detail/18389)). Zone: `collo`, `dorsale`, `costole`, `lombare`, `spalla_sx`, `spalla_dx`, `gomito_sx`, `gomito_dx`, `polso_sx`, `polso_dx`, `anca_sx`, `anca_dx`, `ginocchio_sx`, `ginocchio_dx`, `caviglia_sx`, `caviglia_dx`, `altro`.
 - **Codice a barre.** Valori per 100 g da [Open Food Facts](https://world.openfoodfacts.org) (licenza ODbL) o dall'etichetta; il prodotto resta sul telefono e nel foglio (gruppo `prodotti` di App_Config). Le voci del pasto lette col codice hanno il campo `bc`.
@@ -257,6 +260,9 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `dolore_zone` | zone di dolore della settimana con il numero di rilevazioni (es. lombare×3) |
 | `serie_gruppo` | serie per gruppo, conteggio frazionario |
 | `picco` | Sì se settimana di picco |
+| `piano_prog` | piano della settimana: giorno, seduta, luogo e stato (fatta, oggi, futura, saltata) |
+| `fuori` | giorni fuori casa della settimana successiva (dalla chiusura) |
+| `occupati` | giorni senza tempo della settimana successiva (dalla chiusura) |
 | `kpi_fuori` | KPI in attenzione o fuori (chiavi App_KPI) |
 | `bene` | chiusura: cosa è andato bene |
 | `cambia` | chiusura: una cosa da cambiare |
@@ -286,7 +292,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | Colonna | Significato |
 | --- | --- |
 | `k` | gruppo (e #parte se spezzato) |
-| `gruppo` | patches, impostazioni, chiusure, coach, prodotti |
+| `gruppo` | patches, impostazioni, chiusure, coach, prodotti, settimane (piano e disponibilità) |
 | `parte` | numero del pezzo |
 | `parti` | pezzi totali |
 | `ts` | orologio della modifica (ms): vince il più recente |
@@ -308,5 +314,6 @@ Una patch è un JSON `{"nota":"…","ops":[…]}` che si incolla in Coach (o arr
 | `stima` | `{"op":"stima","n":"pizza con gli amici","p":20,"c":60,"g":12}` | converte una voce scritta a parole nei grammi veri |
 | `kcal` | `{"op":"kcal","off":150}` | sposta il target calorico (tutto sui carboidrati) |
 | `target` | `{"op":"target","peso":[150,250]}` | sposta il corridoio della pendenza del peso (g/settimana) |
+| `settimana` | `{"op":"settimana","w":41,"nota":"Martedì in trasferta","sedute":[{"g":"lun","d":"A","l":"casa","ora":"07:30"},{"g":"mer","d":"B","l":"bande","ora":"18:30"}]}` | piano di massima della settimana w: g = lun..dom (oppure data gg/mm/aaaa), d = giorno del piano (A B C D, E1 E2 in picco), l = casa, bande o corpo, ora facoltativa |
 
 Giorni validi: A, B, C, D, T1, T2, E1, E2.
