@@ -121,3 +121,17 @@ test('il briefing per il coach contiene piano, disponibilita\' e formato', () =>
   assert.match(t, /fuori casa mar mer/);
   assert.match(t, /"op":"settimana"/);
 });
+
+test('Oggi segue il piano: senza seduta oggi propone la prossima in calendario, non la prima in ordine A B C D', () => {
+  const ctx = ctxSett();
+  ctx.S.sess = [sess(ctx, 'A', '02/11/2026')];
+  ctx.S.pianoSett = { 40: { da: 'app', sedute: [
+    { data: '02/11/2026', d: 'A', l: 'casa' }, { data: '05/11/2026', d: 'D', l: 'casa', t: 30, agg: [], ser: { 'Hammer Curl': 2 }, via: ['Reverse Fly'] },
+    { data: '06/11/2026', d: 'B', l: 'bande' }, { data: '08/11/2026', d: 'C', l: 'casa' }] } };
+  const p = ctx.prossimaDelPiano(40);
+  assert.equal(p.d, 'D', 'la prossima e\' la D di giovedi\'');
+  /* anticipata a oggi con lo stesso attrezzo, la seduta e' quella adattata del piano */
+  const lista = ctx.listaPerOggi('D', 'casa');
+  assert.ok(!lista.some(x => x.n === 'Reverse Fly'));
+  assert.equal(lista.find(x => x.n === 'Hammer Curl').s, 2);
+});
