@@ -122,6 +122,17 @@ function seed(){
   });
   S.seeded = true;
 }
+/* Lo stato salvato si tiene sempre, anche senza serie registrate. Prima un telefono
+   con solo cibo e benessere (o appena collegato al foglio) ripartiva vuoto a ogni
+   avvio, e perdeva anche il collegamento. Ritorna true se c'era uno stato. */
+function statoDaSalvato(saved){
+  var ok = !!(saved && typeof saved==="object" && !Array.isArray(saved));
+  if(ok) S=Object.assign(S, saved); else seed();
+  ["log","sess","mis","ben","sim","mob","patches"].forEach(function(k){ if(!Array.isArray(S[k])) S[k]=[]; });
+  if(!S.dirtyBen) S.dirtyBen={};
+  if(!S.benTs) S.benTs={};
+  return ok;
+}
 
 /* ---------- lettura storico ---------- */
 var ALIAS={"Reverse Fly":["Reverse Fly manubri","Reverse Fly leggero"]};
@@ -137,13 +148,44 @@ function histAll(name){
   var names=[name].concat(ALIAS[name]||[]);
   return S.log.filter(r=>names.indexOf(r.ex)>=0).sort((a,b)=>s2d(a.date)-s2d(b.date));
 }
-/* un carico che non hai chiuso non diventa il nuovo standard */
+/* Carico di lavoro = l'ultimo usato. Dopo una salita si resta sul carico nuovo
+   anche se le ripetizioni calano: e' la doppia progressione, si risale nel range.
+   Si torna al carico precedente solo se la seduta al carico nuovo e' crollata
+   (una serie sotto il 75% del minimo del range: il peso era troppo).
+   Il tetto per la spalla vale sempre, anche sullo storico di prima del tetto.
+   (Prima: ogni seduta non chiusa al top sopra il carico di piano riportava
+   al carico di piano, e la progressione tornava indietro.) */
 function suggestLoad(def){
-  var h=hist(def.n).filter(r=>r.load>0);
-  if(!h.length) return def.L||0;
-  var last=h[h.length-1];
-  if(def.L && last.load>def.L && !last.top) return def.L;
-  return last.load;
+  var m=meta(def.n), h=hist(def.n).filter(r=>r.load>0), out;
+  if(!h.length) out = def.L||0;
+  else {
+    var last=h[h.length-1], cur=last.load, prev=null;
+    for(var i=h.length-1;i>=0;i--){ if(h[i].load!==cur){ prev=h[i].load; break; } }
+    out=cur;
+    if(prev!==null && cur>prev){
+      var dataUltima=last.date, minimo=Infinity;
+      h.forEach(function(r){ if(r.date===dataUltima && r.load===cur) (r.reps||[]).forEach(function(x){ if(x<minimo) minimo=x; }); });
+      var soglia=Math.floor((def.lo||0)*0.75);
+      if(minimo!==Infinity && minimo<soglia) out=prev;
+    }
+  }
+  if(m.cap && out>m.cap) out=m.cap;
+  return out;
+}
+/* Rientro dopo una pausa (trasferte, settimane piene). La forza regge per circa
+   tre settimane senza allenamento, poi cala (McMaster 2013, Sports Med 43:367).
+   8-21 giorni: stesso carico, la prima serie fa da prova.
+   Oltre 21 giorni: un gradino sotto per questa sola seduta. */
+var RIENTRO_AVVISO=8, RIENTRO_TAGLIO=21;
+function rientro(n, oggi){
+  var h=histAll(n); if(!h.length) return null;
+  var ultima=null;
+  for(var i=h.length-1;i>=0;i--){ if(dataOk(h[i].date)){ ultima=h[i].date; break; } }
+  if(!ultima) return null;
+  var rif=oggi? s2d(oggi) : new Date(new Date().setHours(0,0,0,0));
+  var gg=Math.round((rif-s2d(ultima))/86400000);
+  if(gg<RIENTRO_AVVISO) return null;
+  return {gg:gg, taglio: gg>RIENTRO_TAGLIO, ultima:ultima};
 }
 function lastLoad(name, fallback){
   var h = hist(name).filter(r=>r.load>0);
@@ -183,8 +225,13 @@ function readiness(exDef){
   if(!h.length) return out;
   var dates=[...new Set(h.map(r=>r.date))].slice(-2);
   if(dates.length<2) return out;
+  /* le due sedute devono essere allo stesso carico di adesso: due top a carichi
+     diversi (28 poi 30) non dicono ancora che 30 e' consolidato */
+  var cur0 = exDef.b ? lastBand(n, exDef.b) : suggestLoad(exDef);
+  var alCarico=function(r){ return exDef.b ? (r.band||"")===cur0 : ((r.load||0)===(cur0||0)); };
   var ok = dates.every(function(d){
     var rows=h.filter(r=>r.date===d);
+    if(!rows.every(alCarico)) return false;
     if(exDef.u){ return rows.every(r=>isTop(r.reps, exDef.hi, exDef.s)); }
     return rows.some(r=>isTop(r.reps, exDef.hi, exDef.s));
   });

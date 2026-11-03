@@ -292,8 +292,10 @@ function startSession(day, mini, rid){
   var p=PLAN[day], lista = rid ? p.ex.slice(0, RIDOTTA_N) : p.ex;
   S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, warm:WARM.map(()=>false),
     ex:lista.map(function(x){
-      var m=meta(x.n);
-      return {n:x.n, load: x.b?0:suggestLoad(x), band: x.b?lastBand(x.n,x.b):"",
+      var m=meta(x.n), load=x.b?0:suggestLoad(x);
+      var rt=(!x.b && !m.sec && load>0)? rientro(x.n) : null;
+      if(rt && rt.taglio) load=Math.max(0, load-stepOf(x.n));
+      return {n:x.n, load: load, band: x.b?lastBand(x.n,x.b):"", rientro:rt,
         sets:[], rir:null, note:"", duro:null,
         cur: x.u ? (m.sec ? {S:x.hi, D:x.lo} : {S:Math.min(lastSideRep(x.n,"S",x.lo),x.hi), D:Math.min(lastSideRep(x.n,"D",x.lo),x.hi)}) : {v:(m.sec?x.hi:x.lo)}};
     }), cur:0};

@@ -60,19 +60,17 @@ window.addEventListener("online", function(){ if(SYNC.on() && Object.keys(S.dirt
 })();
 
 /* ---------- boot ---------- */
-(async function(){
+async function avvia(){
   await Store.detect();
-  var saved = await Store.get();
-  if(saved && saved.log && saved.log.length){ S=Object.assign(S, saved); }
-  else { seed(); S.installed=today(); await save(); }
-  if(!S.patches) S.patches=[];
+  var c_era = statoDaSalvato(await Store.get());
+  if(!c_era){ S.installed=today(); await save(); }
   if(!S.installed) S.installed=today();
-  if(!S.dirtyBen) S.dirtyBen={}; if(!S.benTs) S.benTs={};
   /* la banda "azzurra" non esiste nel set: e' la blu */
   S.log.forEach(function(r){ if(r.band==="azzurra") r.band="blu"; });
   if(S.draft && S.draft.ex) S.draft.ex.forEach(function(e){ if(e.band==="azzurra") e.band="blu"; });
   PLAN = buildPlan();
   render();
   if(SYNC.on()) doPull(false).then(function(){ return propCheck(false); }).catch(function(){});
-})();
+}
+if(!window.__TEST__) avvia();
 

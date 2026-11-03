@@ -233,6 +233,9 @@ function exCard(e,i,def){
   }
   if(r.cedimento && !full) h+='<div class="flag info" style="margin-top:9px"><b>RIR</b><div>Top raggiunto a cedimento: per contare deve arrivare a RIR 1-2.</div></div>';
   if(r.hold && !full) h+='<div class="flag info" style="margin-top:9px"><b>In attesa</b><div>'+esc(r.hold)+'</div></div>';
+  if(e.rientro && !sets.length) h+='<div class="flag info" style="margin-top:9px"><b>↺</b><div><b>Rientro dopo '+e.rientro.gg+' giorni.</b> '+
+    (e.rientro.taglio ? 'Oltre tre settimane: oggi un gradino sotto ('+e.load+' kg). La prossima seduta torni al carico di prima.'
+                      : 'Stesso carico di prima: la prima serie fa da prova. Se chiudi a RIR 2 o più, resta qui.')+'</div></div>';
   if(def.swap) h+='<div class="flag disc" style="margin-top:9px"><b>⟳</b><div>'+esc(def.swap)+' mentre fai questo.</div></div>';
 
   /* carico o banda */
