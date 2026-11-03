@@ -7,7 +7,7 @@ Registro personale di allenamento, cibo e salute. È una web app statica (HTML, 
 - **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro.
 - **Come si fa**: per ogni esercizio e per il riscaldamento, partenza e arrivo con numeri sul corpo (piedi, ginocchia, bacino, schiena, gomiti, testa), angoli, linee guida e l'errore tipico disegnato in rosso sulla posizione giusta; poi l'animazione con il muscolo che lavora, cosa devi sentire, dove NON devi sentire fastidio e le alternative fuori casa (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
 - **Piano flessibile**: Casa, Bande o Corpo libero sulla prossima seduta; versione da 45′ e da 15′; settimana di picco con due sedute essenziali.
-- **Piano della settimana**: il coach lo scrive la domenica sera; in settimana *Adatta la settimana* ridistribuisce le sedute che mancano sui giorni che restano, mostra il bilancio delle serie dure per gruppo e dove aggiungere serie, e porta le sedute nel calendario.
+- **Piano della settimana**: il coach lo scrive la domenica sera sui giorni e i tempi che gli dai nella chiusura. In settimana, in *Adatta la settimana*, per ogni giorno scegli dove sei (casa; fuori con le bande; fuori senza niente; occupato) e quanto tempo hai (30, 60, 90 minuti): l'app sceglie quali sedute fare e quando, con quale attrezzo, e adatta gli esercizi (toglie le serie che valgono meno se il tempo non basta, aggiunge serie o esercizi ai gruppi che restano indietro). La seduta guidata usa la versione adattata; le sedute vanno nel calendario.
 - **Serie dure**: l'unità di volume è lo sforzo (RIR 0-3 vale 1, RIR 4+ vale mezza), uguale per pesi, bande e corpo libero; il carico sollevato è diviso per tipo, con le stime segnate.
 - **Progressione automatica**: doppia progressione con RIR, una salita alla volta, tetti per la spalla, carichi fermi quando il recupero è basso, rientro dopo una pausa.
 - **Cibo**: codice a barre (Open Food Facts, oppure valori dall'etichetta), catalogo, ricette, «come ieri» o a parole; target ricalibrato sulla pendenza del peso.
@@ -42,6 +42,7 @@ js/19-pianificatore.js  piano della settimana, adattamento, bilancio, calendario
 js/20-posizione.js      scheda Posizione: partenza, arrivo, numeri, angoli, errore
 js/21-grafici.js        grafici SVG e serie storiche dei KPI
 js/22-progressi.js      serie per gruppo sul corpo, forza stimata, recupero
+js/23-generatore.js     sceglie e adatta le sedute della settimana a giorni, tempi e attrezzi
 js/vendor/              ZXing 0.23.0 (lettura dei codici a barre, Apache 2.0)
 js/99-avvio.js          avvio, service worker
 sw.js                   funzionamento offline

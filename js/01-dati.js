@@ -440,6 +440,8 @@ var G = {
 var FONTI={
   schoenfeld:{t:"Schoenfeld, Ogborn, Krieger 2017 · J Sports Sci", u:"https://core.ac.uk/download/200371264.pdf"},
   carichi:{t:"Schoenfeld et al. 2017 · carichi leggeri e pesanti, J Strength Cond Res", u:"https://pubmed.ncbi.nlm.nih.gov/28834797/"},
+  remmert:{t:"Remmert et al. 2025 · volume per seduta, meta-regressioni (preprint SportRxiv)", u:"https://sportrxiv.org/index.php/server/preprint/view/537"},
+  iversen:{t:"Iversen et al. 2021 · allenamento quando il tempo è poco, Sports Med 51:2079", u:"https://pubmed.ncbi.nlm.nih.gov/34125411/"},
   suprak:{t:"Suprak et al. 2011 · quota del peso nel push-up, J Strength Cond Res 25:497", u:"https://pubmed.ncbi.nlm.nih.gov/20179649"},
   bazvalle:{t:"Baz-Valle et al. 2022 · J Hum Kinet 81:199", u:"https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877/"},
   pelland:{t:"Pelland et al. 2024 · meta-regressioni volume e frequenza", u:"https://bibbase.org/network/publication/joshuapelland-jacobremmert-zacrobinson-sethhinson-michaelzourdos-theresistancetrainingdoseresponsemetaregressionsexploringtheeectsofweeklyvolumeandfrequencyonmusclehypertrophyandstrengthgain-2024"},

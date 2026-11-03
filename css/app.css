@@ -613,3 +613,26 @@ input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--lin
 .forza .fv b{display:block;font-size:15px;font-weight:800}
 .forza .fv small{font-size:10.5px;font-weight:700}
 .gch.heat .gt{font-size:8.5px}
+
+/* ---------- v4.2: giorni con luogo e tempo, sedute adattate ---------- */
+.pgiorni{display:grid;gap:6px;margin-top:6px}
+.pgg{display:grid;grid-template-columns:52px 1fr;grid-template-areas:"n p" ". t";gap:5px 8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surf2)}
+.pgg .pgn{grid-area:n;display:flex;flex-direction:column;line-height:1.15}
+.pgg .pgn b{font-size:13px;font-weight:800}
+.pgg .pgn span{font-size:10.5px;color:var(--glow);font-weight:700}
+.pgg .pseg{grid-area:p;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.pgg .pseg.t{grid-area:t;grid-template-columns:repeat(3,1fr)}
+.pgg .pseg button{min-height:38px;padding:4px 2px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--mut);font-size:11.5px;font-weight:700;line-height:1.1}
+.pgg .pseg button.on{background:var(--surf);color:var(--bone);box-shadow:inset 0 0 0 1.5px var(--glow);border-color:transparent}
+.pgg .pseg.t button.on{box-shadow:inset 0 0 0 1.5px var(--amb)}
+.pgg.off{opacity:.7}
+.pgg.off .pseg.t{display:none}
+.pex{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px}
+.pex li{display:flex;gap:8px;align-items:baseline;font-size:13px;line-height:1.3}
+.pex li b{flex:none;width:26px;text-align:right;font-weight:800;color:var(--bone)}
+.pex li span{flex:1;min-width:0}
+.pex li em{font-style:normal;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;white-space:nowrap}
+.pex li em.add{color:var(--ok);background:rgba(127,176,105,.14)}
+.pex li em.cut{color:var(--amb);background:rgba(224,164,88,.14)}
+.pex li.via{opacity:.55}
+.pex li.via span{text-decoration:line-through}

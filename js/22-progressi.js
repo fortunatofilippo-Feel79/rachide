@@ -71,7 +71,7 @@ function cardGruppi(){
   var inCorso=(PROG_OFF===0) && !weekDone(w).ok, bil=null;
   if(inCorso){
     var sed=seduteDelPiano(w).filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; });
-    if(!sed.length) sed=propostaPiano(w).sedute;
+    if(!sed.length) sed=generaSettimana(w).sedute;
     bil=bilancio(w, sed); bil.w=w;
   }
   var st={}, nOk=0, buchi=[];

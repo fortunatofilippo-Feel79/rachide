@@ -221,7 +221,10 @@ function previewPatch(pt){
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
     if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
-    if(o.op==="settimana"){ var pd=pianoDaOp(o); return "Piano della settimana "+(o.w||"?")+": "+(pd.sedute&&pd.sedute.length? pianoTesto(pd.w, pd.sedute) : "nessuna seduta valida")+(pd.err&&pd.err.length? " · ATTENZIONE: "+pd.err.join("; ") : ""); }
+    if(o.op==="settimana"){ var pd=pianoDaOp(o), gd=Object.keys(pd.dispo||{}).length;
+      return "Piano della settimana "+(o.w||"?")+": "+(pd.sedute&&pd.sedute.length? pianoTesto(pd.w, pd.sedute) : "nessuna seduta valida")+
+        (gd? " · giorni: "+Object.keys(pd.dispo).map(function(d){ return ggDi(d)+" "+pd.dispo[d]+(pd.tempo[d]?" "+pd.tempo[d]+"′":""); }).join(", ") : "")+
+        " · gli esercizi si adattano al tempo di ogni giorno"+(pd.err&&pd.err.length? " · ATTENZIONE: "+pd.err.join("; ") : ""); }
     if(o.op==="target") return "Corridoio del peso: "+(o.peso? o.peso[0]+"-"+o.peso[1]+" g a settimana" : "invariato");
     if(o.op==="kcal") return "Calorie: target "+(2550+(+o.off||0))+" kcal al giorno ("+((+o.off||0)>0?"+":"")+(+o.off||0)+" sulla base, tutto sui carboidrati)";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;

@@ -95,12 +95,16 @@ function viewOggi(){
          '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
          esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
     }
-    var p=PLAN[next], lu=luogoOggi(), lista=eserciziPer(next, lu);
+    var p=PLAN[next], lu=luogoOggi(), lista=listaPerOggi(next, lu), vp=voceDelPiano(next), adattata=!!(vp && (vp.agg||vp.ser||vp.via)), minN=Math.round(minutiSeduta(lista));
+    var cambiOggi=[]; if(adattata){ var bOggi=eserciziPer(next, lu);
+      lista.forEach(function(x){ var b=bOggi.filter(function(y){ return y.n===x.n; })[0]; if(!b) cambiOggi.push("+ "+x.n); else if(x.s!==b.s) cambiOggi.push(x.n+" "+(x.s>b.s?"+":"−")+Math.abs(x.s-b.s)); });
+      bOggi.forEach(function(b){ if(!lista.some(function(x){ return x.n===b.n; })) cambiOggi.push("senza "+b.n); }); }
     h+='<div class="card hero-next">'+
-       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · '+p.min+'′</div></div>'+
+       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · circa '+minN+'′</div></div>'+
        '<h2 style="margin:5px 0 10px;font-size:19px">'+esc(p.name)+'</h2>'+
        segLuogo(lu, next)+
        stripEsercizi(lista)+
+       (cambiOggi.length? '<div class="xs" style="color:var(--glow);margin-top:8px"><b>Adattata alla settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> '+esc(cambiOggi.join(" · "))+'</div>' : '')+
        ((lu==="casa" && p.dischi!=="solo bande")? '<div class="xs" style="color:var(--amb);margin-top:8px">Dischi '+esc(p.dischi)+'</div>':"")+
        (lu!=="casa"? '<div class="xs mut" style="margin-top:8px">'+(lu==="bande"?"Con le bande":"Senza attrezzi")+': stesso schema di movimento, stesse serie. I carichi di casa restano dove sono.</div>':"")+
        ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
@@ -124,7 +128,7 @@ function viewOggi(){
      '<div class="xs" style="font-weight:700;color:'+(completa?"var(--ok)":"var(--mut)")+'">'+
      fatte.length+' su '+target+(riposi.length?' <span style="color:var(--dim)">· '+riposi.length+' riposo'+(riposi.length>1?'i':'')+'</span>':'')+'</div></div>';
   h+=cardSettimanaRail(w, sedPiano);
-  h+='<div class="xs mut" style="margin-top:6px">Tocca un giorno per segnarlo libero, fuori casa o occupato.</div>';
+  h+='<div class="xs mut" style="margin-top:6px">Tocca un giorno per segnarlo a casa, fuori con le bande, fuori senza niente o occupato. Il tempo di ogni giorno si sceglie in «Adatta la settimana».</div>';
   if(salt.length) h+='<div class="flag disc" style="margin-top:10px">↻<div><b>'+(salt.length>1?'Sedute del piano non fatte: ':'Seduta del piano non fatta: ')+esc(salt.map(function(e){ return e.d+" ("+ggDi(e.data)+")"; }).join(", "))+'.</b> Nessun problema: adatta la settimana ai giorni che restano.</div></div>';
   var pp=pianoSett(w);
   if(pp){ var pr=sedPiano.filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; });

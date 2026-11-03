@@ -298,6 +298,7 @@ function luogoOggi(){
   if(S.luogo && S.luogo.date===today()) return S.luogo.v;
   var pe=(typeof pianoDelGiorno==="function") ? pianoDelGiorno(today()) : null;
   if(pe && pe.stato!=="saltata") return pe.l;
+  if(typeof dispoGiorno==="function"){ var dv=((S.dispo||{})[weekOf(today())]||{})[today()]; if(dv==="fuori") return "bande"; if(dv==="fuori0") return "corpo"; }
   var b=benOn(today());
   return (b && b.sede==="Fuori") ? "bande" : "casa";
 }

@@ -767,11 +767,9 @@ function formChiusura(){
         return '<button class="pill'+((ch.giorni||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
     '<div class="pills" id="cwMo">'+["mattina","primo pomeriggio"].map(function(m){
         return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
-    '<label class="fld"><span class="eyebrow">Dove sei la settimana prossima · il coach ci costruisce il piano</span>'+
-      '<div class="xs mut" style="margin:2px 0 5px">Giorni fuori casa</div><div class="pills" id="cwFu" style="flex-wrap:wrap">'+GG.map(function(g){
-        return '<button class="pill'+((ch.fuori||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div>'+
-      '<div class="xs mut" style="margin:6px 0 5px">Giorni senza tempo</div><div class="pills" id="cwOc" style="flex-wrap:wrap">'+GG.map(function(g){
-        return '<button class="pill'+((ch.occupati||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
+    '<div class="fld"><span class="eyebrow">Dove sei la settimana prossima e quanto tempo hai</span>'+
+      '<div class="xs mut" style="margin:2px 0 4px">Il coach ci costruisce il piano; l\'app adatta gli esercizi al tempo di ogni giorno.</div>'+
+      dispoEditor(w+1, "cw")+'</div>'+
     '<div class="flag info" style="margin-top:10px"><b>Se-allora</b><div>Pensa ogni giorno così: «se è lunedì mattina, allora alleno». '+
       'Un piano legato a un momento preciso regge meglio di un\'intenzione generica.</div></div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savechiusw">Salva</button>'+
@@ -781,8 +779,9 @@ async function saveChiusura(){
   var w=weekOf(today());
   var gg=[].map.call(document.querySelectorAll("#cwGg .pill.on"), function(b){ return b.dataset.gg; });
   var mo=document.querySelector("#cwMo .pill.on");
-  var fu=[].map.call(document.querySelectorAll("#cwFu .pill.on"), function(b){ return b.dataset.gg; });
-  var oc=[].map.call(document.querySelectorAll("#cwOc .pill.on"), function(b){ return b.dataset.gg; });
+  var disp=dispoLeggi("cw"), fu=[], oc=[];
+  Object.keys(disp.dispo).forEach(function(d){ var po=disp.dispo[d]; if(po==="fuori"||po==="fuori0") fu.push(ggDi(d)); if(po==="no") oc.push(ggDi(d)); });
+  S.dispo=S.dispo||{}; S.tempo=S.tempo||{}; S.dispo[w+1]=disp.dispo; S.tempo[w+1]=disp.tempo; cfgTocca("settimane");
   S.chiusure=S.chiusure||{};
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
     giorni:gg, mom:mo?mo.dataset.mo:"", fuori:fu, occupati:oc, ts:today()};
@@ -791,6 +790,27 @@ async function saveChiusura(){
   if(SYNC.on()) doPush(false);
   toast(!ok? "NON salvata: vedi la scheda Coach" :
         (gg.length && gg.length<4)? "Salvata. Hai scelto "+gg.length+" giorni: il bersaglio è 4" : "Settimana chiusa: Jarvis la trova nella review");
+}
+/* editor dei giorni di una settimana: dove sei e quanto tempo hai (senza ridisegnare il resto del modulo) */
+function dispoEditor(w, id){
+  return '<div class="pgiorni" id="'+id+'Disp">'+dateSettimana(w).map(function(d, i){
+    var po=dispoGiorno(w, d), t=tempoGiorno(w, d);
+    return '<div class="pgg'+(po==="no"?" off":"")+'" data-date="'+d+'"><div class="pgn"><b>'+GG_NOME[GG[i]]+' '+(+d.slice(0,2))+'</b></div>'+
+      '<div class="pseg">'+POSTI.map(function(p){ return '<button class="'+(po===p[0]?"on":"")+'" data-a="dispoP" data-v="'+p[0]+'" aria-label="'+esc(p[2])+'">'+esc(p[1].replace("Fuori · ","Fuori "))+'</button>'; }).join("")+'</div>'+
+      '<div class="pseg t">'+TEMPI.map(function(x){ return '<button class="'+(t===x?"on":"")+'" data-a="dispoT" data-v="'+x+'">'+x+'′</button>'; }).join("")+'</div></div>';
+  }).join("")+'</div>';
+}
+function dispoTocca(el){
+  var riga=el.closest(".pgg"), seg=el.parentNode; if(!riga) return;
+  [].forEach.call(seg.querySelectorAll("button"), function(b){ b.classList.toggle("on", b===el); });
+  if(el.dataset.a==="dispoP") riga.classList.toggle("off", el.dataset.v==="no");
+}
+function dispoLeggi(id){
+  var out={dispo:{}, tempo:{}};
+  [].forEach.call(document.querySelectorAll("#"+id+"Disp .pgg"), function(r){
+    var p=r.querySelector('.pseg:not(.t) button.on'), t=r.querySelector('.pseg.t button.on');
+    out.dispo[r.dataset.date]=p? p.dataset.v : "casa"; out.tempo[r.dataset.date]=t? +t.dataset.v : TEMPO_STD; });
+  return out;
 }
 function pianoDeciso(w){
   var ch=(S.chiusure||{})[w-1]; if(!ch || !ch.giorni || !ch.giorni.length) return "";
