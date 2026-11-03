@@ -49,8 +49,18 @@ function fgPosa(p){
   ["n","f"].forEach(function(lato){
     var hv=p["h"+lato]||[0,FL.ua+FL.fa-1], tg=abs.indexOf(lato)>=0 ? hv : fgSom(S[lato], hv);
     var eb=(p.eb&&p.eb[lato]!=null)? p.eb[lato] : 1;
-    var a=fgIK(S[lato], tg, FL.ua, FL.fa, eb);
-    out.braccia[lato]={s:S[lato], e:a.j, h:a.e};
+    var fk=p["a"+lato];
+    if(fk){   /* angoli di braccio e avambraccio: il gomito resta fermo, l'avambraccio ruota ad arco */
+      var e1=fgSom(S[lato], fgDir(fk[0]), FL.ua);
+      out.braccia[lato]={s:S[lato], e:e1, h:fgSom(e1, fgDir(fk[1]), FL.fa)};
+    } else if((p.av||"").indexOf(lato)>=0){   /* avambraccio verso chi guarda: si vede solo il gomito a terra */
+      var dd=[tg[0]-S[lato][0], tg[1]-S[lato][1]], LL=Math.sqrt(dd[0]*dd[0]+dd[1]*dd[1])||1;
+      var ee=[S[lato][0]+dd[0]/LL*FL.ua, S[lato][1]+dd[1]/LL*FL.ua];
+      out.braccia[lato]={s:S[lato], e:ee, h:ee, av:true};
+    } else {
+      var a=fgIK(S[lato], tg, FL.ua, FL.fa, eb);
+      out.braccia[lato]={s:S[lato], e:a.j, h:a.e};
+    }
     var fv=p["f"+lato]||[p.hip[0], FG_ANK], ft=rf.indexOf(lato)>=0 ? fgSom(Hp[lato], fv) : fv;
     var kb=(p.kb&&p.kb[lato]!=null)? p.kb[lato] : -1;
     var g=fgIK(Hp[lato], ft, FL.th, FL.sh, kb);
@@ -95,9 +105,9 @@ function fgAl(def, sec){
   var tot=fgDurata(def), t=((sec%tot)+tot)%tot, n=def.k.length;
   for(var i=0;i<n;i++){
     var k=def.k[i], h=k.h||0, d=k.d||1;
-    if(t<h) return {p:k.p, c:k.c||"", i:i, x:0};
+    if(t<h) return {p:k.p, c:k.c||"", i:i, x:0, fase:"h", el:t, dur:h};
     t-=h;
-    if(t<d){ var x=fgEase(t/d); return {p:fgLerp(k.p, def.k[(i+1)%n].p, x), c:k.c||"", i:i, x:x}; }
+    if(t<d){ var x=fgEase(t/d); return {p:fgLerp(k.p, def.k[(i+1)%n].p, x), c:k.c||"", i:i, x:x, fase:"d", el:t, dur:d}; }
     t-=d;
   }
   return {p:def.k[0].p, c:def.k[0].c||"", i:0, x:0};
@@ -134,51 +144,180 @@ function fgManubrio(p, front){
     '<rect x="'+fgR(p[0]-8.5)+'" y="'+fgR(p[1]-4.5)+'" width="4" height="9" rx="1.5"/><rect x="'+fgR(p[0]+4.5)+'" y="'+fgR(p[1]-4.5)+'" width="4" height="9" rx="1.5"/></g>';
   return '<circle cx="'+fgR(p[0])+'" cy="'+fgR(p[1])+'" r="5.6" class="fg-db"/><circle cx="'+fgR(p[0])+'" cy="'+fgR(p[1])+'" r="1.8" class="fg-dbc"/>';
 }
-function fgArto(A, cl, hot, gamba){
-  var o="", c=cl+(hot?" fg-hot":"");
-  if(gamba){
-    o+=fgL(A.h, A.k, c, 8)+fgL(A.k, A.a, c, 6.5)+fgL(A.a, A.toe, c, 4.5);
-  } else {
-    o+=fgL(A.s, A.e, c, 6)+fgL(A.e, A.h, c, 5);
-    o+='<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="2.8" class="fg-hand'+(hot?" fg-hotf":"")+'"/>';
-  }
+/* ---------- disegno con volumi ----------
+   Arti come capsule affusolate, busto che segue la curva della colonna
+   (petto davanti, glutei e scapole dietro), testa col naso: si capisce
+   da che parte guarda. Il lato lontano e' piu' scuro, non trasparente. */
+function fgPt(q){ return fgR(q[0])+","+fgR(q[1]); }
+function fgCaps(a,b,r1,r2){
+  var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.sqrt(dx*dx+dy*dy)||0.001, nx=-dy/L, ny=dx/L;
+  var p1=[a[0]+nx*r1,a[1]+ny*r1], p2=[b[0]+nx*r2,b[1]+ny*r2], p3=[b[0]-nx*r2,b[1]-ny*r2], p4=[a[0]-nx*r1,a[1]-ny*r1];
+  return 'M'+fgPt(p1)+'L'+fgPt(p2)+'A'+fgR(r2)+' '+fgR(r2)+' 0 0 0 '+fgPt(p3)+'L'+fgPt(p4)+'A'+fgR(r1)+' '+fgR(r1)+' 0 0 0 '+fgPt(p1)+'Z';
+}
+function fgPath(d, cl){ return '<path d="'+d+'" class="'+cl+'"/>'; }
+function fgBraccio(A, cl){
+  var o=fgPath(fgCaps(A.s, A.e, 3.7, 2.9), cl);
+  if(A.av) return o+'<ellipse cx="'+fgR(A.e[0])+'" cy="'+fgR(A.e[1]+0.8)+'" rx="7" ry="2.9" class="'+cl+'"/>';
+  return o+fgPath(fgCaps(A.e, A.h, 2.9, 2.2), cl)+'<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="3.1" class="'+cl+'"/>';
+}
+function fgGamba(G, cl){
+  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), cl)+fgPath(fgCaps(G.k, G.a, 3.8, 2.5), cl)+fgPath(fgCaps(G.a, G.toe, 2.7, 1.7), cl);
+}
+/* punto della colonna (curva quadratica) a frazione s, con la normale verso la pancia */
+function fgSpina(P, s){
+  var mid=[(P.hip[0]+P.sh[0])/2, (P.hip[1]+P.sh[1])/2], C=fgSom(mid, P.back, P.sp), A=P.hip, B=P.sh;
+  var q=[(1-s)*(1-s)*A[0]+2*(1-s)*s*C[0]+s*s*B[0], (1-s)*(1-s)*A[1]+2*(1-s)*s*C[1]+s*s*B[1]];
+  var tx=2*(1-s)*(C[0]-A[0])+2*s*(B[0]-C[0]), ty=2*(1-s)*(C[1]-A[1])+2*s*(B[1]-C[1]), L=Math.sqrt(tx*tx+ty*ty)||1;
+  return {q:q, nf:[-ty/L, tx/L], ang:Math.atan2(ty, tx)*180/Math.PI};
+}
+var FG_TF=[[0,5.4,6.8],[0.3,4.8,5.4],[0.55,5.3,5.1],[0.8,6.6,5.8],[1,5.3,5.3]];   /* [s, davanti, dietro] */
+function fgBusto(P){
+  var dav=[], die=[];
+  FG_TF.forEach(function(r){ var k=fgSpina(P, r[0]); dav.push(fgSom(k.q, k.nf, r[1])); die.push(fgSom(k.q, k.nf, -r[2])); });
+  var rT=fgR((FG_TF[4][1]+FG_TF[4][2])/2), rB=fgR((FG_TF[0][1]+FG_TF[0][2])/2), d='M'+fgPt(dav[0]);
+  for(var i=1;i<dav.length;i++) d+='L'+fgPt(dav[i]);
+  d+='A'+rT+' '+rT+' 0 0 0 '+fgPt(die[die.length-1]);
+  for(i=die.length-2;i>=0;i--) d+='L'+fgPt(die[i]);
+  return d+'A'+rB+' '+rB+' 0 0 0 '+fgPt(dav[0])+'Z';
+}
+function fgBustoFronte(P){
+  var w=fgSpina(P, 0.45).q;
+  var pts=[fgSom(P.gambe.n.h, P.perp, 4.5), fgSom(w, P.perp, 9.5), fgSom(P.braccia.n.s, P.perp, 3.2),
+           fgSom(P.braccia.f.s, P.perp, -3.2), fgSom(w, P.perp, -9.5), fgSom(P.gambe.f.h, P.perp, -4.5)];
+  return 'M'+pts.map(fgPt).join('L')+'Z';
+}
+function fgTesta(P, p, cl){
+  var r=FL.hd*(p.hs||1), d=fgDir(P.t+(p.nk||0)), o='';
+  o+=fgPath(fgCaps(P.sh, fgSom(P.hc, d, -r*0.55), 2.7, 2.5), cl);
+  o+='<circle cx="'+fgR(P.hc[0])+'" cy="'+fgR(P.hc[1])+'" r="'+fgR(r)+'" class="'+cl+'"/>';
+  if(!P.front){ var f=[-d[1], d[0]], na=fgSom(fgSom(P.hc, f, r*0.9), d, -r*0.15);
+    o+='<circle cx="'+fgR(na[0])+'" cy="'+fgR(na[1])+'" r="'+fgR(r*0.32)+'" class="'+cl+'"/>'; }
   return o;
+}
+/* il corpo intero, nell'ordine giusto: lontano, busto, testa, vicino */
+function fgCorpo(P, p, def){
+  var fr=P.front, o='', db=(def&&def.db)||"";
+  var cf = fr ? "fg-b" : "fg-b fg-bf";
+  if(!fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
+  o+=fgGamba(P.gambe.f, cf)+fgBraccio(P.braccia.f, cf);
+  o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="fg-b fg-tf"/>' : fgPath(fgBusto(P), "fg-b");
+  o+=fgTesta(P, p, "fg-b");
+  if(fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
+  o+=fgGamba(P.gambe.n, "fg-b");
+  if(db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
+  o+=fgBraccio(P.braccia.n, "fg-b");
+  if(db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);
+  return o;
+}
+
+/* ---------- il muscolo che lavora ---------- */
+var MU={
+  "Floor Press manubri":["petto","tricipiti","deltoidi"], "Floor Press (volume)":["petto","tricipiti"],
+  "Push-up":["petto","tricipiti"], "Push-up piedi rialzati":["petto","deltoidi"], "Push-up piedi rialzati con banda":["petto","tricipiti"],
+  "Push-up stretti":["tricipiti","petto"], "Pike push-up":["deltoidi","tricipiti"],
+  "Rematore manubri":["dorso","bicipiti"], "Rematore manubri (volume)":["dorso","bicipiti"], "Band row seduto":["dorso","bicipiti"],
+  "Band row un braccio":["dorso","bicipiti"], "Rematore al telaio della porta":["dorso","bicipiti"], "Pullover manubrio":["dorso"], "Band pull-down":["dorso"],
+  "Shoulder Press manubri":["deltoidi","tricipiti"], "Shoulder press con banda":["deltoidi","tricipiti"],
+  "French Press":["tricipiti"], "Band tricep extension":["tricipiti"], "Overhead extension 1 braccio":["tricipiti"],
+  "Curl bicipiti manubri":["bicipiti"], "Hammer Curl":["bicipiti"], "Band curl bicipiti":["bicipiti"], "Hammer curl con banda":["bicipiti"], "Curl isometrico asciugamano":["bicipiti"],
+  "Alzate laterali":["deltoidi"], "Alzate laterali con banda":["deltoidi"],
+  "Face pull":["deltoidi","dorso"], "Reverse Fly":["deltoidi","dorso"], "Band pull-apart":["deltoidi","dorso"], "Y-T-W a busto inclinato":["deltoidi","dorso"],
+  "Box Squat":["quadricipiti","glutei"], "Box squat alla sedia 3s":["quadricipiti","glutei"], "Bulgarian Split Squat manubri":["quadricipiti","glutei"],
+  "Bulgarian split squat 3s":["quadricipiti","glutei"], "Affondi indietro manubri":["quadricipiti","glutei"], "Affondi indietro":["quadricipiti","glutei"],
+  "Calf raise monopodalico":["polpacci"], "Hip thrust con banda":["glutei","femorali"], "Hip thrust a una gamba":["glutei","femorali"], "Glute bridge":["glutei"],
+  "Split-stance RDL":["femorali","glutei"], "Hip hinge una gamba":["femorali","glutei"],
+  "Plank":["addome"], "Dead bug":["addome"], "Side plank":["obliqui"], "Bird-dog con pausa 3s":["glutei","addome"],
+  "Rotazioni toraciche":["dorso"], "Cat-cow":["lombari"]
+};
+var MU_NOME={petto:"petto", dorso:"dorso", deltoidi:"spalle", bicipiti:"bicipiti", tricipiti:"tricipiti", addome:"addome", obliqui:"obliqui",
+  lombari:"lombari", glutei:"glutei", quadricipiti:"quadricipiti", femorali:"femorali", polpacci:"polpacci"};
+function fgEll(c, rx, ry, ang, op){
+  return '<ellipse cx="'+fgR(c[0])+'" cy="'+fgR(c[1])+'" rx="'+fgR(rx)+'" ry="'+fgR(ry)+'" transform="rotate('+fgR(ang)+' '+fgR(c[0])+' '+fgR(c[1])+')" class="fg-mu" opacity="'+fgR(op)+'"/>';
+}
+function fgAngSeg(a,b){ return Math.atan2(b[1]-a[1], b[0]-a[0])*180/Math.PI; }
+function fgMezzo(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
+/* normale del segmento a-b dal lato verso cui si piega l'estremo c; se l'arto e' dritto, dal lato "riposo" */
+function fgPiega(a,b,c,riposo){
+  var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.sqrt(dx*dx+dy*dy)||1, n=[-dy/L, dx/L];
+  var m=fgMezzo(a,b,0.5), s=(c[0]-m[0])*n[0]+(c[1]-m[1])*n[1];
+  if(Math.abs(s)<2.5) s=n[0]*riposo[0]+n[1]*riposo[1];
+  return s>=0? n : [-n[0], -n[1]];
+}
+function fgMuscoli(P, mu, op){
+  var o="", fr=P.front;
+  (mu||[]).forEach(function(m){
+    var tronco=["petto","dorso","addome","obliqui","lombari","glutei"].indexOf(m)>=0;
+    (fr && !tronco ? ["n","f"] : ["n"]).forEach(function(l){
+      var B=P.braccia[l], G=P.gambe[l], k;
+      if(m==="petto"){ if(fr){ var c0=fgSpina(P,0.82); o+=fgEll(fgSom(c0.q,P.perp,5.5),5,3.6,c0.ang+90,op)+fgEll(fgSom(c0.q,P.perp,-5.5),5,3.6,c0.ang+90,op); }
+                       else { k=fgSpina(P,0.8); o+=fgEll(fgSom(k.q,k.nf,3.6),5.6,3.4,k.ang,op); } }
+      else if(m==="dorso"){ k=fgSpina(P,0.64); if(fr) o+=fgEll(fgSom(k.q,P.perp,7.5),3.4,7,k.ang+90,op*0.8)+fgEll(fgSom(k.q,P.perp,-7.5),3.4,7,k.ang+90,op*0.8);
+                            else o+=fgEll(fgSom(k.q,k.nf,-3.8),9.5,3.4,k.ang,op); }
+      else if(m==="addome"){ k=fgSpina(P,0.33); o+= fr ? fgEll(k.q,7,4.2,k.ang,op) : fgEll(fgSom(k.q,k.nf,3.1),6.4,2.8,k.ang,op); }
+      else if(m==="obliqui"){ k=fgSpina(P,0.42); o+=fgEll(k.q,8.5,3.8,k.ang,op); }
+      else if(m==="lombari"){ k=fgSpina(P,0.18); o+=fgEll(fgSom(k.q,k.nf,-3.6),5.4,2.8,k.ang,op); }
+      else if(m==="glutei"){ k=fgSpina(P,0.04); var gk=fgSom(fgSom(k.q,k.nf,-4.4),[P.gambe.n.k[0]-P.hip[0],P.gambe.n.k[1]-P.hip[1]],0.1);
+                             o+=fgEll(gk,5.8,4.8,k.ang,op); }
+      else if(m==="quadricipiti"){ var nq=fgPiega(G.h,G.k,G.a,P.back); o+=fgEll(fgSom(fgMezzo(G.h,G.k,0.5),nq,-2.8),9.5,3.3,fgAngSeg(G.h,G.k),op); }
+      else if(m==="femorali"){ var nh=fgPiega(G.h,G.k,G.a,P.back); o+=fgEll(fgSom(fgMezzo(G.h,G.k,0.5),nh,2.8),9,3,fgAngSeg(G.h,G.k),op); }
+      else if(m==="polpacci"){ var nt=fgPiega(G.k,G.a,G.toe,P.perp); o+=fgEll(fgSom(fgMezzo(G.k,G.a,0.35),nt,-2.4),7,2.7,fgAngSeg(G.k,G.a),op); }
+      else if(m==="deltoidi"){ o+=fgEll(fgMezzo(B.s,B.e,0.16),5,4.2,fgAngSeg(B.s,B.e),op); }
+      else if(m==="bicipiti" && !B.av){ var nb=fgPiega(B.s,B.e,B.h,P.perp); o+=fgEll(fgSom(fgMezzo(B.s,B.e,0.55),nb,1.9),5.8,2.4,fgAngSeg(B.s,B.e),op); }
+      else if(m==="tricipiti"){ var ntr=fgPiega(B.s,B.e,B.h,P.perp); o+=fgEll(fgSom(fgMezzo(B.s,B.e,0.55),ntr,-1.9),6,2.4,fgAngSeg(B.s,B.e),op); }
+    });
+  });
+  return o;
+}
+/* ombra a terra sotto i punti d'appoggio */
+function fgOmbra(P){
+  var xs=[];
+  [P.gambe.n.a, P.gambe.f.a, P.gambe.n.toe, P.gambe.f.toe, P.braccia.n.h, P.braccia.f.h, P.braccia.n.e, P.hip, P.sh, P.hc].forEach(function(q){ if(q[1]>FG_PAV-13) xs.push(q[0]); });
+  if(!xs.length) return "";
+  var a=Math.min.apply(null,xs), b=Math.max.apply(null,xs);
+  return '<ellipse cx="'+fgR((a+b)/2)+'" cy="'+(FG_PAV+0.5)+'" rx="'+fgR((b-a)/2+7)+'" ry="2.4" class="fg-ombra"/>';
+}
+/* freccia nel verso del movimento, sul punto che si muove */
+function fgFreccia(def, sec){
+  if(!def.tr) return "";
+  var a=fgPunto(fgPosa(fgAl(def, sec).p), def.tr), b=fgPunto(fgPosa(fgAl(def, sec+0.14).p), def.tr);
+  var vx=b[0]-a[0], vy=b[1]-a[1], L=Math.sqrt(vx*vx+vy*vy); if(L<0.5) return "";
+  var u=[vx/L, vy/L], n=[-u[1], u[0]], base=fgSom(a,u,7), tip=fgSom(a,u,13);
+  return '<path d="M'+fgPt(tip)+'L'+fgPt(fgSom(base,n,3.6))+'L'+fgPt(fgSom(base,n,-3.6))+'Z" class="fg-dir"/>';
+}
+/* miniatura "di lato" per gli esercizi visti di fronte: mostra l'inclinazione del busto */
+function fgInset(def, vb){
+  if(!def.inset || !vb) return "";
+  var Pi=fgPosa(def.inset.p), pts=[Pi.hc,Pi.sh,Pi.hip,Pi.gambe.n.a,Pi.gambe.n.toe,Pi.gambe.f.a,Pi.braccia.n.h,Pi.braccia.f.h,Pi.gambe.n.k];
+  var x0=Math.min.apply(null,pts.map(function(q){return q[0];}))-9, x1=Math.max.apply(null,pts.map(function(q){return q[0];}))+9;
+  var y0=Math.min.apply(null,pts.map(function(q){return q[1];}))-9, y1=FG_PAV+2;
+  var w=vb.w*0.26, k=w/(x1-x0), h=(y1-y0)*k, X=vb.x+3, Y=vb.y+3;
+  return '<g class="fg-inset"><rect x="'+fgR(X)+'" y="'+fgR(Y)+'" width="'+fgR(w)+'" height="'+fgR(h+vb.w*0.055)+'" rx="'+fgR(vb.w*0.02)+'" class="fg-insbg"/>'+
+    '<g transform="translate('+fgR(X)+' '+fgR(Y)+') scale('+k.toFixed(3)+') translate('+fgR(-x0)+' '+fgR(-y0)+')">'+
+    '<line x1="'+fgR(x0)+'" y1="'+FG_PAV+'" x2="'+fgR(x1)+'" y2="'+FG_PAV+'" class="fg-floor"/>'+fgCorpo(Pi, def.inset.p, {db:def.db})+'</g>'+
+    '<text x="'+fgR(X+w/2)+'" y="'+fgR(Y+h+vb.w*0.042)+'" text-anchor="middle" class="fg-instx" font-size="'+fgR(vb.w*0.044)+'">'+esc(def.inset.t||"di lato")+'</text></g>';
 }
 function fgDisegna(def, p, opt){
   opt=opt||{};
-  var P=fgPosa(p), fx=def.fx||"", o="", fr=P.front;
+  var P=fgPosa(p), o="", bande=def.band||[];
   o+='<line x1="-300" y1="'+FG_PAV+'" x2="520" y2="'+FG_PAV+'" class="fg-floor"/>';
   (def.props||[]).forEach(function(pr){ o+=fgProp(pr); });
+  o+=fgOmbra(P);
   if(opt.traccia) o+=opt.traccia;
-  var db=def.db||"", bande=def.band||[];
-  var lontano= fr ? "fg-body" : "fg-body fg-far";
-  if(!fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
-  o+=fgArto(P.gambe.f, lontano, fr && fx.indexOf("leg")>=0, true);
-  o+=fgArto(P.braccia.f, lontano, fr && fx.indexOf("arm")>=0, false);
-  /* busto: curva della colonna verso la schiena (sp > 0 = schiena arrotondata) */
-  var mid=[(P.hip[0]+P.sh[0])/2, (P.hip[1]+P.sh[1])/2], ctrl=fgSom(mid, P.back, P.sp);
-  var tcl="fg-body fg-trunk"+(fx.indexOf("trunk")>=0||fx.indexOf("core")>=0?" fg-hot":"");
-  if(fr){
-    o+=fgL(P.braccia.n.s, P.braccia.f.s, tcl, 9)+fgL(P.gambe.n.h, P.gambe.f.h, tcl, 9);
-  }
-  o+='<path d="M'+fgR(P.hip[0])+','+fgR(P.hip[1])+' Q'+fgR(ctrl[0])+','+fgR(ctrl[1])+' '+fgR(P.sh[0])+','+fgR(P.sh[1])+'" class="'+tcl+'" stroke-width="'+(fr?15:12)+'"/>';
+  o+=fgCorpo(P, p, def);
   if(P.br){ /* respiro: le costole si allargano */
     var rc=fgSom(fgSom(P.hip, P.u, FL.tr*0.62), P.perp, 2);
     o+='<ellipse cx="'+fgR(rc[0])+'" cy="'+fgR(rc[1])+'" rx="'+fgR(8+6*P.br)+'" ry="'+fgR(10+3*P.br)+'" class="fg-breath" opacity="'+fgR(0.25+0.6*P.br)+'"/>';
   }
-  o+=fgL(P.sh, P.hc, "fg-body", 5);
-  o+='<circle cx="'+fgR(P.hc[0])+'" cy="'+fgR(P.hc[1])+'" r="'+fgR(FL.hd*(p.hs||1))+'" class="fg-head"/>';
-  if(fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
-  o+=fgArto(P.gambe.n, "fg-body", fx.indexOf("leg")>=0, true);
-  if(db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
-  o+=fgArto(P.braccia.n, "fg-body", fx.indexOf("arm")>=0, false);
-  if(db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);
+  var op = opt.sec==null ? 0.8 : 0.62+0.3*Math.sin(opt.sec*Math.PI*1.4);
+  o+=fgMuscoli(P, def.mu, op);
   bande.forEach(function(b){
     var col=FG_BANDA[b.c]||FG_BANDA.verde;
-    if(b.ring){ var q=fgPunto(P, b.ring); o+='<ellipse cx="'+fgR(q[0])+'" cy="'+fgR(q[1])+'" rx="3.5" ry="6" fill="none" stroke="'+col+'" stroke-width="2.6"/>'; return; }
+    if(b.ring){ var q=fgPunto(P, b.ring); o+='<ellipse cx="'+fgR(q[0])+'" cy="'+fgR(q[1])+'" rx="3.8" ry="6.5" fill="none" stroke="'+col+'" stroke-width="2.8"/>'; return; }
     var pts=b.p.map(function(r){ return fgPunto(P, r); });
-    o+='<polyline points="'+pts.map(function(q){ return fgR(q[0])+","+fgR(q[1]); }).join(" ")+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>';
+    o+='<polyline points="'+pts.map(fgPt).join(" ")+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>';
   });
+  if(opt.sec!=null && opt.nome) o+=fgFreccia(def, opt.sec);
+  o+=fgInset(def, opt.vb);
   return o;
 }
 /* traiettoria del punto chiave lungo un ciclo intero, tratteggiata */
@@ -238,8 +377,8 @@ var FIG={
    {p:pPlank([40,118], 96, {abs:"nf", hn:[120,FG_ANK], hf:[117,FG_ANK], tn:40, tf:40}), h:0.3, d:2, c:"Banda sulle scapole, piedi sul rialzo: corpo in linea"},
    {p:pPlank([40,118], 117, {abs:"nf", hn:[120,FG_ANK], hf:[117,FG_ANK], tn:40, tf:40}), h:0.2, d:1, c:"Scendi in blocco, poi spingi: la banda tira di più in alto"}]},
  "French Press":{fx:"arm", db:"2", props:[SEDIA], k:[
-   {p:pSeduto({hn:[3,-36], hf:[1,-36]}), h:0.3, d:2, c:"Gomiti puntati avanti e fermi: il manubrio scende dietro la nuca"},
-   {p:pSeduto({hn:[-11,-8], hf:[-12,-8]}), h:0.2, d:1, c:"Distendi senza aprire i gomiti"}]},
+   {p:pSeduto({an:[172,176], af:[170,176]}), h:0.3, d:2, c:"Gomiti puntati avanti e fermi: il manubrio scende dietro la nuca"},
+   {p:pSeduto({an:[172,326], af:[170,326]}), h:0.2, d:1, c:"Distendi senza aprire i gomiti"}]},
  "Plank":{fx:"core", k:[
    {p:pPlank([37,128], 114, {abs:"nf", hn:[139,FG_ANK], hf:[136,FG_ANK]}), h:0.5, d:2.5, c:"Avambracci sotto le spalle, corpo in linea da testa a talloni"},
    {p:pPlank([37,128], 113.4, {abs:"nf", hn:[139,FG_ANK], hf:[136,FG_ANK]}), h:0.5, d:2.5, c:"Conta i secondi a voce: non puoi contare in apnea"}]},
@@ -255,11 +394,11 @@ var FIG={
    {p:pIn({hip:[118,76], abs:"n", hn:[176,46], hf:[-2,34], rf:"f", fn:[120,124], ff:[-12,34], tn:120, kb:{n:-1,f:1}}), h:0.2, d:1, c:"Sali sulla punta: una mano al muro solo per l'equilibrio"},
    {p:pIn({hip:[120,66], abs:"n", hn:[176,40], hf:[-2,34], rf:"f", fn:[121,114], ff:[-12,34], tn:50, kb:{n:-1,f:1}}), h:1, d:2, c:"Pausa di 1 secondo in alto, poi scendi lento sotto il bordo"}]},
  "Band tricep extension":{fx:"arm", band:[{c:"rossa", p:["an","bkh","hn"]}], k:[
-   {p:pIn({hn:[3,-36], hf:[1,-36]}), h:0.3, d:2, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
-   {p:pIn({hn:[-11,-8], hf:[-12,-8]}), h:0.2, d:1, c:"Distendi le braccia senza aprire i gomiti"}]},
+   {p:pIn({an:[172,326], af:[170,326]}), h:0.3, d:1, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
+   {p:pIn({an:[172,176], af:[170,176]}), h:0.2, d:2, c:"Distendi le braccia senza aprire i gomiti, ritorno in 2 secondi"}]},
  "Side plank":{fx:"core", k:[
-   {p:fgM(fgLinea([156,129], 112, -1), {vf:1, abs:"nf", hn:[81,FG_ANK], hf:[104,112], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Gomito sotto la spalla, bacino alto: linea retta spalla-caviglia"},
-   {p:fgM(fgLinea([156,129], 111.2, -1), {vf:1, abs:"nf", hn:[81,FG_ANK], hf:[104,111], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Sinistra 60 s, destra 40 s: la convessità lombare è a sinistra"}]},
+   {p:fgM(fgLinea([156,129], 112, -1), {vf:1, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[104,112], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Gomito sotto la spalla, bacino alto: linea retta spalla-caviglia"},
+   {p:fgM(fgLinea([156,129], 111.2, -1), {vf:1, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[104,111], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:-1}}), h:0.5, d:2.5, c:"Sinistra 60 s, destra 40 s: la convessità lombare è a sinistra"}]},
 
  /* ---------- giorno C ---------- */
  "Pullover manubrio":{fx:"trunk", db:"2", tr:"hn", k:[
@@ -269,8 +408,8 @@ var FIG={
    {p:pPlank([34,128], 97, {abs:"nf", hn:[114,FG_ANK], hf:[111,FG_ANK]}), h:0.3, d:2, c:"Mani poco più larghe delle spalle, glutei stretti"},
    {p:pPlank([34,128], 119, {abs:"nf", hn:[114,FG_ANK], hf:[111,FG_ANK]}), h:0.2, d:1, c:"Scendi in blocco con i gomiti a 45°, poi spingi via il pavimento"}]},
  "Curl bicipiti manubri":{fx:"arm", db:"nf", tr:"hn", k:[
-   {p:pIn(), h:0.2, d:1, c:"Gomiti accanto al busto, fermi"},
-   {p:pIn({hn:[9,3], hf:[7,3]}), h:0.3, d:2, c:"Scendi in 2 secondi: la discesa è metà dello stimolo"}]},
+   {p:pIn({an:[3,8], af:[2,8]}), h:0.2, d:1, c:"Gomiti accanto al busto, fermi"},
+   {p:pIn({an:[3,152], af:[2,150]}), h:0.3, d:2, c:"Scendi in 2 secondi: la discesa è metà dello stimolo"}]},
  "Alzate laterali":{fx:"arm", db:"nf", k:[
    {p:pFronte(), h:0.2, d:1.2, c:"Gomiti appena piegati e fissi"},
    {p:pFronte({hn:[33,3], hf:[-33,3]}), h:0.2, d:2, c:"Fino all'altezza delle spalle, non oltre. Le spalle non salgono"}]},
@@ -290,7 +429,7 @@ var FIG={
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:1.3, c:"Passo INDIETRO"},
    {p:pIn({hip:[103,109], t:176, fn:[118,FG_ANK], ff:[74,130], tf:40}), h:0.2, d:1, c:"Scendi con le ginocchia a 90°, poi spingi con la gamba davanti"},
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:0.7, c:"Torna su"}]},
- "Reverse Fly":{fx:"arm", db:"nf", k:[
+ "Reverse Fly":{fx:"arm", db:"nf", inset:{p:pPiegato({hn:[2,35], hf:[-1,35]}), t:"busto a 45°"}, k:[
    {p:pChino(), h:0.2, d:1.3, c:"Visto di fronte, busto a 45°: manubri che pendono"},
    {p:pChino({hn:[33,2], hf:[-33,2]}), h:0.5, d:2, c:"Apri fino all'altezza delle spalle stringendo le scapole. 6 kg è il tetto"}]},
 
@@ -311,16 +450,16 @@ var FIG={
    {p:pFronte({hn:[-6,7], hf:[6,7]}), h:0.2, d:1, c:"Braccia tese davanti al petto"},
    {p:pFronte({hn:[32,3], hf:[-32,3]}), h:0.4, d:3, c:"Apri fino a sfiorare il petto, ritorno lento in 3 secondi"}]},
  "Band curl bicipiti":{fx:"arm", band:[{c:"nera", p:["an","hn"]}], tr:"hn", k:[
-   {p:pIn(), h:0.2, d:1, c:"Banda sotto i piedi, gomiti fermi"},
-   {p:pIn({hn:[9,3], hf:[7,3]}), h:0.3, d:3, c:"Il ritorno è la parte importante: 3 secondi"}]},
+   {p:pIn({an:[3,8], af:[2,8]}), h:0.2, d:1, c:"Banda sotto i piedi, gomiti fermi"},
+   {p:pIn({an:[3,152], af:[2,150]}), h:0.3, d:3, c:"Il ritorno è la parte importante: 3 secondi"}]},
  "Dead bug":{fx:"core", k:[
    {p:pSupino({hn:[1,-36], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[22,-25]}), h:0.4, d:2, c:"Lombare schiacciata a terra, anche e ginocchia a 90°"},
    {p:pSupino({hn:[-34,-8], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[47,-7]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"},
    {p:pSupino({hn:[1,-36], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[22,-25]}), h:0.4, d:2, c:"Torna e cambia lato"},
    {p:pSupino({hn:[1,-36], hf:[-34,-8], rf:"nf", fn:[47,-7], ff:[22,-25]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"}]},
  "Overhead extension 1 braccio":{fx:"arm", db:"n", props:[SGABELLO], k:[
-   {p:pSeduto({hn:[3,-36], hf:[4,-17]}), h:0.3, d:3, c:"Seduto senza schienale: scendi dietro la testa in 3 secondi"},
-   {p:pSeduto({hn:[-11,-8], hf:[4,-17]}), h:0.2, d:1, c:"L'altra mano sostiene il gomito. Risali espirando"}]},
+   {p:pSeduto({an:[172,176], hf:[4,-17]}), h:0.3, d:3, c:"Seduto senza schienale: scendi dietro la testa in 3 secondi"},
+   {p:pSeduto({an:[172,326], hf:[4,-17]}), h:0.2, d:1, c:"L'altra mano sostiene il gomito. Risali espirando"}]},
 
  /* ---------- alternative a corpo libero e con bande ---------- */
  "Rematore al telaio della porta":{fx:"trunk", props:[{k:"porta", x:148}], k:[
@@ -333,12 +472,12 @@ var FIG={
    {p:pIn({hip:[108,85], hn:[30,6], hf:[28,6], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:0.3, d:3, c:"Braccia avanti per l'equilibrio: scendi in 3 secondi"},
    {p:pIn({hip:[96,99], t:146, hn:[30,6], hf:[28,6], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:1, d:1, c:"Sfiora la sedia, pausa 1 secondo, risali spingendo coi talloni"}]},
  "Curl isometrico asciugamano":{fx:"arm", band:[{c:"asciugamano", p:["an","hn"]}], k:[
-   {p:pIn({hn:[18,19], hf:[16,19]}), h:0.2, d:2.5, c:"Asciugamano sotto il piede, gomiti a 90° accanto al busto"},
-   {p:pIn({hn:[18,18], hf:[16,18]}), h:0.2, d:2.5, c:"Tira verso l'alto con tutta la forza e tieni 20-30 secondi respirando"}]},
+   {p:pIn({an:[2,92], af:[1,92]}), h:0.2, d:2.5, c:"Asciugamano sotto il piede, gomiti a 90° accanto al busto"},
+   {p:pIn({an:[2,96], af:[1,96]}), h:0.2, d:2.5, c:"Tira verso l'alto con tutta la forza e tieni 20-30 secondi respirando"}]},
  "Alzate laterali con banda":{fx:"arm", band:[{c:"gialla", p:["an","hn"]}, {c:"gialla", p:["af","hf"]}], k:[
    {p:pFronte(), h:0.2, d:1.2, c:"Banda sotto i piedi, gomiti appena piegati"},
    {p:pFronte({hn:[33,3], hf:[-33,3]}), h:0.3, d:2, c:"Fino all'altezza delle spalle, ritorno lento"}]},
- "Y-T-W a busto inclinato":{fx:"arm", k:[
+ "Y-T-W a busto inclinato":{fx:"arm", inset:{p:pPiegato({hn:[22,-24], hf:[20,-24]}), t:"busto a 45°"}, k:[
    {p:pChino({hn:[22,-27], hf:[-22,-27]}), h:0.8, d:1.2, c:"Y: braccia in alto a V, pollici in su"},
    {p:pChino({hn:[33,2], hf:[-33,2]}), h:0.8, d:1.2, c:"T: braccia aperte all'altezza delle spalle"},
    {p:pChino({hn:[12,-10], hf:[-12,-10]}), h:0.8, d:1.2, c:"W: gomiti indietro e in basso, scapole strette"}]},
@@ -371,6 +510,7 @@ FIG["Bulgarian split squat 3s"]=fgCopia("Bulgarian Split Squat manubri", {db:"",
   {p:fgM(FIG["Bulgarian Split Squat manubri"].k[0].p, {hn:[8,26], hf:[6,26]}), h:0.3, d:3, c:"Senza manubri lo stimolo viene dalla durata: 3 secondi in discesa"},
   {p:fgM(FIG["Bulgarian Split Squat manubri"].k[1].p, {hn:[8,26], hf:[6,26]}), h:0.3, d:1, c:"Il lato che scende meno decide la profondità di entrambi"}]});
 FIG["Affondi indietro"]=fgCopia("Affondi indietro manubri", {db:"", k:FIG["Affondi indietro manubri"].k.map(function(k){ return fgM(k, {p:fgM(k.p, {hn:[8,26], hf:[6,26]})}); })});
+Object.keys(FIG).forEach(function(n){ FIG[n].mu = MU[n] || FIG[n].mu || []; });
 var FIG_ALIAS={"Reverse Fly manubri":"Reverse Fly", "Reverse Fly leggero":"Reverse Fly", "Rematore un braccio manubrio":"Rematore manubri",
   "Calf raise":"Calf raise monopodalico", "Calf raise (BW)":"Calf raise monopodalico", "Bulgarian split squat (BW)":"Bulgarian split squat 3s",
   "Face pull con banda":"Face pull", "Push-up piedi rialzati o deficit":"Push-up piedi rialzati", "Isometria push-up":"Push-up",
@@ -400,6 +540,7 @@ function fgInquadra(n){
   });
   (def.band||[]).forEach(function(b){ (b.p||[]).forEach(function(r){ if(Array.isArray(r)) add(r); }); });
   y1=Math.max(y1, FG_PAV)+4; x0-=9; x1+=9; y0-=7;
+  if(def.inset) x0-=(x1-x0)*0.42;   /* spazio a sinistra per la miniatura di lato */
   var w=x1-x0, h=y1-y0, R=220/150;
   if(w/h<R){ var nw=h*R; x0-=(nw-w)/2; w=nw; } else { var nh=w/R; y0-=(nh-h); h=nh; }
   if(w<128){ var cx=x0+w/2; w=128; h=w/R; x0=cx-w/2; y0=y1-h; }
@@ -413,12 +554,21 @@ function figSVG(n, sec, opt){
   opt=opt||{};
   var fr=(sec==null)? fgAl(def, (def.k[0].h||0)+(def.k[0].d||1)*0.85) : fgAl(def, sec);
   var nome=FIG[n]? n : FIG_ALIAS[n];
-  return '<svg viewBox="'+fgVB(n)+'" class="fg'+(opt.cls?" "+opt.cls:"")+'" role="img" aria-label="'+esc(n)+'">'+
-    fgDisegna(def, fr.p, {traccia: opt.traccia===false? "" : fgTraccia(nome, def)})+'</svg>';
+  return '<svg viewBox="'+fgVB(n)+'" class="fg'+(opt.cls?" "+opt.cls:"")+'" role="img" aria-label="'+esc(n)+'">'+FG_DEFS+
+    fgDisegna(def, fr.p, {traccia: opt.traccia===false? "" : fgTraccia(nome, def), vb:fgInquadra(n)})+'</svg>';
 }
+function figMuscoli(n){ var d=fgDef(n); return d && d.mu ? d.mu.map(function(m){ return MU_NOME[m]||m; }) : []; }
 function figDidascalia(n, sec){ var def=fgDef(n); return def? fgAl(def, sec).c : ""; }
 
 /* ---------- animazione: un solo ciclo per tutte le figure visibili ---------- */
+var FG_DEFS='<defs><radialGradient id="fgMu"><stop offset="0" stop-color="#FF7A5C" stop-opacity="1"/><stop offset=".6" stop-color="#FF6B57" stop-opacity=".7"/><stop offset="1" stop-color="#FF6B57" stop-opacity="0"/></radialGradient></defs>';
+/* contatore dei secondi nelle fasi lente e nelle pause */
+function fgTempo(fr){
+  if(!fr || fr.dur==null) return "";
+  if(fr.fase==="d" && fr.dur>=1.9) return Math.min(Math.floor(fr.el)+1, Math.round(fr.dur))+"″ di "+Math.round(fr.dur);
+  if(fr.fase==="h" && fr.dur>=0.9) return "fermo "+Math.min(Math.floor(fr.el)+1, Math.round(fr.dur))+"″";
+  return "";
+}
 var Fig={ raf:null, t0:0, last:0, vel:1, pausa:false,
   mount:function(){
     var els=document.querySelectorAll(".figbox[data-fig]");
@@ -430,7 +580,8 @@ var Fig={ raf:null, t0:0, last:0, vel:1, pausa:false,
   frame:function(el, sec){
     var n=el.dataset.fig, def=fgDef(n); if(!def) return;
     var fr=(sec==null)? fgAl(def, (def.k[0].h||0)+(def.k[0].d||1)*0.85) : fgAl(def, sec);
-    var g=el.querySelector("g.fgc"); if(g) g.innerHTML=fgDisegna(def, fr.p, {traccia:fgTraccia(FIG[n]?n:FIG_ALIAS[n], def)});
+    var g=el.querySelector("g.fgc"); if(g) g.innerHTML=fgDisegna(def, fr.p, {traccia:fgTraccia(fgNome(n), def), vb:fgInquadra(n), sec:sec, nome:n});
+    var tm=el.querySelector(".figtempo"); if(tm){ var tt=sec==null? "" : fgTempo(fr); if(tm.textContent!==tt) tm.textContent=tt; }
     var c=el.parentNode && el.parentNode.querySelector(".figcap");
     if(c && c.textContent!==fr.c) c.textContent=fr.c;
     var b=el.parentNode && el.parentNode.querySelector(".figbar i");
@@ -457,8 +608,8 @@ function figBox(n, opt){
   opt=opt||{};
   if(!figHas(n)) return "";
   return '<div class="figwrap'+(opt.cls?" "+opt.cls:"")+'">'+
-    '<div class="figbox" data-fig="'+esc(n)+'"><svg viewBox="'+fgVB(n)+'" class="fg" role="img" aria-label="'+esc(n)+'"><g class="fgc">'+
-    fgDisegna(fgDef(n), fgAl(fgDef(n), 0).p, {})+'</g></svg></div>'+
+    '<div class="figbox" data-fig="'+esc(n)+'"><svg viewBox="'+fgVB(n)+'" class="fg" role="img" aria-label="'+esc(n)+'">'+FG_DEFS+'<g class="fgc">'+
+    fgDisegna(fgDef(n), fgAl(fgDef(n), 0).p, {vb:fgInquadra(n)})+'</g></svg><div class="figtempo"></div></div>'+
     (opt.cap===false? "" : '<div class="figbar"><i></i></div><div class="figcap">'+esc(figDidascalia(n,0))+'</div>')+'</div>';
 }
 /* miniatura ferma, per elenchi e anteprime */

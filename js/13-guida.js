@@ -52,6 +52,8 @@ function guideSheet(n, tip, giorno){
   if(EX[n]) h+=chipsEsercizio(n);
   if(figHas(n)){
     h+=figBox(n, {cls:"grande"});
+    var mus=figMuscoli(n);
+    if(mus.length) h+='<div class="mulegenda"><i></i>Lavorano: '+esc(mus.join(" · "))+'<span class="xs mut" style="margin-left:auto">↗ verso del movimento</span></div>';
     h+='<div class="figctl"><button class="btn sm ghost" data-a="figvel" data-v="0.5">Lento</button>'+
        '<button class="btn sm ghost" data-a="figvel" data-v="1">Normale</button>'+
        '<button class="btn sm ghost" data-a="figpausa">Pausa</button></div>';
