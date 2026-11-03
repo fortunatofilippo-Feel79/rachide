@@ -22,6 +22,11 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="ics"){ download("rachide-promemoria.ics", icsPromemoria(), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
+  if(a==="suoni"){ S.suoni=!suoniOn(); cfgTocca("suoni"); save(); render(); if(S.suoni) setTimeout(function(){ suono("serie"); }, 50); return; }
+  if(a==="silenz"){ S.suoniSilenzioso=(S.suoniSilenzioso===false); cfgTocca("suoni"); save(); render(); return; }
+  if(a==="vol"){ S.volume=v; cfgTocca("suoni"); save(); render(); suono("fine"); return; }
+  if(a==="suonoprova"){ provaSuoni(); return; }
   if(a==="ag"){ agendaApri(v, el.dataset.m); return; }
   if(a==="saveprof"){ saveProfilo(); return; }
   if(a==="profilo"){ formProfilo(); return; }
@@ -166,6 +171,7 @@ document.addEventListener("input", function(ev){
   var t=ev.target;
   if(t.id==="cibTxt"){ cibSuggerisci(t.value, t.dataset.m); return; }
   if(t.id==="libq"){ libFiltra(t.value); return; }
+  if(t.dataset && t.dataset.o){ salvaOrario(t.dataset.o, t.value); return; }
   if(t.dataset.note!==undefined && S.draft){ S.draft.ex[+t.dataset.note].note=t.value; save(); }
 });
 

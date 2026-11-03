@@ -693,6 +693,9 @@ function viewCoach(){
   h+='<button class="btn pri" data-a="brief">Copia il briefing per il coach</button>';
   h+='<div class="xs mut" style="margin:8px 0 16px">Facoltativo: Claude legge da solo il foglio, anche le schede App_Piano e App_Stato. Il briefing serve se vuoi incollare un riassunto in chat.</div>';
 
+  /* quando registrare: promemoria nel calendario, suoni */
+  h+=cardPromemoria();
+
   /* congelamento carichi */
   var fz=frozen();
   h+='<div class="eyebrow" style="margin:18px 0 6px">Carichi</div>'+
