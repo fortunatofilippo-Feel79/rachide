@@ -21,6 +21,10 @@ document.addEventListener("click", function(ev){
   if(a==="picco"){ var wk=weekOf(today()); S.picco=S.picco||{}; if(S.picco[wk]) delete S.picco[wk]; else S.picco[wk]=true; cfgTocca("picco"); save(); render();
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
+  if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="ag"){ agendaApri(v, el.dataset.m); return; }
+  if(a==="saveprof"){ saveProfilo(); return; }
+  if(a==="profilo"){ formProfilo(); return; }
   if(a==="wgo"){ warmGuidato(0); return; }
   if(a==="wgnext"){ warmFatto(WG? WG.i : 0); warmAvanti(); return; }
   if(a==="wgprev"){ if(WG && WG.i>0){ WG={i:WG.i-1, t0:Date.now(), pausa:0, fermo:null}; warmPasso(); } return; }
@@ -70,7 +74,7 @@ document.addEventListener("click", function(ev){
   if(a==="unfreeze"){ S.freeze=null; save(); render(); toast("Congelamento rimosso"); return; }
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
-  if(a==="ben"){ formBen(el.dataset.d||null); return; }
+  if(a==="ben"){ formBen(el.dataset.d||null, false, el.dataset.m||undefined); return; }
   if(a==="benpaste"){ benPaste(); return; }
   if(a==="chiusw"){ formChiusura(); return; }
   if(a==="savechiusw"){ saveChiusura(); return; }
@@ -149,7 +153,7 @@ document.addEventListener("click", function(ev){
   if(gg && gg.classList.contains("pill")){ gg.classList.toggle("on"); return; }
   var sdp=ev.target.closest("[data-sd]");
   if(sdp){ var cw=document.getElementById("bCittaW"); if(cw) cw.style.display = sdp.dataset.sd==="Fuori" ? "block" : "none"; }
-  var keys=["en","sig","r","c","p","x","q","s","st","me","sd","mo"];
+  var keys=["en","sig","r","c","p","x","q","s","st","me","sd","mo","dl","do"];
   for(var i=0;i<keys.length;i++){
     var b=ev.target.closest("[data-"+keys[i]+"]");
     if(b && b.classList.contains("pill")){
@@ -323,7 +327,9 @@ function closeSession(){
     '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
     '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
       [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
-    '<label class="fld"><span class="eyebrow">Segnale articolare</span><div class="pills" id="fSig">'+
+    '<label class="fld"><span class="eyebrow">Spalla sinistra durante la seduta · il massimo, 0-10</span>'+pillScala("fDol","do",10,null)+'</label>'+
+    '<div class="xs mut" style="margin-top:4px">Fino a 5 va bene se domattina è rientrato (pain-monitoring model). Sopra 5 ferma le salite.</div>'+
+    '<label class="fld"><span class="eyebrow">Altro segnale articolare</span><div class="pills" id="fSig">'+
       '<button class="pill on" data-sig="0">No</button><button class="pill" data-sig="1">Sì</button></div></label>'+
     '<label class="fld"><span class="eyebrow">Note</span><textarea id="fNote" placeholder="Cosa è successo oggi"></textarea></label>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savesess">Salva</button>'+
@@ -333,7 +339,8 @@ async function commitSession(){
   var d=S.draft, p=PLAN[d.day];
   var de=document.getElementById("fDate"); if(de){ var nd=fromIso(de.value); if(/^\d{2}\/\d{2}\/\d{4}$/.test(nd)) d.date=nd; }
   var w=weekOf(d.date);
-  var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on");
+  var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on"), dl=document.querySelector("#fDol .pill.on");
+  var dol=dl? +dl.dataset.do : null;
   d.ex.forEach(function(e,i){
     var def=e.def||p.ex[i]; if(!e.sets.length) return;
     if(def.u){
@@ -352,9 +359,10 @@ async function commitSession(){
   S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:(lu==="casa"? p.sede : "Trasferta"),
     mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.ess?"Essenziale":(lu==="corpo"?"Corpo libero":((lu==="bande"||p.sede!=="Casa")?"Bande":"Pesi"))))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
-    warm:d.warm.every(Boolean), sig: sg? sg.dataset.sig==="1":false,
+    warm:d.warm.every(Boolean), sig: (sg? sg.dataset.sig==="1":false) || (dol!=null && dol>5), dol:dol,
     note:document.getElementById("fNote").value});
   S.draft=null; stopRest(); hold=null; WG=null; var okS=await save(); closeSheet(); V="prog"; window._sy=0; render(); suono("salvata");
+  if(dol!=null && dol>5) setTimeout(function(){ toast("Spalla a "+dol+"/10: annotato. Domattina segna com'è: se non è rientrata, niente salite"); }, 2600);
   if(SYNC.on()){
     var sent=await doPush(false);
     toast(sent? "Sessione salvata sul foglio" : "Foglio non raggiunto: usa Coach → Invia tutto");
@@ -389,18 +397,30 @@ async function saveMis(){
     bic:g("m_bic"), coscia:g("m_coscia"), vita:g("m_vita"), note:document.getElementById("m_note").value});
   var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Misure salvate":"NON salvate: il dispositivo rifiuta la scrittura");
 }
-function formBen(date, isAdd){
+/* Benessere in due momenti, ognuno con i suoi campi:
+   mattina (al risveglio, da Zepp): HRV, FC, readiness, sonno, peso, dove hai dormito, alcol, spalla
+   sera (prima di dormire): reflusso, camminate, respirazione, stress, testa, note.
+   Senza momento (correzione di un giorno passato) si vedono tutti. Ogni modulo
+   salva solo i campi che mostra: gli altri restano come sono. */
+function pillScala(id, key, max, sel, da){
+  var h='<div class="pills scala" id="'+id+'">';
+  for(var v=(da||0); v<=max; v++) h+='<button class="pill '+(sel===v?"on":"")+'" data-'+key+'="'+v+'">'+v+'</button>';
+  return h+'</div>';
+}
+function formBen(date, isAdd, momento){
   var dt=date||today(), editDate = isAdd || dt!==today();
   var b = isAdd ? {} : (S.ben.filter(x=>x.date===dt)[0]||{});
   var ie = benIeri(dt) || {};
   var hi=function(v){ return (v===null||v===undefined||v==="")? "" : '<span class="hint">ieri '+esc(v)+'</span>'; };
   var ph=function(v){ return (v===null||v===undefined||v==="")? "" : ' placeholder="ieri '+esc(v)+'"'; };
   var sede = b.sede || ie.sede || "Casa";
-  var titolo = isAdd ? "Aggiungi un giorno" : (dt!==today()? "Modifica · "+dt : dt);
-  sheet('<div class="eyebrow">Benessere</div><h2 style="margin:4px 0 10px">'+titolo+'</h2>'+
+  var mat = momento!=="sera", ser = momento!=="mattina";
+  var titolo = isAdd ? "Aggiungi un giorno" : (dt!==today()? "Modifica · "+dt : (momento==="mattina"?"Mattino · ":momento==="sera"?"Sera · ":"")+dt);
+  var h='<div class="eyebrow">Benessere'+(momento? ' · '+(mat?"al risveglio, 1 minuto":"prima di dormire, 30 secondi") : '')+'</div><h2 style="margin:4px 0 10px">'+titolo+'</h2>'+
     (isAdd?'<div class="sm mut" style="margin-bottom:8px">Un giorno saltato: scegli la data e compila. È un dato nuovo, si aggiunge al foglio senza problemi.</div>':"")+
-    (editDate?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">')+
-    '<div class="between" style="margin-top:6px"><div class="eyebrow glow">Da Zepp</div>'+
+    (editDate?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">');
+  if(mat){
+    h+='<div class="between" style="margin-top:6px"><div class="eyebrow glow">Da Zepp</div>'+
       '<button class="btn sm ghost" data-a="benpaste">Incolla da Salute</button></div>'+
     '<div class="grid3">'+
       '<label class="fld"><span class="eyebrow">HRV notte</span><input type="number" inputmode="numeric" id="bHrv" value="'+(b.hrv||"")+'"'+ph(ie.hrv)+'></label>'+
@@ -413,40 +433,48 @@ function formBen(date, isAdd){
     '<label class="fld"><span class="eyebrow">Dove hai dormito</span><div class="pills" id="bSede">'+
       '<button class="pill '+(sede!=="Fuori"?"on":"")+'" data-sd="Casa">Casa</button><button class="pill '+(sede==="Fuori"?"on":"")+'" data-sd="Fuori">Fuori casa</button></div></label>'+
     '<div id="bCittaW" style="display:'+(sede==="Fuori"?"block":"none")+'"><input type="text" id="bCitta" placeholder="Dove (es. Parma)" value="'+esc(b.citta||(sede==="Fuori"?(ie.citta||""):""))+'"></div>'+
-    '<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato'+hi(ie.refl)+'</span><div class="pills" id="bRefl">'+
+    '<label class="fld"><span class="eyebrow">Alcol ieri sera</span><div class="pills" id="bAlc">'+
+      '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
+    '<label class="fld"><span class="eyebrow">Spalla sinistra stamattina · 0 niente · 10 massimo'+hi(ie.dolm)+'</span>'+pillScala("bDol","dl",10,b.dolm)+'</label>';
+  }
+  if(ser){
+    h+='<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato'+hi(ie.refl)+'</span><div class="pills" id="bRefl">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.refl===v?"on":"")+'" data-r="'+v+'">'+v+'</button>').join("")+'</div></label>'+
-    '<label class="fld"><span class="eyebrow">Camminate post-pasto · target 2'+hi(ie.camm)+'</span><div class="pills" id="bCam">'+
+    '<label class="fld"><span class="eyebrow">Camminate dopo i pasti · bersaglio 2'+hi(ie.camm)+'</span><div class="pills" id="bCam">'+
       [0,1,2].map(v=>'<button class="pill '+(b.camm===v?"on":"")+'" data-c="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<label class="fld"><span class="eyebrow">Respirazione 4-7</span><div class="pills" id="bResp">'+
       '<button class="pill '+(b.resp?"":"on")+'" data-p="0">No</button><button class="pill '+(b.resp?"on":"")+'" data-p="1">Sì</button></div></label>'+
-    '<label class="fld"><span class="eyebrow">Alcol sera precedente</span><div class="pills" id="bAlc">'+
-      '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
     '<label class="fld"><span class="eyebrow">Stress · 0 nessuno · 3 marcato'+hi(ie.stress)+'</span><div class="pills" id="bStr">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.stress===v?"on":"")+'" data-st="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<label class="fld"><span class="eyebrow">Testa · 1 vuoto · 5 lucido'+hi(ie.mente)+'</span><div class="pills" id="bMen">'+
       [1,2,3,4,5].map(v=>'<button class="pill '+(b.mente===v?"on":"")+'" data-me="'+v+'">'+v+'</button>').join("")+'</div></label>'+
-    '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>'+
-    ((!isAdd && dt!==today())?verWarn():"")+
+    '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>';
+  }
+  h+=((!isAdd && dt!==today())?verWarn():"")+
     '<button class="btn pri" style="margin-top:14px" data-a="saveben"'+((!isAdd && dt!==today())?' data-d="'+esc(dt)+'"':'')+'>Salva</button>'+
     ((!isAdd && dt!==today())?'<button class="btn ghost" style="margin-top:8px" data-a="bendel" data-d="'+esc(dt)+'">Cancella questo giorno</button>':"")+
-    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
+    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>';
+  sheet(h);
 }
 async function saveBen(origDate){
-  var pick=(sel,at)=>{ var e=document.querySelector(sel+" .pill.on"); return e?+e.dataset[at]:null; };
-  var g=id=>{ var v=document.getElementById(id).value; return v===""?null:+v; };
+  var c=function(sel){ return !!document.querySelector(sel); };
+  var pick=function(sel,at,prev){ if(!c(sel)) return prev; var e=document.querySelector(sel+" .pill.on"); return e?+e.dataset[at]:null; };
+  var g=function(id,prev){ var el=document.getElementById(id); if(!el) return prev; var v=el.value; return v===""?null:+String(v).replace(",","."); };
   var de=document.getElementById("bDate"), dt=de? fromIso(de.value) : today();
   if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dt)){ toast("Data non valida"); return; }
-  var prev=S.ben.filter(function(x){ return x.date===dt; })[0] || {};
-  var rec={date:dt, w:weekOf(dt), refl:pick("#bRefl","r"), camm:pick("#bCam","c"),
-    resp:pick("#bResp","p")===1, alc:pick("#bAlc","x")===1, hrv:g("bHrv"), rhr:g("bRhr"),
-    read:g("bRead"), sonno:g("bSonno"), peso:g("bPeso"),
-    stress:pick("#bStr","st"), mente:pick("#bMen","me"),
+  var prev=S.ben.filter(function(x){ return x.date===dt; })[0] || (origDate? S.ben.filter(function(x){ return x.date===origDate; })[0] : null) || {};
+  var sedeEl=document.querySelector("#bSede .pill.on"), cit=document.getElementById("bCitta"), nt=document.getElementById("bNote");
+  var rec=Object.assign({}, prev, {date:dt, w:weekOf(dt),
+    refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
+    resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
+    hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
+    sonno:g("bSonno",prev.sonno==null?null:prev.sonno), peso:g("bPeso",prev.peso==null?null:prev.peso),
+    stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
+    dolm:pick("#bDol","dl",prev.dolm==null?null:prev.dolm),
     passi:(prev.passi===undefined?null:prev.passi), ipo:(prev.ipo===undefined?null:prev.ipo),
-    cibP:prev.cibP, cibC:prev.cibC, cibG:prev.cibG, cibJ:prev.cibJ,
-    sede:(function(){ var e=document.querySelector("#bSede .pill.on"); return e? e.dataset.sd : (prev.sede||""); })(),
-    citta:(function(){ var e=document.querySelector("#bSede .pill.on"), c=document.getElementById("bCitta");
-      return (e && e.dataset.sd==="Fuori" && c)? c.value.trim() : ""; })(),
-    note:document.getElementById("bNote").value};
+    sede: c("#bSede")? (sedeEl? sedeEl.dataset.sd : (prev.sede||"")) : (prev.sede||""),
+    citta: c("#bSede")? ((sedeEl && sedeEl.dataset.sd==="Fuori" && cit)? cit.value.trim() : "") : (prev.citta||""),
+    note: nt? nt.value : (prev.note||"")});
   var avv=controlloBen(rec);
   if(avv.length && !confirm("Valori insoliti:\n- "+avv.join("\n- ")+"\n\nSalvo lo stesso?")) return;
   var delDate = (origDate && origDate!==dt) ? origDate : null; /* data cambiata: la vecchia riga va rimossa */

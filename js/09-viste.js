@@ -378,6 +378,9 @@ function viewProg(){
        ((last.duro&&(last.duro.S||last.duro.D))?"var(--amb)":"inherit")+'">'+(duroTxt(last.duro)||"–")+'</div></div>'+
      '</div></div>';
 
+  /* cruscotto dei KPI: definizioni, bersagli e fonti in un posto solo */
+  h+=cardCruscotto();
+
   /* tonnellaggio */
   var maxT=Math.max.apply(null,ks.map(function(k){return k.ton||0;}))||1;
   h+='<div class="card"><div class="eyebrow">Tonnellaggio \u00b7 ultime '+ks.length+' settimane</div>';
@@ -404,12 +407,12 @@ function viewProg(){
         '<div class="zn" style="left:'+r1(t[0]/max*100)+'%;width:'+r1((t[1]-t[0])/max*100)+'%"></div>'+
         '<div class="fl" style="width:'+r1(Math.min(100,v/max*100))+'%;background:'+col+'"></div>'+
       '</div>'+
-      '<div class="vl" style="color:'+col+'">'+v+' <span>/'+t[0]+'\u2013'+t[1]+'</span>'+
+      '<div class="vl" style="color:'+col+'">'+dec(v)+' <span>/'+t[0]+'\u2013'+t[1]+'</span>'+
         (dl?'<span style="color:var(--dim)"> '+dl+'</span>':'')+'</div>'+
     '</div>';
   });
-  h+='<div class="xs mut" style="margin-top:12px">Fascia verde = target. La freccia confronta con la settimana '+(prev?prev.w:"precedente")+'. '+
-     'Un esercizio unilaterale vale una serie, non due.</div></div>';
+  h+='<div class="xs mut" style="margin-top:12px">Fascia verde = 10-20 serie (core 6-12). Le serie indirette valgono metà: la panca conta anche per tricipiti e spalle, il rematore per i bicipiti. '+
+     'La freccia confronta con la settimana '+(prev?prev.w:"precedente")+'. Un esercizio unilaterale vale una serie, non due.</div></div>';
 
   /* la spinta, in Progressi come striscia: il dettaglio vive in Corpo */
   if(slp.ok){
@@ -485,8 +488,10 @@ function viewCorpo(){
      '<button class="btn sm '+(gap>=14?"amb":"ghost")+'" data-a="mis">'+(gap>=14?"Da fare":"Aggiungi")+'</button></div>';
   if(lastM){
     h+='<div class="grid3" style="margin-top:10px">'+
-      mini("Peso",(lastM.peso||"–")+" kg")+mini("Vita/Torace", lastM.vita&&lastM.torace?(lastM.vita/lastM.torace).toFixed(3):"–")+
-      mini("Ultima", ago(lastM.date))+'</div>';
+      mini("Peso",(lastM.peso||"–")+" kg")+
+      mini("Vita/altezza", (lastM.vita&&S.profilo&&S.profilo.altezza)? '<span style="color:'+((lastM.vita/S.profilo.altezza)<0.5?"var(--ok)":"var(--amb)")+'">'+dec((lastM.vita/S.profilo.altezza).toFixed(3))+'</span>' : '<button data-a="profilo" style="color:var(--glow);font-size:13px;padding:0">altezza?</button>')+
+      mini("Vita/Torace", lastM.vita&&lastM.torace?(lastM.vita/lastM.torace).toFixed(3):"–")+'</div>';
+    h+='<div class="xs mut" style="margin-top:6px">Ultima '+ago(lastM.date)+'. Vita/altezza sotto 0,5 = nessun rischio aggiunto (NICE).</div>';
     h+='<div class="xs mut" style="margin-top:8px">Al mattino a digiuno, dopo il bagno, stesso metro. Torace a fine espirazione normale.</div>';
   }
   h+='</div>';
@@ -515,11 +520,12 @@ function viewCorpo(){
   h+='</div>';
 
   var td=today(), b=S.ben.filter(x=>x.date===td)[0];
-  h+='<div class="card"><div class="between"><div class="eyebrow">Benessere di oggi</div>'+
-     '<button class="btn sm '+(b?"ghost":"amb")+'" data-a="ben">'+(b?"Modifica":"30 secondi")+'</button></div>';
+  h+='<div class="card"><div class="eyebrow">Benessere di oggi</div>'+
+     '<div class="grid2" style="margin-top:8px"><button class="btn sm '+(mattinaFatta(b)?"ghost":"amb")+'" data-a="ben" data-m="mattina">'+(mattinaFatta(b)?"✓ ":"")+'Mattino · 1′</button>'+
+     '<button class="btn sm '+(seraFatta(b)?"ghost":"")+'" data-a="ben" data-m="sera">'+(seraFatta(b)?"✓ ":"")+'Sera · 30″</button></div>';
   if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl==null?"–":b.refl)+' · camminate '+(b.camm==null?"–":b.camm)+
     ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
-  else h+='<div class="xs mut" style="margin-top:8px">La sera, prima di dormire, tutto insieme.</div>';
+  else h+='<div class="xs mut" style="margin-top:8px">Al risveglio i numeri di Zepp, la sera reflusso e stress. Due momenti brevi invece di uno lungo.</div>';
   if(b && b.sede==="Fuori") h+='<div class="xs" style="margin-top:4px;color:var(--amb)">Notte fuori casa'+(b.citta?' · '+esc(b.citta):'')+'</div>';
   var cf=casaFuori();
   h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+dec(r1(cf.sc))+' h</b> contro fuori <b>'+dec(r1(cf.sf))+' h</b>'+
@@ -577,10 +583,10 @@ function viewCorpo(){
   }
   h+='</div>';
 
-  var w=weekOf(today()), due=[31,35,39,43].indexOf(w)>=0;
-  h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · settimane 31 · 35 · 39 · 43</div>'+
+  var w=weekOf(today()), due=simDue(), prossima=w<31? 31 : w+((4-((w-31)%4))%4 || (due?0:4));
+  h+='<div class="card"><div class="between"><div class="eyebrow '+(due?"amb":"")+'">Check simmetria · ogni 4 settimane'+(due?"":" · prossima: settimana "+prossima)+'</div>'+
      (due?'<button class="btn sm amb" data-a="sim">Compila</button>':"")+'</div>';
-  h+='<div class="xs mut" style="margin-top:8px">Quattro domande, quattro volte l\'anno. Floor Press nel giorno A, Box Squat nel B, RDL nel D, bird-dog nel riscaldamento.</div>';
+  h+='<div class="xs mut" style="margin-top:8px">Quattro domande ogni quattro settimane (dalla 31). Floor Press nel giorno A, Box Squat nel B, RDL nel D, bird-dog nel riscaldamento.</div>';
   var uSim=ultimoValido(S.sim);
   if(uSim) h+='<div class="sm" style="margin-top:9px">Ultimo: '+esc(uSim.date)+'</div>';
   h+='</div>';
@@ -793,5 +799,6 @@ function render(){
   app.innerHTML = V==="oggi"?viewOggi() : V==="es"?viewEsercizi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
   nav();
   Fig.mount();
+  aggiornaBadge();
   window.scrollTo(0, window._sy||0);
 }

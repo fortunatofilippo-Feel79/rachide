@@ -428,3 +428,76 @@ var G = {
  e:"Ti pieghi indietro per aiutarti. Le spalle salgono verso le orecchie.",
  c:"Busto fermo, pensa «gomiti nelle tasche posteriori». Ritorno in 2 secondi."}
 };
+
+/* ============================================================
+   KPI DI RIFERIMENTO — una sola definizione per app, foglio e coach
+   id: chiave stabile (colonna in App_KPI) · come: formula · ok/att:
+   soglie lette da kpiValori() · fonte: da dove viene il bersaglio.
+   Dove non c'e' una fonte esterna la fonte e' la regola del piano.
+   ============================================================ */
+var FONTI={
+  schoenfeld:{t:"Schoenfeld, Ogborn, Krieger 2017 · J Sports Sci", u:"https://core.ac.uk/download/200371264.pdf"},
+  bazvalle:{t:"Baz-Valle et al. 2022 · J Hum Kinet 81:199", u:"https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877/"},
+  pelland:{t:"Pelland et al. 2024 · meta-regressioni volume e frequenza", u:"https://bibbase.org/network/publication/joshuapelland-jacobremmert-zacrobinson-sethhinson-michaelzourdos-theresistancetrainingdoseresponsemetaregressionsexploringtheeectsofweeklyvolumeandfrequencyonmusclehypertrophyandstrengthgain-2024"},
+  singer:{t:"Singer et al. 2024 · Front Sports Act Living", u:"https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/text"},
+  morton:{t:"Morton et al. 2018 · Br J Sports Med 52:376", u:"https://bjsm.bmj.com/content/52/6/376"},
+  iraki:{t:"Iraki et al. 2019 · Sports 7:154", u:"https://pmc.ncbi.nlm.nih.gov/articles/PMC6680710/"},
+  nice:{t:"NICE · rapporto vita/altezza sotto 0,5", u:"https://www.nice.org.uk/news/articles/keep-the-size-of-your-waist-to-less-than-half-of-your-height-nice--recommends"},
+  plews:{t:"Plews · HRV, media mobile a 7 giorni (tesi AUT)", u:"https://openrepository.aut.ac.nz/handle/10292/7122"},
+  aasm:{t:"AASM e SRS 2015 · almeno 7 ore negli adulti", u:"https://www.aasm.org/resources/pdf/adultsleepdurationconsensus.pdf"},
+  paluch:{t:"Paluch et al. 2022 · Lancet Public Health 7:e219", u:"https://doi.org/10.1016/S2468-2667(21)00302-9"},
+  silbernagel:{t:"Silbernagel et al. 2007 · pain-monitoring model", u:"https://search.pedro.org.au/search-results/record-detail/18389"},
+  spiering:{t:"Spiering et al. 2021 · J Strength Cond Res 35:1449", u:"https://pubmed.ncbi.nlm.nih.gov/33629972/"},
+  mcmaster:{t:"McMaster et al. 2013 · Sports Med 43:367", u:"https://pubmed.ncbi.nlm.nih.gov/23529287/"},
+  buffey:{t:"Buffey et al. 2022 · Sports Med 52:1765", u:"https://link.springer.com/content/pdf/10.1007/s40279-022-01649-4.pdf"},
+  gollwitzer:{t:"Gollwitzer e Sheeran 2006 · implementation intentions", u:"https://kops.uni-konstanz.de/entities/publication/2e749bfb-8533-437c-8203-7e788c910c5f"},
+  piano:{t:"Regola del piano (Piano Unico v5, decisioni del coach)", u:""}
+};
+var KPI=[
+  {id:"aderenza", area:"Allenamento", nome:"Aderenza", unita:"%", freq:"settimanale",
+   come:"Sedute fatte / bersaglio della settimana (4, oppure 2 in settimana di picco, meno i riposi programmati)", bersaglio:"100%", ok:100, att:75, verso:"su", fonte:"piano"},
+  {id:"serie_gruppo", area:"Allenamento", nome:"Serie per gruppo nel range", unita:"gruppi", freq:"settimanale",
+   come:"Serie settimanali per gruppo: dirette = 1, indirette = 0,5 (es. la panca per i tricipiti). Range 10-20, core 6-12", bersaglio:"7 gruppi su 7 nel range", ok:7, att:5, verso:"su", fonte:"bazvalle", fonti:["schoenfeld","bazvalle","pelland"]},
+  {id:"top_range", area:"Allenamento", nome:"Serie al top del range", unita:"%", freq:"settimanale",
+   come:"Righe di esercizio chiuse al massimo del range di ripetizioni / righe totali (esclusi gli esercizi a tempo)", bersaglio:"≥ 70%", ok:70, att:50, verso:"su", fonte:"piano"},
+  {id:"cedimenti", area:"Allenamento", nome:"Composti a cedimento", unita:"", freq:"ultime 2 settimane",
+   come:"Esercizi multiarticolari chiusi a RIR 0. Sui composti si chiude a RIR 1-2", bersaglio:"0", ok:0, att:1, verso:"giu", fonte:"piano"},
+  {id:"record", area:"Allenamento", nome:"Record nelle ultime 4 settimane", unita:"", freq:"mobile 28 giorni",
+   come:"Nuovi record di carico o di ripetizioni allo stesso carico", bersaglio:"≥ 2", ok:2, att:1, verso:"su", fonte:"piano"},
+  {id:"durata", area:"Allenamento", nome:"Durata media della seduta", unita:"min", freq:"settimanale",
+   come:"Minuti medi per seduta. Oltre i 90 secondi di recupero non si guadagna ipertrofia: il tempo morto si taglia", bersaglio:"≤ 70 min", ok:70, att:80, verso:"giu", fonte:"singer"},
+  {id:"asimmetria", area:"Allenamento", nome:"Asimmetria sinistra/destra", unita:"%", freq:"settimanale",
+   come:"|ripetizioni sx − dx| / media, solo esercizi a un lato con entrambi i lati nella stessa seduta", bersaglio:"≤ 10%", ok:10, att:15, verso:"giu", fonte:"piano"},
+  {id:"pendenza", area:"Corpo e cibo", nome:"Pendenza del peso", unita:"g/sett", freq:"mobile 14-28 giorni",
+   come:"Retta sulle pesate del mattino, esclusi i rientri da trasferta. Riferimento in letteratura: 0,25-0,5% del peso a settimana per chi si allena da poco", bersaglio:"corridoio del piano", verso:"range", fonte:"iraki"},
+  {id:"proteine", area:"Corpo e cibo", nome:"Proteine per kg", unita:"g/kg", freq:"media 7 giorni",
+   come:"Proteine medie giornaliere registrate / ultimo peso", bersaglio:"≥ 1,6 g/kg", ok:1.6, att:1.4, verso:"su", fonte:"morton"},
+  {id:"kcal", area:"Corpo e cibo", nome:"Calorie rispetto al target", unita:"%", freq:"media 7 giorni",
+   come:"Calorie medie (4·P + 4·C + 9·G) / target del piano alimentare. Vale con almeno 4 giornate registrate", bersaglio:"entro ±10%", ok:10, att:20, verso:"scarto", fonte:"piano"},
+  {id:"giorni_cibo", area:"Corpo e cibo", nome:"Giornate di cibo registrate", unita:"/7", freq:"ultimi 7 giorni",
+   come:"Giorni con almeno un pasto registrato", bersaglio:"≥ 5 su 7", ok:5, att:3, verso:"su", fonte:"piano"},
+  {id:"vita_altezza", area:"Corpo e cibo", nome:"Rapporto vita/altezza", unita:"", freq:"ogni 14 giorni",
+   come:"Circonferenza vita / altezza", bersaglio:"< 0,5", ok:0.499, att:0.599, verso:"giu", fonte:"nice"},
+  {id:"hrv7", area:"Recupero e salute", nome:"HRV, media 7 giorni", unita:"", freq:"giornaliero",
+   come:"Media a 7 giorni del logaritmo dell'HRV notturna, confrontata con la tua fascia normale degli ultimi 60 giorni (media ± mezza deviazione standard)", bersaglio:"dentro o sopra la fascia", verso:"fascia", fonte:"plews"},
+  {id:"fc7", area:"Recupero e salute", nome:"FC a riposo, media 7 giorni", unita:"bpm", freq:"giornaliero",
+   come:"Media a 7 giorni rispetto alla mediana degli ultimi 60 giorni", bersaglio:"entro +5% della norma", ok:5, att:10, verso:"scarto+", fonte:"piano"},
+  {id:"sonno7", area:"Recupero e salute", nome:"Sonno, media 7 giorni", unita:"h", freq:"giornaliero",
+   come:"Ore di sonno medie. Sotto 6,5 il giorno conta come recupero basso (decisione del 18/10)", bersaglio:"≥ 7 h", ok:7, att:6.5, verso:"su", fonte:"aasm"},
+  {id:"stress7", area:"Recupero e salute", nome:"Stress, media 7 giorni", unita:"/3", freq:"giornaliero",
+   come:"Stress percepito 0-3. Da 2 il giorno conta come stress alto", bersaglio:"< 1,5", ok:1.49, att:1.99, verso:"giu", fonte:"piano"},
+  {id:"reflusso7", area:"Recupero e salute", nome:"Reflusso, media 7 giorni", unita:"/3", freq:"giornaliero",
+   come:"Reflusso 0-3 registrato la sera. Si incrocia con i grassi del giorno", bersaglio:"≤ 0,5", ok:0.5, att:1, verso:"giu", fonte:"piano"},
+  {id:"spalla", area:"Recupero e salute", nome:"Spalla sinistra", unita:"/10", freq:"giornaliero e per seduta",
+   come:"Dolore 0-10: il massimo durante la seduta e il residuo la mattina dopo. Fino a 5 in seduta è accettabile se al mattino è rientrato", bersaglio:"mattina ≤ 2, seduta ≤ 5", ok:2, att:5, verso:"giu", fonte:"silbernagel"},
+  {id:"passi", area:"Recupero e salute", nome:"Passi al giorno", unita:"", freq:"settimanale (domenica)",
+   come:"Media giornaliera della settimana letta da Zepp", bersaglio:"8.000-10.000", ok:8000, att:6000, verso:"su", fonte:"paluch"},
+  {id:"ipopnea", area:"Recupero e salute", nome:"Indice di ipopnea", unita:"/h", freq:"settimanale (domenica)",
+   come:"Eventi per ora stimati dal wearable: non è una diagnosi, è un andamento da mostrare al medico", bersaglio:"< 5", ok:4.99, att:4.99, verso:"giu", fonte:"piano"},
+  {id:"mobilita", area:"Recupero e salute", nome:"Differenza fra i lati, mobilità", unita:"", freq:"ogni 28 giorni",
+   come:"Massima differenza sinistra − destra nei test bilaterali", bersaglio:"< 2", ok:1.99, att:1.99, verso:"giu", fonte:"piano"},
+  {id:"completezza", area:"Abitudini", nome:"Mattine registrate", unita:"/7", freq:"ultimi 7 giorni",
+   come:"Giorni con il benessere del mattino compilato (peso, HRV, FC o sonno)", bersaglio:"≥ 5 su 7", ok:5, att:3, verso:"su", fonte:"piano"},
+  {id:"camminate", area:"Abitudini", nome:"Camminate dopo i pasti", unita:"/giorno", freq:"media 7 giorni",
+   come:"Camminate brevi dopo pranzo e cena (0-2). Abbassano la glicemia dopo il pasto", bersaglio:"≥ 1,5", ok:1.5, att:1, verso:"su", fonte:"buffey"}
+];

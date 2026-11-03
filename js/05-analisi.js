@@ -12,10 +12,8 @@ function kpi(w){
   var tot=ls.filter(r=>!meta(r.ex).sec).length, top=ls.filter(r=>r.top && !meta(r.ex).sec).length;
   /* serie per gruppo: un esercizio unilaterale è UNA serie per il muscolo,
      non due. Le righe sinistra e destra descrivono lo stesso lavoro. */
-  var grp={};
-  ls.forEach(function(r){ var g=meta(r.ex).g;
-    grp[g]=(grp[g]||0) + (r.side ? r.reps.length/2 : r.reps.length); });
-  Object.keys(grp).forEach(function(g){ grp[g]=Math.round(grp[g]); });
+  /* conteggio frazionario: dirette 1, indirette 0,5 (Pelland 2024). Vedi 14-kpi.js */
+  var grp=serieGruppo(ls);
   /* asimmetria: solo esercizi a ripetizioni loggati per lato, e solo quando
      nella stessa sessione ci sono entrambi i lati. Gli esercizi a tempo
      (side plank 60/40) sono asimmetrici per scelta e falsavano il dato. */
@@ -110,9 +108,11 @@ function rhrBase(exclDate){ return medBase("rhr", exclDate); }
 var SONNO_BASSO=6.5, STRESS_ALTO=2;
 function recovery(date){
   var b=benOn(date); if(!b) return {lvl:0, parts:[], hint:""};
-  var parts=[], lvl=0, hb=hrvBase(date), rb=rhrBase(date);
+  /* HRV: sotto la fascia normale dei 60 giorni precedenti (log, media - 1 DS);
+     con meno di 14 notti si usa la regola di prima (sotto l'80% della mediana) */
+  var hs=hrvStato(date), parts=[], lvl=0, hb=hs? hs.norma : hrvBase(date), rb=rhrNorma(date);
   var bHrv = plaus("hrv", b.hrv) ? b.hrv : null, bRhr = plaus("rhr", b.rhr) ? b.rhr : null;
-  var hrvLow  = !!(bHrv && hb && bHrv < hb*0.80);
+  var hrvLow  = !!(bHrv && (hs ? hs.oggiBasso : (hb && bHrv < hb*0.80)));
   var rhrHigh = !!(bRhr && rb && bRhr > rb*1.07);
   var rhrOk   = !!(bRhr && rb && !rhrHigh);
   if(b.alc){ parts.push("alcol la sera prima"); lvl=Math.max(lvl,1); }
@@ -269,7 +269,9 @@ function streak(){
 function frozen(){ return !!(S.freeze && S.freeze.until && weekOf(today())<=S.freeze.until); }
 
 /* ---------- diagnosi: adeguatezza di carichi ed esercizi ---------- */
-var TGT={Petto:[10,16],Dorso:[10,16],Spalle:[10,16],Bicipiti:[10,16],Tricipiti:[10,16],Gambe:[10,18],Core:[6,12]};
+/* serie settimanali per gruppo, conteggio frazionario: 10-20 (Schoenfeld 2017: oltre 10;
+   Baz-Valle 2022: 12-20 in chi e' allenato). Core 6-12, regola del piano. */
+var TGT={Petto:[10,20],Dorso:[10,20],Spalle:[10,20],Bicipiti:[10,20],Tricipiti:[10,20],Gambe:[10,20],Core:[6,12]};
 function diagnose(){
   var out=[], ws=weeks(), lastFull = ws.filter(function(w){
     if(w<PLAN_W0) return false;
@@ -331,6 +333,14 @@ function diagnose(){
     if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso \u00b7 reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
       m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio \u00e8 pi\u00f9 alto ("+gr.length+" giornate contro "+gl.length+"). Non \u00e8 una prova di causa, ma \u00e8 il primo posto dove guardare."});
   }
+  /* 3a. spalla sinistra: sopra 5/10 in seduta, o non rientrata la mattina dopo (Silbernagel 2007) */
+  S.sess.filter(function(s){ return s.dol!=null && s.dol!=="" && dataOk(s.date) && giorniDa(s.date)<=14; }).forEach(function(s){
+    var dopo=new Date(s2d(s.date).getTime()+86400000), bm=benOn(d2s(dopo));
+    if(+s.dol>5) out.push({k:"segnale", t:"Spalla sinistra "+s.dol+"/10 · "+s.date.slice(0,5),
+      m:"Sopra 5 durante la seduta. Niente salite di carico sugli esercizi di spinta e sul Reverse Fly finché non torna sotto 3 al mattino. Se si ripete, al fisioterapista."});
+    else if(bm && bm.dolm!=null && bm.dolm!=="" && +bm.dolm>=3 && +bm.dolm>=+s.dol) out.push({k:"segnale", t:"Spalla non rientrata · "+d2s(dopo).slice(0,5),
+      m:"Il mattino dopo la seduta era "+bm.dolm+"/10, non meno di durante ("+s.dol+"). Il carico di quel giorno era troppo per la spalla: la prossima volta tieni i carichi fermi."});
+  });
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
   if(sig.length) out.push({k:"segnale", t:"Ultimo segnale articolare: "+sig[sig.length-1].date,
@@ -553,6 +563,13 @@ function statoRows(){
       rec_bassi: bb.filter(function(b){ return recovery(b.date).lvl>=1; }).length,
       prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso" : "",
       diagnosi: cur? dg.map(function(x){ return x.t; }).join(" | ").slice(0,900) : "",
+      prot_gkg: (function(){ if(!cib.length) return ""; var pe=pes.length? media(pes) : ultimoPeso(); return pe? r1(media(cib.map(function(b){ return b.cibP||0; }))/pe) : ""; })(),
+      vita_altezza: (function(){ var mm=S.mis.filter(function(x){ return x.w===w && x.vita; })[0], al=S.profilo&&S.profilo.altezza; return (mm&&al)? Math.round(mm.vita/al*1000)/1000 : ""; })(),
+      spalla_mattina: (function(){ var v=bb.filter(function(b){ return b.dolm!=null && b.dolm!==""; }).map(function(b){ return +b.dolm; }); return v.length? r1(media(v)) : ""; })(),
+      spalla_seduta_max: (function(){ var v=S.sess.filter(function(s){ return s.w===w && s.dol!=null && s.dol!==""; }).map(function(s){ return +s.dol; }); return v.length? Math.max.apply(null,v) : ""; })(),
+      serie_gruppo: Object.keys(TGT).map(function(g){ return g+" "+(k.grp[g]||0); }).join(" · "),
+      picco: picco(w)? "Sì" : "",
+      kpi_fuori: cur? (function(){ var v=kpiValori(); return KPI.filter(function(d){ return v[d.id].stato==="ko"||v[d.id].stato==="att"; }).map(function(d){ return d.id; }).join(" "); })() : "",
       bene:ch.bene||"", cambia:ch.cambia||"",
       piano_sett: (ch.giorni&&ch.giorni.length)? ch.giorni.join(" ")+(ch.mom?" · "+ch.mom:"") : "",
       agg:today()};

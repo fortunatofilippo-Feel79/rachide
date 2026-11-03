@@ -95,6 +95,10 @@ function briefing(){
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){ if(e.hold && !seenH[e.n]){ seenH[e.n]=1; hl.push("- "+e.n+": "+e.hold); } }); });
   if(hl.length){ L.push(""); L.push("In attesa (decisione presa: non proporre aumenti)"); hl.forEach(function(x){ L.push(x); }); }
   L.push("");
+  L.push("Cruscotto KPI (definizioni e fonti nella scheda App_KPI)");
+  var kv=kpiValori();
+  KPI.forEach(function(d){ var v=kv[d.id]; L.push("- "+d.id+" · "+d.nome+": "+v.txt+" | bersaglio "+d.bersaglio+" | "+({ok:"ok",att:"attenzione",ko:"FUORI",na:"dati insufficienti"}[v.stato])); });
+  L.push("");
   L.push("Diagnosi automatica");
   var dg=diagnose();
   if(!dg.length) L.push("- nulla da segnalare");
