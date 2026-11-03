@@ -1,6 +1,6 @@
 # Dati e KPI di Rachide
 
-> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.1.0). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
+> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.2.0). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
 
 Riferimento per il coach: che cosa misura l'app, quando, con quale formula e quale bersaglio, da dove viene ogni bersaglio, come sono fatte le schede del foglio e quali regole applica il motore da solo.
 

@@ -193,17 +193,32 @@ function cardCruscotto(){
     KPI.filter(function(d){ return d.area===a; }).forEach(function(d){
       var v=val[d.id];
       h+='<button class="krow" data-a="kpi" data-v="'+d.id+'"><i style="background:'+STATO_COL[v.stato]+'"></i>'+
-         '<span class="kn">'+esc(d.nome)+'</span><span class="kv">'+esc(v.txt)+'</span></button>';
+         '<span class="kn">'+esc(d.nome)+'</span>'+kpiSpark(d.id)+'<span class="kv">'+esc(kpiBreve(d,v))+'</span></button>';
     });
   });
   h+='<div class="xs mut" style="margin-top:8px">Tocca una riga per la definizione, il bersaglio e la fonte. Grigio = dato non ancora sufficiente.</div></div>';
   return h;
+}
+/* il valore in poche cifre, per la riga del cruscotto */
+function kpiBreve(d,v){
+  if(v.v==null) return "–";
+  var u=d.unita||"", x=v.v;
+  if(d.id==="serie_gruppo") return x+"/7";
+  if(d.id==="pendenza") return (x>0?"+":"")+kfmt(x)+" g/sett";
+  if(d.id==="kcal") return (x>0?"+":"")+x+"%";
+  if(d.id==="fc7") return String(v.txt).split(" · ")[0];
+  if(d.id==="passi") return kfmt(x);
+  if(d.id==="vita_altezza") return dec(x);
+  if(u==="%") return x+"%";
+  if(u.charAt(0)==="/") return dec(x)+u;
+  return dec(x)+(u? " "+u : "");
 }
 function kpiSheet(id){
   var d=KPI.filter(function(x){ return x.id===id; })[0]; if(!d) return;
   var v=kpiValori()[id], fonti=(d.fonti||[d.fonte]).map(function(f){ return FONTI[f]; }).filter(Boolean);
   sheet('<div class="eyebrow">'+esc(d.area)+' · '+esc(d.freq)+'</div><h2 style="margin:4px 0 10px">'+esc(d.nome)+'</h2>'+
     '<div class="stat"><div class="v" style="color:'+STATO_COL[v.stato]+'">'+esc(v.txt)+'</div></div>'+
+    '<div class="gsez"><div class="eyebrow glow">Andamento</div>'+kpiGrafico(id)+'</div>'+
     '<div class="gsez"><div class="eyebrow glow">Come si calcola</div><div class="sm">'+esc(d.come)+'</div></div>'+
     '<div class="gsez"><div class="eyebrow" style="color:var(--ok)">Bersaglio</div><div class="sm">'+esc(d.bersaglio)+'</div></div>'+
     '<div class="gsez"><div class="eyebrow amb">Fonte</div>'+fonti.map(function(f){

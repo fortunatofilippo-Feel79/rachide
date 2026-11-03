@@ -403,29 +403,9 @@ function viewProg(){
   /* carico sollevato, diviso per tipo: una settimana con le bande non e' una settimana leggera */
   h+=cardCarico(ks);
 
-  /* serie per gruppo, con la fascia bersaglio disegnata */
-  var wInCorso = last.w===weekOf(today()) && last.n<last.target;
-  h+='<div class="card"><div class="between"><div class="eyebrow">Serie per gruppo</div>'+
-     '<div class="xs mut">settimana '+last.w+(wInCorso?" · in corso":"")+'</div></div>';
-  h+=mappaMuscoli(last.grp, wInCorso);
-  h+='<div class="mmleg"><span><i style="background:rgba(212,93,93,.78)"></i>sotto</span><span><i style="background:rgba(127,176,105,.88)"></i>nel target</span><span><i style="background:rgba(224,164,88,.88)"></i>sopra</span></div>';
-  Object.keys(TGT).forEach(function(g){
-    var v=last.grp[g]||0, t=TGT[g], pv=prev?(prev.grp[g]||0):null;
-    var max=Math.max(t[1]*1.3, v*1.15, 1);
-    var col = v<t[0]?"var(--alert)" : v>t[1]?"var(--amb)" : "var(--ok)";
-    var dl = (pv===null)?"" : (v-pv>0?"\u2191":v-pv<0?"\u2193":"");
-    h+='<div class="gr">'+
-      '<div class="nm">'+g+'</div>'+
-      '<div class="tr">'+
-        '<div class="zn" style="left:'+r1(t[0]/max*100)+'%;width:'+r1((t[1]-t[0])/max*100)+'%"></div>'+
-        '<div class="fl" style="width:'+r1(Math.min(100,v/max*100))+'%;background:'+col+'"></div>'+
-      '</div>'+
-      '<div class="vl" style="color:'+col+'">'+dec(v)+' <span>/'+t[0]+'\u2013'+t[1]+'</span>'+
-        (dl?'<span style="color:var(--dim)"> '+dl+'</span>':'')+'</div>'+
-    '</div>';
-  });
-  h+='<div class="xs mut" style="margin-top:12px">Fascia verde = 10-20 serie (core 6-12). Le serie indirette valgono metà: la panca conta anche per tricipiti e spalle, il rematore per i bicipiti. '+
-     'La freccia confronta con la settimana '+(prev?prev.w:"precedente")+'. Un esercizio unilaterale vale una serie, non due.</div></div>';
+  /* serie dure per gruppo: corpo, barre e dove stai andando */
+  h+=cardGruppi();
+  h+=cardForza();
 
   /* la spinta, in Progressi come striscia: il dettaglio vive in Corpo */
   if(slp.ok){
@@ -437,6 +417,11 @@ function viewProg(){
        (slp.skipped?' \u00b7 '+slp.skipped+' rientro escluso':'')+
        (slp.noisy?' \u00b7 include i rientri, dato indicativo':'')+'</div></div>';
   }
+
+  /* recupero, costanza, dolore */
+  h+=cardRecuperoGrafico();
+  h+=cardCostanza();
+  h+=cardDolore();
 
   /* andamento settimanale */
   h+='<div class="card"><div class="eyebrow">Andamento</div><table style="margin-top:8px"><tr>'+
@@ -820,7 +805,7 @@ function nav(){
 }
 
 function render(){
-  _PGC=null;
+  _PGC=null; if(typeof kpiCacheReset==="function") kpiCacheReset();
   if(!PLAN) PLAN=buildPlan();
   app.innerHTML = V==="oggi"?viewOggi() : V==="es"?viewEsercizi() : V==="prog"?viewProg() : V==="corpo"?viewCorpo() : viewCoach();
   nav();

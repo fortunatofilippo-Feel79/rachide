@@ -8,12 +8,12 @@
    Quando cambi un file dell'app, aumenta VERSIONE (e VERSIONE_APP
    in js/01-dati.js: un test controlla che coincidano).
    ============================================================ */
-var VERSIONE = "rachide-4.1.0";
+var VERSIONE = "rachide-4.2.0";
 var GUSCIO = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
   "js/01-dati.js", "js/02-motore.js", "js/03-cibo.js", "js/04-extra-coach.js", "js/05-analisi.js",
   "js/06-seduta.js", "js/07-animazioni.js", "js/08-sync.js", "js/09-viste.js", "js/10-azioni.js",
-  "js/12-figure.js", "js/13-guida.js", "js/14-kpi.js", "js/15-promemoria.js", "js/16-memoria.js", "js/17-codici.js", "js/18-dolore.js", "js/19-pianificatore.js", "js/20-posizione.js", "js/99-avvio.js",
+  "js/12-figure.js", "js/13-guida.js", "js/14-kpi.js", "js/15-promemoria.js", "js/16-memoria.js", "js/17-codici.js", "js/18-dolore.js", "js/19-pianificatore.js", "js/20-posizione.js", "js/21-grafici.js", "js/22-progressi.js", "js/99-avvio.js",
   "js/vendor/zxing-0.23.0.min.js",
   "icone/icona-192.png", "icone/icona-512.png", "icone/icona-maskable-512.png", "icone/apple-touch-icon.png", "icone/favicon-64.png"
 ];

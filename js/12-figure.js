@@ -204,7 +204,7 @@ function fgTesta(P, p, cl){
 }
 /* il corpo intero, nell'ordine giusto: lontano, busto, testa, vicino */
 function fgCorpo(P, p, def, ghost){
-  var fr=P.front, o='', db=(def&&def.db)||"", cn=ghost? PAL_OK : PAL_N, cf=ghost? PAL_OK : (fr? PAL_N : PAL_F);
+  var fr=P.front, o='', db=(def&&def.db)||"", cn=(ghost && typeof ghost==='object')? ghost : (ghost? PAL_OK : PAL_N), cf=ghost? cn : (fr? PAL_N : PAL_F);
   if(!ghost && !fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
   o+=fgGamba(P.gambe.f, cf)+fgBraccio(P.braccia.f, cf);
   o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="'+cn.sh+' fg-tf"/>' : fgPath(fgBusto(P), cn.sh);

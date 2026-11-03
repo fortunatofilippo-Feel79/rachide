@@ -4,13 +4,15 @@ Registro personale di allenamento, cibo e salute. È una web app statica (HTML, 
 
 ## Cosa fa
 
-- **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR e lato più duro.
-- **Come si fa**: figura animata con il muscolo che lavora, il verso del movimento e i secondi delle fasi lente; tecnica, errori tipici e alternative fuori casa per ogni esercizio e per il riscaldamento (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
+- **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro.
+- **Come si fa**: per ogni esercizio e per il riscaldamento, partenza e arrivo con numeri sul corpo (piedi, ginocchia, bacino, schiena, gomiti, testa), angoli, linee guida e l'errore tipico disegnato in rosso sulla posizione giusta; poi l'animazione con il muscolo che lavora, cosa devi sentire, dove NON devi sentire fastidio e le alternative fuori casa (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
 - **Piano flessibile**: Casa, Bande o Corpo libero sulla prossima seduta; versione da 45′ e da 15′; settimana di picco con due sedute essenziali.
+- **Piano della settimana**: il coach lo scrive la domenica sera; in settimana *Adatta la settimana* ridistribuisce le sedute che mancano sui giorni che restano, mostra il bilancio delle serie dure per gruppo e dove aggiungere serie, e porta le sedute nel calendario.
+- **Serie dure**: l'unità di volume è lo sforzo (RIR 0-3 vale 1, RIR 4+ vale mezza), uguale per pesi, bande e corpo libero; il carico sollevato è diviso per tipo, con le stime segnate.
 - **Progressione automatica**: doppia progressione con RIR, una salita alla volta, tetti per la spalla, carichi fermi quando il recupero è basso, rientro dopo una pausa.
 - **Cibo**: codice a barre (Open Food Facts, oppure valori dall'etichetta), catalogo, ricette, «come ieri» o a parole; target ricalibrato sulla pendenza del peso.
 - **Salute**: HRV e FC a riposo con fascia personale, sonno, stress, reflusso, dolore 0-10 in qualsiasi zona (mattino, seduta, singolo esercizio), misure, mobilità, simmetria.
-- **Cruscotto KPI** con definizione, bersaglio e fonte di ogni indicatore; agenda di cosa registrare oggi; promemoria nel calendario del telefono.
+- **Cruscotto KPI** con definizione, bersaglio, fonte e andamento a 12 settimane di ogni indicatore; serie per gruppo sul corpo; forza stimata; HRV, costanza e dolore nel tempo; agenda di cosa registrare oggi; promemoria nel calendario del telefono.
 
 Tutte le definizioni (KPI, schede del foglio, regole del motore, operazioni di patch) sono in [`docs/DATI_E_KPI.md`](docs/DATI_E_KPI.md), generato dal codice.
 
@@ -36,6 +38,10 @@ js/15-promemoria.js     promemoria nel calendario (.ics)
 js/16-memoria.js        memoria sul foglio v3
 js/17-codici.js         codice a barre e Open Food Facts
 js/18-dolore.js         dolore per zona, mappa del corpo
+js/19-pianificatore.js  piano della settimana, adattamento, bilancio, calendario
+js/20-posizione.js      scheda Posizione: partenza, arrivo, numeri, angoli, errore
+js/21-grafici.js        grafici SVG e serie storiche dei KPI
+js/22-progressi.js      serie per gruppo sul corpo, forza stimata, recupero
 js/vendor/              ZXing 0.23.0 (lettura dei codici a barre, Apache 2.0)
 js/99-avvio.js          avvio, service worker
 sw.js                   funzionamento offline
@@ -63,7 +69,7 @@ Quando cambi un file dell'app, aumenta la versione in due punti uguali: `VERSION
 ## Come aggiornare
 
 1. **Unisci il ramo nel `main`** su GitHub (pull request → *Merge*). GitHub Pages ripubblica in un paio di minuti; i test girano da soli (tab *Actions*).
-2. **Sul telefono**, la prima volta dopo la 4.0: apri l'app e vai su Coach → *Aggiorna app*. Dalla 4.0 in poi l'aggiornamento arriva da solo: compare «Nuova versione pronta» in Oggi, tocchi *Aggiorna ora*. I dati restano dove sono.
+2. **Sul telefono**, la prima volta dopo la 4.0 (poi arriva da solo): apri l'app e vai su Coach → *Aggiorna app*. Dalla 4.0 in poi l'aggiornamento arriva da solo: compare «Nuova versione pronta» in Oggi, tocchi *Aggiorna ora*. I dati restano dove sono.
 3. **Script del foglio v3**, una volta sola: [`apps-script/LEGGIMI.md`](apps-script/LEGGIMI.md). Poi Coach → *Invia tutto*.
 4. **Una volta sola nell'app**: altezza (la lista di Oggi la chiede), promemoria nel calendario (Coach → Promemoria), prova dei suoni.
 5. **Al coach**: carica [`docs/DATI_E_KPI.md`](docs/DATI_E_KPI.md) nelle conoscenze del progetto (sostituisci la versione precedente quando cambia).
