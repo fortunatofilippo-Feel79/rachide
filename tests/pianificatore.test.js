@@ -17,10 +17,10 @@ test('le date della settimana vanno da lunedi\' a domenica', () => {
 test('proposta: le sedute che mancano si distribuiscono sui giorni che restano', () => {
   const ctx = ctxSett();
   ctx.S.sess = [sess(ctx, 'A', '02/11/2026')];                     // lunedi' fatta
-  const p = ctx.propostaPiano(40);
+  const p = ctx.generaSettimana(40);
   assert.deepEqual([...p.mancano], ['B', 'C', 'D']);
   assert.equal(p.sedute.length, 3);
-  assert.equal(p.eccesso, 0);
+  assert.equal(p.fuori.length, 0);
   const giorni = p.sedute.map(s => s.data);
   assert.ok(new Set(giorni).size === 3, 'un giorno per seduta');
   assert.ok(giorni.every(d => ctx.giorniFa(d) <= 0), 'solo oggi o dopo');
@@ -29,39 +29,35 @@ test('proposta: le sedute che mancano si distribuiscono sui giorni che restano',
 test('proposta: se hai gia\' fatto la seduta oggi, oggi non conta', () => {
   const ctx = ctxSett();
   ctx.S.sess = [sess(ctx, 'A', ctx.today())];
-  const p = ctx.propostaPiano(40);
+  const p = ctx.generaSettimana(40);
   assert.ok(!p.dates.includes(ctx.today()));
 });
 
-test('proposta: i giorni occupati si saltano, i fuori casa diventano bande', () => {
+test('proposta: i giorni occupati si saltano, fuori casa = bande, fuori senza niente = corpo libero', () => {
   const ctx = ctxSett();
-  const dispo = {}; ctx.dateSettimana(40).forEach(d => { dispo[d] = 'casa'; });
-  dispo['04/11/2026'] = 'no'; dispo['06/11/2026'] = 'fuori';
-  const p = ctx.propostaPiano(40, dispo);
-  assert.ok(!p.sedute.some(s => s.data === '04/11/2026'));
-  p.sedute.filter(s => s.data === '06/11/2026').forEach(s => assert.equal(s.l, 'bande'));
+  const dispo = {}; ctx.dateSettimana(40).forEach(d => { dispo[d] = 'no'; });
+  dispo['04/11/2026'] = 'fuori'; dispo['06/11/2026'] = 'fuori0'; dispo['08/11/2026'] = 'casa';
+  const p = ctx.generaSettimana(40, { dispo });
+  assert.ok(!p.sedute.some(s => dispo[s.data] === 'no'));
+  assert.equal(p.sedute.find(s => s.data === '04/11/2026').l, 'bande');
+  assert.equal(p.sedute.find(s => s.data === '06/11/2026').l, 'corpo');
 });
 
-test('proposta: se i giorni non bastano restano i composti e si segnala l\'eccesso', () => {
+test('proposta: se i giorni non bastano si segnalano le sedute che non entrano', () => {
   const ctx = ctxSett();
   const dispo = {}; ctx.dateSettimana(40).forEach(d => { dispo[d] = 'no'; });
   dispo['06/11/2026'] = 'casa'; dispo['08/11/2026'] = 'casa';
-  const p = ctx.propostaPiano(40, dispo);
+  const p = ctx.generaSettimana(40, { dispo });
   assert.equal(p.sedute.length, 2);
-  assert.equal(p.eccesso, 2);
-  assert.deepEqual([...p.sedute.map(s => s.d)], ['A', 'B']);
+  assert.equal(p.fuori.length, 2);
 });
 
-test('bilancio: somma il fatto e il previsto e segnala i buchi con un suggerimento', () => {
+test('bilancio: somma il fatto e il previsto e segnala i buchi', () => {
   const ctx = ctxSett();
   ctx.S.log = [];
   const sedute = [{ data: '05/11/2026', d: 'C', l: 'corpo', ora: '07:30' }];
-  const b = ctx.bilancio(40, sedute); b.w = 40;
+  const b = ctx.bilancio(40, sedute);
   assert.ok(b.buchi.includes('Gambe'), 'con una sola seduta di corpo libero le gambe restano sotto');
-  const s = ctx.suggerisci(b, sedute);
-  const g = s.find(x => x.g === 'Gambe');
-  assert.equal(g.ex, 'Affondi indietro');
-  assert.equal(g.d, 'C');
 });
 
 test('un piano completo di 4 sedute a casa riempie tutti i gruppi', () => {
@@ -113,7 +109,7 @@ test('calendario delle sedute: un evento per seduta da fare, con allarme', () =>
 test('la settimana di picco cambia le sedute da pianificare', () => {
   const ctx = ctxSett();
   ctx.S.picco = { 40: true };
-  const p = ctx.propostaPiano(40);
+  const p = ctx.generaSettimana(40);
   assert.deepEqual([...p.mancano], ['E1', 'E2']);
 });
 

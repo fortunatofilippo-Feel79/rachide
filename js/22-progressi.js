@@ -143,3 +143,45 @@ function cardCostanza(){
 function cardDolore(){
   return '<div class="card"><div class="between"><div class="eyebrow">Dolore · ultime 6 settimane</div><button class="btn sm ghost" data-a="kpi" data-v="dolore">Dettagli</button></div><div class="gwrap" style="margin-top:8px">'+dolStrip()+'</div></div>';
 }
+
+/* ---------- Progressi in cinque schede: prima quello che serve ogni settimana ---------- */
+var PROG_TAB="sett";
+try{ PROG_TAB=localStorage.getItem("rachide:progtab")||"sett"; }catch(e){}
+function progTabs(dg){
+  var gravi=(dg||[]).filter(function(x){ return DIAG_GRAVE.indexOf(x.k)>=0; }).length;
+  var T=[["sett","Settimana"],["forza","Forza"],["salute","Salute"],["diag","Diagnosi"],["kpi","KPI"]];
+  return '<div class="ptabs" role="tablist" aria-label="Sezioni di Progressi">'+T.map(function(t){
+    return '<button role="tab" aria-selected="'+(PROG_TAB===t[0])+'" class="'+(PROG_TAB===t[0]?"on":"")+'" data-a="ptab" data-v="'+t[0]+'">'+t[1]+
+      (t[0]==="diag" && dg && dg.length? '<i class="'+(gravi?"g":"")+'" aria-label="'+dg.length+' da leggere"></i>' : '')+'</button>'; }).join("")+'</div>';
+}
+function progTab(v){ PROG_TAB=v; try{ localStorage.setItem("rachide:progtab", v); }catch(e){} window._sy=0; render(); window.scrollTo(0,0); }
+
+/* ---------- diagnosi raggruppata: prima i segnali che chiedono di fermarsi ---------- */
+var DIAG_GRAVE=["segnale","stallo","crollo","dolore"];
+var DIAG_GRUPPI=[
+  {t:"Da guardare subito", k:["segnale","dolore","crollo","stallo"]},
+  {t:"Volume e carichi", k:["volume","leggero","rir","durata","warm","attesa"]},
+  {t:"Lati e mobilità", k:["asim","mob"]},
+  {t:"Recupero, peso e cibo", k:["spinta","comp","stress"]}
+];
+function cardDiagnosi(dg){
+  var h='<div class="between" style="margin:16px 0 6px"><div class="eyebrow">Diagnosi</div>'+
+    '<div class="xs" style="font-weight:700;color:'+(dg.length?"var(--amb)":"var(--ok)")+'">'+(dg.length? dg.length+" da leggere" : "nulla da segnalare")+'</div></div>';
+  var usati={};
+  DIAG_GRUPPI.forEach(function(G){
+    var xs=dg.filter(function(x){ return G.k.indexOf(x.k)>=0; }); if(!xs.length) return;
+    xs.forEach(function(x){ usati[dg.indexOf(x)]=1; });
+    h+=gruppoDiag(G.t, xs);
+  });
+  var altri=dg.filter(function(x,i){ return !usati[i]; });
+  if(altri.length) h+=gruppoDiag("Altro", altri);
+  return h+'<div class="xs mut" style="margin:12px 0 0">La diagnosi legge solo i numeri. Cambiare esercizio o ridistribuire il volume è una decisione da portare al coach.</div>';
+}
+function gruppoDiag(titolo, xs){
+  var cls=function(x){ return (x.k==="segnale"||x.k==="stallo"||x.k==="crollo"||x.k==="dolore") ? "stop" : (x.k==="leggero"||x.k==="volume"||x.k==="rir") ? "disc" : "info"; };
+  var riga=function(x){ return '<div class="flag '+cls(x)+'"><b>'+esc(x.t)+'</b><div>'+esc(x.m)+'</div></div>'; };
+  var h='<div class="dgr"><div class="eyebrow" style="margin:12px 0 6px">'+esc(titolo)+' · '+xs.length+'</div>';
+  h+=xs.slice(0,3).map(riga).join("");
+  if(xs.length>3) h+='<details class="altro"><summary>Altre '+(xs.length-3)+'</summary>'+xs.slice(3).map(riga).join("")+'</details>';
+  return h+'</div>';
+}

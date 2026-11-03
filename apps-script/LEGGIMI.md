@@ -30,9 +30,11 @@ Nella scheda Coach deve comparire: *Script v3: storico, piano e impostazioni sul
 
 ## Telefono nuovo, o app a un indirizzo nuovo
 
-1. Apri l'app e tocca *Collega il foglio*.
-2. Incolla l'indirizzo `/exec` e la frase segreta.
-3. Storico, piano personalizzato e impostazioni tornano dal foglio.
+1. Sul vecchio telefono: Coach → *Telefono nuovo: copia il codice di collegamento* (contiene indirizzo e frase; tienilo dove tieni le password).
+2. Sul nuovo: aggiungi l'app alla schermata Home, aprila da lì, tocca *Collega il foglio* e incolla il codice nel primo campo.
+3. Storico, piano, settimane, cibo e impostazioni tornano dal foglio.
+
+Senza il vecchio telefono: l'indirizzo `/exec` è in *Distribuisci → Gestisci distribuzioni*, la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Incollali nei due campi.
 
 La memoria del browser è legata all'indirizzo: anche spostando l'app (per esempio da GitHub Pages a Cloudflare Pages, vedi il README) si ricollega il foglio e si riparte da lì.
 

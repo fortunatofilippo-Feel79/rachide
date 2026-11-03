@@ -34,7 +34,7 @@ function carica(opt) {
   const elementi = {};
   const ctx = {
     console, Math, JSON, Promise, Object, Array, String, Number, Boolean, RegExp, Error, Set, Map, Symbol, Intl,
-    parseInt, parseFloat, isNaN, isFinite, encodeURIComponent, decodeURIComponent, escape, unescape,
+    parseInt, parseFloat, isNaN, isFinite, encodeURIComponent, decodeURIComponent, escape, unescape, btoa, atob,
     Date: DataFinta,
     setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
     requestAnimationFrame: () => 0, cancelAnimationFrame() {},

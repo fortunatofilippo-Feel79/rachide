@@ -72,6 +72,14 @@ async function avvia(){
   if(S.draft && S.draft.ex) S.draft.ex.forEach(function(e){ if(e.band==="azzurra") e.band="blu"; });
   PLAN = buildPlan();
   render();
+  /* aperta da un link con il codice di collegamento (#RACHIDE1:…): si propone il collegamento e il codice sparisce dalla barra */
+  var hc=String(location.hash||"").match(/RACHIDE1:[A-Za-z0-9+\/_-]+/);
+  if(hc && leggiCodice(hc[0])){
+    try{ history.replaceState(null, "", location.pathname+location.search); }catch(e){}
+    syncForm(); var su=document.getElementById("syU"); if(su) su.value=hc[0];
+    toast("Codice di collegamento trovato: tocca Salva e prova");
+    return;
+  }
   if(SYNC.on()) doPull(false).then(function(){ return propCheck(false); }).catch(function(){});
 }
 /* ---------- offline e aggiornamenti ---------- */

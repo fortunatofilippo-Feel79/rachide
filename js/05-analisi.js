@@ -314,11 +314,12 @@ function frozen(){ return !!(S.freeze && S.freeze.until && weekOf(today())<=S.fr
    Baz-Valle 2022: 12-20 in chi e' allenato). Core 6-12, regola del piano. */
 var TGT={Petto:[10,20],Dorso:[10,20],Spalle:[10,20],Bicipiti:[10,20],Tricipiti:[10,20],Gambe:[10,20],Core:[6,12]};
 function diagnose(){
-  var out=[], ws=weeks(), lastFull = ws.filter(function(w){
-    if(w<PLAN_W0) return false;
-    var real=S.sess.filter(s=>s.w===w && !isRest(s)).length;
-    var rest=S.sess.filter(s=>s.w===w && isRest(s)).length;
-    return real+rest>=giorniSettimana(w).length; }).pop();
+  /* il volume si giudica sull'ultima settimana conclusa (o su quella in corso, se e' gia' piena o tenuta):
+     con il piano flessibile una settimana di 2-3 sedute e' una settimana vera, non va saltata */
+  var cur=weekOf(today()), out=[], ws=weeks(), lastFull = ws.filter(function(w){
+    if(w<PLAN_W0 || w>cur) return false;
+    if(!S.sess.some(function(s){ return s.w===w && !isRest(s); })) return false;
+    return w<cur || statoSettimana(w).ok; }).pop();
   /* 1. stallo o carico troppo alto */
   var seen={};
   Object.keys(PLAN).forEach(function(d){
@@ -796,21 +797,19 @@ function cardChiusura(w, completa){
   return '<button class="card" data-a="chiusw" style="display:block;width:100%;text-align:left;border-color:var(--amb);background:rgba(224,164,88,.06)">'+
     '<div class="eyebrow amb">Chiusura della settimana '+w+'</div>'+
     '<h2 style="margin:5px 0 4px;font-size:16px">Tre domande, un minuto</h2>'+
-    '<div class="xs mut">Cosa ha funzionato, una cosa da cambiare, quando fai le 4 sedute. Jarvis la legge nella review.</div></button>';
+    '<div class="xs mut">Cosa ha funzionato, una cosa da cambiare, dove sei e quanto tempo hai la settimana prossima. Il coach ci costruisce il piano.</div></button>';
 }
 function formChiusura(){
   var w=weekOf(today()), ch=(S.chiusure||{})[w]||{};
   sheet('<div class="eyebrow amb">Chiusura della settimana '+w+'</div><h2 style="margin:4px 0 10px">Tre domande, un minuto</h2>'+
     '<label class="fld"><span class="eyebrow">1 · Cosa è andato bene?</span><textarea id="cwBene" placeholder="Anche una cosa piccola">'+esc(ch.bene||"")+'</textarea></label>'+
     '<label class="fld"><span class="eyebrow">2 · Una cosa da cambiare</span><textarea id="cwCambia" placeholder="Una sola, concreta">'+esc(ch.cambia||"")+'</textarea></label>'+
-    '<label class="fld"><span class="eyebrow">3 · Quando fai le 4 sedute la prossima settimana?</span>'+
-      '<div class="pills" id="cwGg" style="flex-wrap:wrap">'+GG.map(function(g){
-        return '<button class="pill'+((ch.giorni||[]).indexOf(g)>=0?" on":"")+'" data-gg="'+g+'">'+g+'</button>'; }).join("")+'</div></label>'+
-    '<div class="pills" id="cwMo">'+["mattina","primo pomeriggio"].map(function(m){
-        return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
-    '<div class="fld"><span class="eyebrow">Dove sei la settimana prossima e quanto tempo hai</span>'+
-      '<div class="xs mut" style="margin:2px 0 4px">Il coach ci costruisce il piano; l\'app adatta gli esercizi al tempo di ogni giorno.</div>'+
+    '<div class="fld"><span class="eyebrow">3 · Dove sei la settimana prossima e quanto tempo hai?</span>'+
+      '<div class="xs mut" style="margin:2px 0 4px">Il coach ci costruisce il piano; l\'app sceglie le sedute e adatta gli esercizi al tempo di ogni giorno.</div>'+
       dispoEditor(w+1, "cw")+'</div>'+
+    '<div class="xs mut" style="margin:10px 0 4px">Quando ti alleni di solito</div>'+
+    '<div class="pills" id="cwMo">'+["mattina","primo pomeriggio","sera"].map(function(m){
+        return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
     '<div class="flag info" style="margin-top:10px"><b>Se-allora</b><div>Pensa ogni giorno così: «se è lunedì mattina, allora alleno». '+
       'Un piano legato a un momento preciso regge meglio di un\'intenzione generica.</div></div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savechiusw">Salva</button>'+
@@ -818,11 +817,12 @@ function formChiusura(){
 }
 async function saveChiusura(){
   var w=weekOf(today());
-  var gg=[].map.call(document.querySelectorAll("#cwGg .pill.on"), function(b){ return b.dataset.gg; });
   var mo=document.querySelector("#cwMo .pill.on");
   var disp=dispoLeggi("cw"), fu=[], oc=[];
   Object.keys(disp.dispo).forEach(function(d){ var po=disp.dispo[d]; if(po==="fuori"||po==="fuori0") fu.push(ggDi(d)); if(po==="no") oc.push(ggDi(d)); });
   S.dispo=S.dispo||{}; S.tempo=S.tempo||{}; S.dispo[w+1]=disp.dispo; S.tempo[w+1]=disp.tempo; cfgTocca("settimane");
+  /* i giorni delle sedute non si scelgono a mano: sono quelli della proposta dell'app su questi giorni e tempi */
+  var prop=generaSettimana(w+1), gg=prop.sedute.map(function(e){ return ggDi(e.data); });
   S.chiusure=S.chiusure||{};
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
     giorni:gg, mom:mo?mo.dataset.mo:"", fuori:fu, occupati:oc, ts:today()};
@@ -830,7 +830,7 @@ async function saveChiusura(){
   var ok=await save(); closeSheet(); render();
   if(SYNC.on()) doPush(false);
   toast(!ok? "NON salvata: vedi la scheda Coach" :
-        (gg.length && gg.length<4)? "Salvata. Hai scelto "+gg.length+" giorni: il bersaglio è 4" : "Settimana chiusa: Jarvis la trova nella review");
+        "Settimana chiusa. Proposta per la prossima: "+(prop.sedute.map(function(e){ return ggDi(e.data)+" "+e.d; }).join(" · ")||"nessuna seduta")+". Il coach la conferma o la cambia");
 }
 /* editor dei giorni di una settimana: dove sei e quanto tempo hai (senza ridisegnare il resto del modulo) */
 function dispoEditor(w, id){
@@ -854,7 +854,7 @@ function dispoLeggi(id){
   return out;
 }
 function pianoDeciso(w){
-  var ch=(S.chiusure||{})[w-1]; if(!ch || !ch.giorni || !ch.giorni.length) return "";
+  var ch=(S.chiusure||{})[w-1]; if(!ch || !ch.giorni || !ch.giorni.length || pianoSett(w)) return "";
   return '<div class="xs" style="margin-top:8px;color:var(--glow)">Deciso domenica: '+esc(ch.giorni.join(" · "))+(ch.mom?" · "+esc(ch.mom):"")+'</div>';
 }
 

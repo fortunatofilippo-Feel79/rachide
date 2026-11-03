@@ -3,23 +3,11 @@
    La domenica sera il coach scrive un piano di massima (operazione
    «settimana»): quali sedute, in quali giorni, dove. Durante la
    settimana puoi adattarlo: l'app guarda cosa hai gia' fatto e i
-   giorni che restano, ridistribuisce le sedute che mancano e mostra
-   il bilancio delle serie per gruppo, con un suggerimento dove c'e'
-   un buco. Le sedute si possono mettere nel calendario (.ics).
+   giorni che restano e il generatore (23-generatore.js) risceglie e
+   adatta le sedute che mancano, con il bilancio delle serie per gruppo.
+   Le sedute si possono mettere nel calendario (.ics).
    ============================================================ */
 var GG_NOME={lun:"Lun",mar:"Mar",mer:"Mer",gio:"Gio",ven:"Ven",sab:"Sab",dom:"Dom"};
-/* esercizio di riempimento per gruppo e luogo, quando un gruppo resta sotto il minimo */
-var FILL={
-  Petto:{casa:"Floor Press manubri", bande:"Push-up piedi rialzati con banda", corpo:"Push-up"},
-  Dorso:{casa:"Rematore manubri", bande:"Band row seduto", corpo:"Rematore al telaio della porta"},
-  Spalle:{casa:"Alzate laterali", bande:"Alzate laterali con banda", corpo:"Y-T-W a busto inclinato"},
-  Bicipiti:{casa:"Curl bicipiti manubri", bande:"Band curl bicipiti", corpo:"Curl isometrico asciugamano"},
-  Tricipiti:{casa:"French Press", bande:"Band tricep extension", corpo:"Push-up stretti"},
-  Gambe:{casa:"Box Squat", bande:"Hip hinge una gamba", corpo:"Affondi indietro"},
-  Core:{casa:"Side plank", bande:"Dead bug", corpo:"Dead bug"}
-};
-var PRIORITA=["A","B","D","C","E1","E2"];   /* se i giorni non bastano, restano prima i composti */
-
 /* ---------- date della settimana ---------- */
 function dateSettimana(w){
   var m=s2d(settimanaDate(w).dal), out=[];
@@ -62,7 +50,7 @@ function dispoGiorno(w, data){
   return "casa";
 }
 
-/* ---------- proposta: ridistribuisce le sedute che mancano sui giorni che restano ---------- */
+/* ---------- ora proposta per una seduta ---------- */
 function oraProposta(data){
   var o=orari().mattina;
   if(data!==today()) return o;
@@ -70,40 +58,7 @@ function oraProposta(data){
   h=Math.max(h, Math.floor(hm(o)/60));
   return h>=22? "21:00" : String(h).padStart(2,"0")+":00";
 }
-function propostaPiano(w, dispo){
-  var oggi=today(), dates=dateSettimana(w).filter(function(d){
-    if(giorniFa(d)>0) return false;
-    if(giorniFa(d)===0 && S.sess.some(function(s){ return s.date===d && !isRest(s); })) return false;   /* oggi hai gia' fatto la seduta */
-    return (dispo? dispo[d] : dispoGiorno(w,d))!=="no";
-  });
-  var mancano=giorniSettimana(w).filter(function(d){ return !sedutaCoperta(w,d); });
-  var k=mancano.length, out={sedute:[], eccesso:0, dates:dates, mancano:mancano};
-  if(!k) return out;
-  if(!dates.length){ out.eccesso=k; return out; }
-  var tieni=mancano.slice();
-  if(dates.length<k){
-    tieni=mancano.slice().sort(function(a,b){ return PRIORITA.indexOf(a)-PRIORITA.indexOf(b); }).slice(0, dates.length)
-      .sort(function(a,b){ return mancano.indexOf(a)-mancano.indexOf(b); });
-    out.eccesso=k-dates.length;
-  }
-  var n=tieni.length;
-  tieni.forEach(function(d,i){
-    var idx = n===1 ? 0 : Math.round(i*(dates.length-1)/(n-1)), data=dates[idx], dv=(dispo? dispo[data] : dispoGiorno(w,data));
-    out.sedute.push({data:data, d:d, l: dv==="fuori"? "bande" : dv==="fuori0"? "corpo" : "casa", ora:oraProposta(data)});
-  });
-  return out;
-}
-
 /* ---------- bilancio: cosa avrai fatto a fine settimana ---------- */
-function serieProgrammate(d, l){
-  var grp={};
-  eserciziPer(d, l).forEach(function(x){
-    var g=meta(x.n).g, n=x.s||3;
-    grp[g]=(grp[g]||0)+n;
-    (IND[x.n]||[]).forEach(function(g2){ grp[g2]=(grp[g2]||0)+n*0.5; });
-  });
-  return grp;
-}
 function bilancio(w, sedute){
   var fatte=kpi(w).grp, prev={}, out={}, buchi=[];
   (sedute||[]).forEach(function(e){
@@ -116,20 +71,6 @@ function bilancio(w, sedute){
     if(st==="sotto") buchi.push(g);
   });
   return {gruppi:out, buchi:buchi};
-}
-/* dove c'e' un buco: un esercizio nel luogo dell'ultima seduta rimasta */
-function suggerisci(bil, sedute){
-  var resta=(sedute||[]).filter(function(e){ return !sedutaCoperta(bil.w||weekOf(today()), e.d); });
-  var ultima=resta[resta.length-1], out=[];
-  bil.buchi.forEach(function(g){
-    var r=bil.gruppi[g], manca=Math.ceil(r.min-r.tot);
-    if(!ultima){ out.push({g:g, n:manca, ex:null, testo:g+": mancano "+manca+" serie e non restano sedute. Se vuoi recuperarle serve un giorno in più."}); return; }
-    var ex=(FILL[g]||{})[ultima.l]; if(!ex) return;
-    if(Array.isArray(ex)) ex=ex[0];
-    out.push({g:g, n:Math.min(4,manca), ex:ex, d:ultima.d, l:ultima.l, data:ultima.data,
-      testo:g+": mancano "+manca+" serie → aggiungi "+Math.min(4,manca)+" serie di "+ex+" nel giorno "+ultima.d+" ("+ggDi(ultima.data)+")."});
-  });
-  return out;
 }
 /* allarme sulla forza: i carichi pesanti non si toccano da troppo */
 function giorniSenzaPesi(){
