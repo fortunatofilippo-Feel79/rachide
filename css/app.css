@@ -530,3 +530,47 @@ input[type=search]{width:100%;background:var(--surf2);border:1px solid var(--lin
 .psd{width:auto;min-height:40px;padding:6px 10px;border-radius:10px}
 .gr .fl.pv{opacity:.4}
 .gr .vl{width:66px;white-space:nowrap}
+
+/* ---------- v4.2: figure a colori (maglia, pelle, pantaloni, scarpe) ---------- */
+.fg .fg-shirt{fill:#4E93A8;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
+.fg .fg-sleeve{fill:#4E93A8;stroke:#0A0F14;stroke-width:.55}
+.fg .fg-skin{fill:#EBD2BB;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
+.fg .fg-pants{fill:#6F7F95;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
+.fg .fg-shoe{fill:#F4F6F8;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
+.fg .fg-shirt.fg-tf{stroke:#4E93A8;stroke-width:6}
+.fg .fg-far.fg-shirt{fill:#33687A}
+.fg .fg-far.fg-skin{fill:#A38E7B}
+.fg .fg-far.fg-pants{fill:#46566B}
+.fg .fg-far.fg-shoe{fill:#B7BEC6}
+.fg .fg-okg{fill:#8FD07A;stroke:#8FD07A;stroke-width:.4}
+.fg .fg-b{fill:#E3EAF0}
+
+/* ---------- v4.2: scheda Posizione ---------- */
+.fg .fg-co{stroke:var(--amb);stroke-width:.9;fill:none}
+.fg .fg-cop{fill:var(--amb);stroke:none}
+.fg .fg-con{fill:#0A0F14;stroke:var(--amb);stroke-width:1.3}
+.fg .fg-cot{fill:var(--amb);font-weight:800;font-family:inherit}
+.fg .fg-arc{fill:none;stroke:#FFD28A;stroke-width:1.1}
+.fg .fg-arct{fill:#FFD28A;font-weight:800;font-family:inherit;paint-order:stroke;stroke:#0A0F14;stroke-width:2.2px}
+.fg .fg-gl{stroke:#BFE6F0;stroke-width:1;stroke-dasharray:3 3;opacity:.9;fill:none}
+.fg .fg-errg{filter:drop-shadow(0 0 1px #FF6B6B)}
+
+/* ---------- v4.2: blocco Posizione nella guida ---------- */
+.seg3,.seg2{display:grid;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.seg3{grid-template-columns:repeat(3,1fr)}
+.seg2{grid-template-columns:repeat(2,1fr)}
+.seg3 button,.seg2 button{border-radius:9px;padding:9px 4px;min-height:42px;font-size:13.5px;font-weight:700;color:var(--mut)}
+.seg3 button.on,.seg2 button.on{background:var(--surf2);color:var(--bone);box-shadow:inset 0 0 0 1px var(--glow)}
+.seg2 #pos-err.on{box-shadow:inset 0 0 0 1px var(--alert);color:#F0B9B9}
+.posfig{margin-top:10px}
+.figbox.statica{padding:4px}
+.fgpos{max-height:340px}
+.poslist{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.poslist li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.35}
+.poslist li i{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--amb);color:var(--amb);font-style:normal;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:-1px}
+.errbox{margin-top:12px;padding:11px 12px;border:1px solid rgba(212,93,93,.55);border-radius:12px;background:rgba(212,93,93,.1);font-size:14px;line-height:1.4}
+.errbox b{display:block;color:#F0B9B9;margin-bottom:3px}
+.errbox .xs{color:var(--mut);margin-top:5px}
+.chips span.no{color:#F0B9B9;border-color:rgba(212,93,93,.5)}
+.wgcheck{margin:10px 0 0;padding-left:18px;font-size:13.5px;line-height:1.4;color:var(--bone)}
+.wgcheck li{margin:3px 0}

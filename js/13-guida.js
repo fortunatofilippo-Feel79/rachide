@@ -50,25 +50,18 @@ function chipsEsercizio(n){
 function guideSheet(n, tip, giorno){
   var g=G[n], h='<div class="eyebrow amb">Come si fa</div><h2 style="margin:3px 0 6px;font-size:19px">'+esc(n)+'</h2>';
   if(EX[n]) h+=chipsEsercizio(n);
-  if(figHas(n)){
-    h+=figBox(n, {cls:"grande"});
-    var mus=figMuscoli(n);
-    if(mus.length) h+='<div class="mulegenda"><i></i>Lavorano: '+esc(mus.join(" · "))+'<span class="xs mut" style="margin-left:auto">↗ verso del movimento</span></div>';
-    h+='<div class="figctl"><button class="btn sm ghost" data-a="figvel" data-v="0.5">Lento</button>'+
-       '<button class="btn sm ghost" data-a="figvel" data-v="1">Normale</button>'+
-       '<button class="btn sm ghost" data-a="figpausa">Pausa</button></div>';
-  }
+  if(figHas(n)) h+=posBlock(n);
   if(tip) h+='<div class="flag info"><b>Oggi</b><div>'+esc(tip)+'</div></div>';
   if(g){
     h+='<div class="gsez"><div class="eyebrow glow">Posizione e movimento</div><div class="sm">'+esc(g.p)+'</div></div>';
     h+='<div class="gsez"><div class="eyebrow" style="color:var(--ok)">Devi sentire</div><div class="sm">'+esc(g.f)+'</div></div>';
+    var pd=posDef(n);
+    if(pd && pd.no && pd.no.length) h+='<div class="gsez"><div class="eyebrow" style="color:var(--alert)">NON devi sentire fastidio qui</div><div class="chips" style="margin-top:4px">'+
+      pd.no.map(function(z){ return '<span class="no">'+esc(zonaNome(z))+'</span>'; }).join("")+'</div>'+
+      '<div class="xs mut" style="margin-top:4px">Se lo senti: ferma la serie e tocca ⚠ Dolore, segnando zona e intensità.</div></div>';
     h+='<div class="gsez"><div class="eyebrow" style="color:var(--alert)">Stai sbagliando se</div><div class="sm">'+esc(g.e)+'</div></div>';
     h+='<div class="gsez"><div class="eyebrow amb">Correzione</div><div class="sm">'+esc(g.c)+'</div></div>';
   } else if(!tip && !figHas(n)){ h+='<div class="sm mut">Nessuna scheda tecnica per questo esercizio.</div>'; }
-  if(ANIM[n]){
-    h+='<button class="btn sm ghost" style="width:100%;margin-top:14px" data-a="errtip" data-n="'+esc(n)+'">Errore tipico: corretto contro sbagliato</button>'+
-       '<div id="errbox" style="display:none"></div>';
-  }
   var al=ALT[n], so=sostituisce(n);
   if(al && (al.bande||al.corpo)){
     h+='<div class="gsez"><div class="eyebrow">Fuori casa</div><div class="altrow">'+
@@ -79,6 +72,7 @@ function guideSheet(n, tip, giorno){
   h+='<button class="btn" style="margin-top:16px" data-a="x">Chiudi</button>';
   Fig.vel=1; Fig.pausa=false;
   sheet(h);
+  posAggiorna();
 }
 function erroreTipico(n){
   var box=document.getElementById("errbox"); if(!box) return;
@@ -103,6 +97,7 @@ function warmPasso(){
     '<h2 style="margin:4px 0 2px;font-size:19px">'+esc(x.n)+'</h2>'+
     '<div class="sm mut" style="margin-bottom:6px">'+esc(testo)+'</div>'+
     figBox(nome, {cls:"grande"})+
+    (posDef(nome)? '<ul class="wgcheck">'+posDef(nome).co.map(function(c){ return '<li>'+esc(c[1])+'</li>'; }).join("")+'</ul>' : '')+
     '<div class="wgtimer"><svg viewBox="0 0 44 44" class="ring"><circle cx="22" cy="22" r="19" class="rb"/><circle cx="22" cy="22" r="19" class="rf" id="wgring" stroke-dasharray="119.4" stroke-dashoffset="0"/></svg>'+
     '<div><div class="rclk" id="wgclock">'+mmss(dur)+'</div><div class="xs mut" id="wgnext">'+(i<WARM.length-1? "Poi: "+esc(WARM[i+1].n) : "Ultimo blocco")+'</div></div></div>'+
     '<div class="grid3" style="margin-top:12px"><button class="btn sm ghost" data-a="wgprev"'+(i===0?" disabled":"")+'>‹ Indietro</button>'+

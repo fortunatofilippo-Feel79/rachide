@@ -22,6 +22,7 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="posf"){ posScegli(v); return; }
   if(a==="piano"){ pianoApri(); return; }
   if(a==="pricalcola"){ pianoRicalcola(); return; }
   if(a==="pdispo"){ var dd=el.dataset.date, cicli=["casa","fuori","no"]; PS.dispo[dd]=cicli[(cicli.indexOf(PS.dispo[dd])+1)%3]; pianoRicalcola(); return; }
