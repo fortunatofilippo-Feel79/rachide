@@ -780,6 +780,7 @@ async function saveChiusura(){
   S.chiusure=S.chiusure||{};
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
     giorni:gg, mom:mo?mo.dataset.mo:"", ts:today()};
+  cfgTocca("chiusure");
   var ok=await save(); closeSheet(); render();
   if(SYNC.on()) doPush(false);
   toast(!ok? "NON salvata: vedi la scheda Coach" :

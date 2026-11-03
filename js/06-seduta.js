@@ -192,6 +192,7 @@ function applyOp(P, op){
   if(op.op==="stima"){ cibRisolvi(op.n, +op.p||0, +op.c||0, +op.g||0); return; }
   /* calorie: si applica una volta sola, quando approvi la patch (patchApply), non a ogni ricostruzione */
   if(op.op==="kcal") return;
+  if(op.op==="target") return;   /* corridoio del peso: si applica una volta, in patchApply */
   var day = P[op.d]; if(!day) return;
   if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
   if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
@@ -216,6 +217,7 @@ function previewPatch(pt){
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
     if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
+    if(o.op==="target") return "Corridoio del peso: "+(o.peso? o.peso[0]+"-"+o.peso[1]+" g a settimana" : "invariato");
     if(o.op==="kcal") return "Calorie: target "+(2550+(+o.off||0))+" kcal al giorno ("+((+o.off||0)>0?"+":"")+(+o.off||0)+" sulla base, tutto sui carboidrati)";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
     if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
@@ -242,9 +244,10 @@ function backupState(){
   /* con il foglio collegato lo storico è già al sicuro: il .json serve
      solo per il piano e il check simmetria, che nel foglio non vanno */
   var safe = (typeof SYNC!=="undefined" && SYNC.on() && SYNC.state==="ok");
-  return {ref:ref, days:days, since:since, never:!S.lastBackup, safe:safe,
-          due: safe ? days>=60 : (days>=30 || since>=8),
-          soon: safe ? days>=45 : (days>=21 || since>=6)};
+  var tutto = safe && (S.syncVer||1)>=3;   /* v3: anche piano e impostazioni sono sul foglio */
+  return {ref:ref, days:days, since:since, never:!S.lastBackup, safe:safe, tutto:tutto,
+          due: tutto ? days>=90 : safe ? days>=60 : (days>=30 || since>=8),
+          soon: tutto ? days>=75 : safe ? days>=45 : (days>=21 || since>=6)};
 }
 
 /* identificativo di riga: due esercizi uguali nella stessa sessione restano distinti */

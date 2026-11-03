@@ -12,7 +12,7 @@ function elementoFinto() {
     innerHTML: '', textContent: '', value: '', style: {}, dataset: {}, children: [],
     classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     setAttribute() {}, getAttribute() { return null; }, appendChild(c) { return c; }, removeChild() {},
-    addEventListener() {}, removeEventListener() {}, querySelector() { return null; }, querySelectorAll() { return []; },
+    addEventListener() {}, removeEventListener() {}, scrollTo() {}, scrollY: 0, querySelector() { return null; }, querySelectorAll() { return []; },
     closest() { return null; }, focus() {}, click() {}, getContext() { return null; }
   };
   return el;
@@ -54,7 +54,7 @@ function carica(opt) {
     navigator: { clipboard: null },
     location: { origin: 'http://localhost', pathname: '/', href: 'http://localhost/' },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
-    addEventListener() {}, removeEventListener() {},
+    addEventListener() {}, removeEventListener() {}, scrollTo() {}, scrollY: 0,
     fetch: () => Promise.reject(new Error('rete non disponibile nei test')),
     crypto: require('node:crypto').webcrypto,
     TextEncoder, TextDecoder, Blob: class {}, URL,

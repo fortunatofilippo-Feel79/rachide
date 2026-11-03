@@ -22,6 +22,7 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="sgen"){ var k=document.getElementById("syK"); if(k){ k.value=segretoCasuale(); copy(k.value, "Frase copiata: incollala nello script"); } return; }
   if(a==="ics"){ download("rachide-promemoria.ics", icsPromemoria(), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
   if(a==="suoni"){ S.suoni=!suoniOn(); cfgTocca("suoni"); save(); render(); if(S.suoni) setTimeout(function(){ suono("serie"); }, 50); return; }
   if(a==="silenz"){ S.suoniSilenzioso=(S.suoniSilenzioso===false); cfgTocca("suoni"); save(); render(); return; }
@@ -75,8 +76,8 @@ document.addEventListener("click", function(ev){
   if(a==="savesess"){ commitSession(); return; }
   if(a==="restday"){ restForm(); return; }
   if(a==="saverest"){ saveRest(); return; }
-  if(a==="freeze"){ var n=+el.dataset.w||3; S.freeze={until:weekOf(today())+n-1, note:"Fase di stabilizzazione"}; save(); render(); toast("Carichi congelati fino alla settimana "+S.freeze.until); return; }
-  if(a==="unfreeze"){ S.freeze=null; save(); render(); toast("Congelamento rimosso"); return; }
+  if(a==="freeze"){ var n=+el.dataset.w||3; S.freeze={until:weekOf(today())+n-1, note:"Fase di stabilizzazione"}; cfgTocca("freeze"); save(); render(); toast("Carichi congelati fino alla settimana "+S.freeze.until); return; }
+  if(a==="unfreeze"){ S.freeze=null; cfgTocca("freeze"); save(); render(); toast("Congelamento rimosso"); return; }
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(el.dataset.d||null, false, el.dataset.m||undefined); return; }
@@ -104,7 +105,7 @@ document.addEventListener("click", function(ev){
   }
   if(a==="cibrip"){ cibRipeti(el.dataset.m).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibcal"){
-    S.cibOff=+el.dataset.v||0; S.cibOffTs=today();
+    S.cibOff=+el.dataset.v||0; S.cibOffTs=today(); cfgTocca("cibo");
     save().then(function(){ render(); toast("Target aggiornato: "+cibTarget().kcal+" kcal"); });
     return;
   }
@@ -145,12 +146,12 @@ document.addEventListener("click", function(ev){
   if(a==="pprev"){ patchPreview(); return; }
   if(a==="pincolla"){ patchIncolla(); return; }
   if(a==="propvedi"){ var pa=propAttiva(); if(pa) patchPreview(pa.testo, pa.id); return; }
-  if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
+  if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; cfgTocca("proposta"); save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
   if(a==="propcheck"){ propCheck(true); return; }
-  if(a==="passo1"){ S.passo1=!S.passo1; save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
+  if(a==="passo1"){ S.passo1=!S.passo1; cfgTocca("passo1"); save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
   if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
   if(a==="papply"){ patchApply(); return; }
-  if(a==="prev"){ if(confirm("Annullare l'ultima modifica al piano?")){ S.patches.pop(); PLAN=buildPlan(); save(); render(); toast("Modifica annullata"); } return; }
+  if(a==="prev"){ if(confirm("Annullare l'ultima modifica al piano?")){ S.patches.pop(); cfgTocca("patches"); PLAN=buildPlan(); save(); render(); toast("Modifica annullata"); } return; }
 });
 /* selezione singola dentro i pannelli: un solo gestore per tutti i form */
 document.addEventListener("click", function(ev){
@@ -656,7 +657,9 @@ function syncForm(){
     '<label class="fld"><span class="eyebrow">URL della distribuzione (finisce con /exec)</span>'+
     '<input type="text" id="syU" value="'+esc(c.url||"")+'" placeholder="https://script.google.com/macros/s/…/exec"></label>'+
     '<label class="fld"><span class="eyebrow">Frase segreta (la stessa dello script)</span>'+
-    '<input type="text" id="syK" value="'+esc(c.secret||"")+'"></label>'+
+    '<input type="text" id="syK" value="'+esc(c.secret||"")+'" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'+
+    '<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="sgen">Genera una frase segreta robusta (32 caratteri)</button>'+
+    '<div class="xs mut" style="margin-top:6px">Con lo script v3 la frase non viaggia nell\'indirizzo. Generane una nuova, mettila nelle proprietà dello script (SEGRETO) e ridistribuisci.</div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="ssave">Salva e prova</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
@@ -715,11 +718,15 @@ async function _pushNow(loud){
   SYNC.busy=true; SYNC.err=""; if(loud) toast("Scrivo sul foglio…");
   var snap=Object.assign({}, S.dirtyBen||{});
   try{
-    var r=await SYNC.push(SYNC.payloadAll());
+    /* script v3: solo le righe cambiate (o tutto, se lo chiedi), piu' impostazioni e KPI */
+    var v3=(S.syncVer||1)>=3, pl=v3? payloadV3(!!loud) : SYNC.payloadAll();
+    var invio=Object.assign({}, pl); delete invio._impronte;
+    var r=await SYNC.push(invio);
+    if(v3) dopoInvioV3(pl);
     /* confermato dal foglio: tolgo il segno solo alle giornate non cambiate nel frattempo */
     Object.keys(snap).forEach(function(k){ if(S.dirtyBen && S.dirtyBen[k]===snap[k]) delete S.dirtyBen[k]; });
     /* piano: gli esercizi tolti dal piano spariscono anche da App_Piano */
-    try{
+    if(!v3) try{
       var ids=pianoRows().map(function(x){ return x.id; });
       var via=(S.pianoIds||[]).filter(function(x){ return ids.indexOf(x)<0; });
       if(via.length) await SYNC.pushDelete({piano:via});
@@ -801,7 +808,7 @@ function patchPreview(raw, pid){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p; _pendId=pid||null;
     var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;
@@ -819,11 +826,16 @@ function patchApply(){
   if(!_pend) return;
   S.patches = S.patches||[];
   S.patches.push({ts:today(), nota:_pend.nota||"", ops:_pend.ops});
-  (_pend.ops||[]).forEach(function(o){ if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); } });
-  if(_pendId) S.propFatta=_pendId;
+  cfgTocca("patches");
+  (_pend.ops||[]).forEach(function(o){
+    if(o.op==="kcal"){ S.cibOff=+o.off||0; S.cibOffTs=today(); cfgTocca("cibo"); }
+    /* il coach puo' spostare il corridoio del peso: {"op":"target","peso":[150,250]} */
+    if(o.op==="target" && Array.isArray(o.peso) && o.peso.length===2){ S.target=Object.assign({}, S.target||{}, {peso:[+o.peso[0], +o.peso[1]]}); cfgTocca("target"); }
+  });
+  if(_pendId){ S.propFatta=_pendId; cfgTocca("proposta"); }
   PLAN=buildPlan(); _pend=null; _pendId=null; save(); closeSheet(); render();
   /* le voci di cibo convertite dalla patch vanno subito sul foglio */
-  if(SYNC.on() && Object.keys(S.dirtyBen||{}).length) doPush(false);
+  if(SYNC.on()) doPush(false);
   toast("Piano aggiornato");
 }
 function importer(){

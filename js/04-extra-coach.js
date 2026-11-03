@@ -147,12 +147,12 @@ function coachPer(day){
 }
 async function coachFatto(id){
   S.cdone = S.cdone || {};
-  S.cdone[id] = true;
+  S.cdone[id] = true; cfgTocca("coach");
   await save();
   render();
 }
 async function coachRiapri(){
-  S.cdone = {};
+  S.cdone = {}; cfgTocca("coach");
   await save();
   render();
 }

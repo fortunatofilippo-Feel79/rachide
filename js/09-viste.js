@@ -53,7 +53,8 @@ function viewOggi(){
       '<div class="grid2" style="margin-top:12px"><button class="btn pri" data-a="scfg">Collega il foglio</button><button class="btn" data-a="imp">Apri un backup</button></div></div>'; }
   var bk=backupState();
   if(bk.due) h+='<div class="flag '+(bk.safe?"disc":"stop")+'" style="margin-top:12px"><b>⤓</b><div>'+
-    (bk.safe ? "Il foglio ha già tutto. Un backup .json ogni due mesi resta la copia di riserva."
+    (bk.tutto ? "Il foglio ha già tutto. Un backup .json ogni tre mesi resta la copia di riserva."
+      : bk.safe ? "Lo storico è nel foglio, ma piano e impostazioni vivono solo qui finché non installi lo script v3: un backup li mette al sicuro."
       : (bk.never? "Non hai ancora fatto un backup." : "Ultimo backup "+bk.days+" giorni fa")+
         (bk.since? " · "+bk.since+" sessioni registrate da allora." : "."))+
     ' <button data-a="dlj" style="color:inherit;text-decoration:underline;font-weight:700;padding:0">Scaricalo ora</button></div></div>';
@@ -679,7 +680,10 @@ function viewCoach(){
     h+='<div class="sm mut" style="margin-top:7px">Lo storico vive nel foglio. L\'app lo legge all\'avvio e ci scrive a fine sessione.</div>'+
        (SYNC.last?'<div class="xs mut" style="margin-top:4px">Ultima sincronizzazione: '+SYNC.last.toLocaleTimeString("it")+'</div>':"")+
        '<div class="xs" style="margin-top:6px;color:'+((SYNC.ver||1)>=2?"var(--ok)":"var(--amb)")+'">'+
-       ((SYNC.ver||1)>=2? "Script v2: modifiche e cancellazioni dei giorni passati attive." : "Script v1: puoi solo aggiungere. Per modificare/cancellare i giorni passati aggiorna lo script (te l\'ho dato).")+'</div>'+
+       ((SYNC.ver||1)>=3? "Script v3: storico, piano e impostazioni sul foglio. Partono solo le modifiche."
+        : (SYNC.ver||1)>=2? "Script v2: lo storico è sul foglio, piano e impostazioni solo qui. Lo script v3 (cartella apps-script del progetto) dà all\'app la memoria completa."
+        : "Script v1: puoi solo aggiungere. Installa lo script v3 (cartella apps-script del progetto).")+'</div>'+
+       ((SYNC.ver||1)>=3 && SYNC.state==="ok"? (function(){ var q=inAttesaV3(); return '<div class="xs mut" style="margin-top:4px">In attesa di invio: '+q.righe+' righe'+(q.cfg?' e '+q.cfg+' gruppi di impostazioni':'')+'.</div>'; })() : '')+
        (SYNC.err?'<div class="flag stop" style="margin-top:8px">•<div>'+esc(SYNC.err)+'</div></div>':"")+
        '<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="spull">Rileggi dal foglio</button>'+
        '<button class="btn sm" data-a="spush">Invia tutto</button></div>'+
