@@ -8,10 +8,11 @@ Riferimento per il coach: che cosa misura l'app, quando, con quale formula e qua
 
 | Momento | Cosa | Tempo |
 | --- | --- | --- |
-| Al risveglio | HRV, FC a riposo, sonno, readiness (da Zepp), peso a digiuno (a casa), dove hai dormito, alcol la sera prima, spalla sinistra 0-10 | 1 minuto |
-| Dopo ogni pasto | Il pasto: da catalogo, ricetta, «come ieri» o a parole (il coach converte) | 20 secondi |
+| Al risveglio | HRV, FC a riposo, sonno, readiness (da Zepp), peso a digiuno (a casa), dove hai dormito, alcol la sera prima, dolori: zona e intensità 0-10 | 1 minuto |
+| Durante un esercizio | Se qualcosa fa male: pulsante Dolore, zona e intensità (è il «flag» della guida tecnica) | 10 secondi |
+| Dopo ogni pasto | Il pasto: codice a barre, catalogo, ricetta, «come ieri» o a parole (il coach converte) | 20 secondi |
 | Durante la seduta | Serie (ripetizioni o secondi), carico o banda, RIR dell'ultima serie, lato più duro, note | in seduta |
-| Fine seduta | Durata, energia 1-5, spalla sinistra 0-10 (massimo), altri segnali, note | 30 secondi |
+| Fine seduta | Durata, energia 1-5, dolore per zona (il massimo, già compilato dagli esercizi), note | 30 secondi |
 | Prima di dormire | Reflusso 0-3, camminate dopo i pasti 0-2, respirazione 4-7, stress 0-3, testa 1-5 | 30 secondi |
 | Domenica | Chiusura della settimana (tre domande, giorni delle sedute), passi medi e ipopnea da Zepp | 2 minuti |
 | Ogni 14 giorni | Misure: peso, vita, torace, braccio, coscia (mattino, a digiuno) | 3 minuti |
@@ -52,7 +53,7 @@ L'app mostra in Oggi la lista «Da registrare oggi» con questi orari e può agg
 | `sonno7` | Sonno, media 7 giorni | Ore di sonno medie. Sotto 6,5 il giorno conta come recupero basso (decisione del 18/10) | ≥ 7 h | giornaliero | [AASM e SRS 2015 · almeno 7 ore negli adulti](https://www.aasm.org/resources/pdf/adultsleepdurationconsensus.pdf) |
 | `stress7` | Stress, media 7 giorni | Stress percepito 0-3. Da 2 il giorno conta come stress alto | < 1,5 | giornaliero | Regola del piano (Piano Unico v5, decisioni del coach) |
 | `reflusso7` | Reflusso, media 7 giorni | Reflusso 0-3 registrato la sera. Si incrocia con i grassi del giorno | ≤ 0,5 | giornaliero | Regola del piano (Piano Unico v5, decisioni del coach) |
-| `spalla` | Spalla sinistra | Dolore 0-10: il massimo durante la seduta e il residuo la mattina dopo. Fino a 5 in seduta è accettabile se al mattino è rientrato | mattina ≤ 2, seduta ≤ 5 | giornaliero e per seduta | [Silbernagel et al. 2007 · pain-monitoring model](https://search.pedro.org.au/search-results/record-detail/18389) |
+| `dolore` | Dolore (qualsiasi zona) | Dolore 0-10 per zona: il massimo al mattino (media dei 7 giorni) e il massimo durante le sedute (14 giorni). Fino a 5 in seduta è accettabile se al mattino dopo è rientrato e non sale di settimana in settimana | mattina ≤ 2, seduta ≤ 5 | giornaliero e per seduta | [Silbernagel et al. 2007 · pain-monitoring model](https://search.pedro.org.au/search-results/record-detail/18389) |
 | `passi` | Passi al giorno | Media giornaliera della settimana letta da Zepp | 8.000-10.000 | settimanale (domenica) | [Paluch et al. 2022 · Lancet Public Health 7:e219](https://doi.org/10.1016/S2468-2667(21)00302-9) |
 | `ipopnea` | Indice di ipopnea | Eventi per ora stimati dal wearable: non è una diagnosi, è un andamento da mostrare al medico | < 5 | settimanale (domenica) | Regola del piano (Piano Unico v5, decisioni del coach) |
 | `mobilita` | Differenza fra i lati, mobilità | Massima differenza sinistra − destra nei test bilaterali | < 2 | ogni 28 giorni | Regola del piano (Piano Unico v5, decisioni del coach) |
@@ -74,7 +75,8 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 - **Recupero.** Livello 2 (carichi fermi, mai un invito a scendere): HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo.
 - **Piano flessibile.** Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.
 - **Settimana di picco.** Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](https://pubmed.ncbi.nlm.nih.gov/33629972/)).
-- **Spalla sinistra.** Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, o se il mattino dopo non è sceso, la diagnosi lo segnala e le salite si fermano ([Silbernagel 2007](https://search.pedro.org.au/search-results/record-detail/18389)).
+- **Dolore.** In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](https://search.pedro.org.au/search-results/record-detail/18389)). Zone: `collo`, `dorsale`, `costole`, `lombare`, `spalla_sx`, `spalla_dx`, `gomito_sx`, `gomito_dx`, `polso_sx`, `polso_dx`, `anca_sx`, `anca_dx`, `ginocchio_sx`, `ginocchio_dx`, `caviglia_sx`, `caviglia_dx`, `altro`.
+- **Codice a barre.** Valori per 100 g da [Open Food Facts](https://world.openfoodfacts.org) (licenza ODbL) o dall'etichetta; il prodotto resta sul telefono e nel foglio (gruppo `prodotti` di App_Config). Le voci del pasto lette col codice hanno il campo `bc`.
 - **Peso e calorie.** Pendenza su regressione delle pesate (esclusi i rientri da trasferta). Ricalibrazione di ±150 kcal solo dopo due letture consecutive fuori corridoio, al massimo ogni 14 giorni, e sempre con conferma.
 
 ## Schede del foglio
@@ -101,6 +103,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `note` | nota libera |
 | `rec` | secondi medi tra una serie e la successiva |
 | `duro` | lato più duro: S, D, U (uguali) |
+| `dolz` | dolore segnato durante l'esercizio, zona:valore separati da ; (es. spalla_sx:4) |
 
 ### `App_Sessioni`
 
@@ -115,8 +118,9 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `min` | durata in minuti |
 | `en` | energia 1-5 |
 | `warm` | riscaldamento completo Sì/No |
-| `sig` | segnale articolare Sì/No (anche se spalla sopra 5) |
-| `dol` | spalla sinistra, massimo durante la seduta 0-10 |
+| `sig` | Sì se un dolore ha superato 5/10 |
+| `dol` | dolore massimo durante la seduta 0-10 (qualsiasi zona) |
+| `dolz` | dolore per zona durante la seduta, zona:valore separati da ; |
 | `note` | nota libera |
 
 ### `App_Misure`
@@ -151,7 +155,8 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `mente` | testa 1-5 (sera) |
 | `passi` | passi medi della settimana (domenica) |
 | `ipo` | indice di ipopnea eventi/ora (domenica) |
-| `dolm` | spalla sinistra al mattino 0-10 |
+| `dolm` | dolore massimo al mattino 0-10 (qualsiasi zona) |
+| `dolmz` | dolore al mattino per zona, zona:valore separati da ; |
 | `cibP` | proteine del giorno g |
 | `cibC` | carboidrati g |
 | `cibG` | grassi g |
@@ -239,8 +244,9 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `diagnosi` | titoli della diagnosi automatica |
 | `prot_gkg` | proteine g/kg |
 | `vita_altezza` | rapporto vita/altezza |
-| `spalla_mattina` | spalla al mattino, media 0-10 |
-| `spalla_seduta_max` | spalla in seduta, massimo 0-10 |
+| `dolore_mattina` | dolore al mattino, media dei massimi giornalieri 0-10 |
+| `dolore_seduta_max` | dolore in seduta, massimo 0-10 |
+| `dolore_zone` | zone di dolore della settimana con il numero di rilevazioni (es. lombare×3) |
 | `serie_gruppo` | serie per gruppo, conteggio frazionario |
 | `picco` | Sì se settimana di picco |
 | `kpi_fuori` | KPI in attenzione o fuori (chiavi App_KPI) |
@@ -272,7 +278,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | Colonna | Significato |
 | --- | --- |
 | `k` | gruppo (e #parte se spezzato) |
-| `gruppo` | patches, impostazioni, chiusure, coach |
+| `gruppo` | patches, impostazioni, chiusure, coach, prodotti |
 | `parte` | numero del pezzo |
 | `parti` | pezzi totali |
 | `ts` | orologio della modifica (ms): vince il più recente |

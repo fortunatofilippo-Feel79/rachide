@@ -133,14 +133,16 @@ var SYNC = {
         load:+r.load||0, reps:rp,
         rir:(r.rir===""||r.rir==null)?null:+r.rir, top:r.top===true||r.top==="Sì"||r.top===1, note:r.note||"",
         rec:(r.rec===undefined||r.rec===null||r.rec==="") ? (loc&&loc.rec!=null?loc.rec:null) : num(r.rec),
-        duro:(r.duro===undefined||r.duro===null||r.duro==="") ? (loc&&loc.duro?loc.duro:"") : String(r.duro)};
+        duro:(r.duro===undefined||r.duro===null||r.duro==="") ? (loc&&loc.duro?loc.duro:"") : String(r.duro),
+        dolz:(r.dolz===undefined||r.dolz===null||r.dolz==="") ? (loc&&loc.dolz?loc.dolz:"") : String(r.dolz)};
     }), S.log, byId, "App_Log");
     var locSess={}; S.sess.forEach(function(r){ if(r.id) locSess[r.id]=r; });
     if(d.sess) S.sess = this.fuse(d.sess.map(function(r){
       var ls=locSess[String(r.id||"")];
       return {id:r.id||uid("s"), w:+r.w||weekOf(r.date), date:r.date, day:r.day, sede:r.sede, mod:r.mod, min:+r.min||0,
         en:+r.en||0, warm:r.warm===true||r.warm==="Sì", sig:r.sig===true||r.sig==="Sì", note:r.note||"",
-        dol:(r.dol===undefined||r.dol===null||r.dol==="") ? (ls&&ls.dol!=null? ls.dol : null) : num(r.dol)};
+        dol:(r.dol===undefined||r.dol===null||r.dol==="") ? (ls&&ls.dol!=null? ls.dol : null) : num(r.dol),
+        dolz:(r.dolz===undefined||r.dolz===null||r.dolz==="") ? (ls&&ls.dolz? ls.dolz : "") : String(r.dolz)};
     }), S.sess, byId, "App_Sessioni");
     if(d.mis)  S.mis  = this.fuse(d.mis.map(function(r){
       return {w:+r.w||weekOf(r.date), date:r.date, peso:num(r.peso), torace:num(r.torace),
@@ -165,7 +167,7 @@ var SYNC = {
         camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
-        mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"), dolm:keepn(r,loc,"dolm"),
+        mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"), dolm:keepn(r,loc,"dolm"), dolmz:keeps(r,loc,"dolmz"),
         cibP:keepn(r,loc,"cibP"), cibC:keepn(r,loc,"cibC"), cibG:keepn(r,loc,"cibG"),
         cibJ:keeps(r,loc,"cibJ"), sede:keeps(r,loc,"sede"), citta:keeps(r,loc,"citta")};
     }), S.ben, byDate, "App_Benessere");
@@ -186,16 +188,16 @@ var SYNC = {
   benRow(r){
     return {date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
       read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
-      mente:r.mente,passi:r.passi,ipo:r.ipo,dolm:(r.dolm==null?"":r.dolm),cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibJ:r.cibJ,sede:r.sede||"",citta:r.citta||"",note:r.note};
+      mente:r.mente,passi:r.passi,ipo:r.ipo,dolm:(r.dolm==null?"":r.dolm),dolmz:r.dolmz||"",cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibJ:r.cibJ,sede:r.sede||"",citta:r.citta||"",note:r.note};
   },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
   payloadAll(){
     return {
       log: S.log.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,ex:r.ex,gruppo:meta(r.ex).g,side:r.side,band:r.band,
         load:r.load,reps:r.reps.join("|"),serie:r.reps.length,tot:r.reps.reduce((a,b)=>a+b,0),
-        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||""})),
+        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||"",dolz:r.dolz||""})),
       sess: S.sess.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,sede:r.sede,mod:r.mod,min:r.min,en:r.en,
-        warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",dol:(r.dol==null?"":r.dol),note:r.note})),
+        warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",dol:(r.dol==null?"":r.dol),dolz:r.dolz||"",note:r.note})),
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),
       ben: S.ben.map(r=>SYNC.benRow(r)),
       sim: (S.sim||[]).map(r=>({date:r.date,w:r.w,ex:r.ex,q:r.q,a:r.a,side:r.side})),

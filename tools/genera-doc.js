@@ -17,19 +17,22 @@ const COLONNE = {
     gruppo: 'gruppo muscolare principale', side: 'S sinistra, D destra, vuoto se bilaterale', band: 'banda usata',
     load: 'carico in kg per manubrio', reps: 'ripetizioni per serie, separate da |', serie: 'numero di serie', tot: 'ripetizioni totali',
     vol: 'volume in kg (carico × ripetizioni)', rir: 'ripetizioni di riserva nell\'ultima serie (0 = cedimento, 4 = 4 o più)',
-    top: 'Sì se il top del range è chiuso', note: 'nota libera', rec: 'secondi medi tra una serie e la successiva', duro: 'lato più duro: S, D, U (uguali)'
+    top: 'Sì se il top del range è chiuso', note: 'nota libera', rec: 'secondi medi tra una serie e la successiva', duro: 'lato più duro: S, D, U (uguali)',
+    dolz: 'dolore segnato durante l\'esercizio, zona:valore separati da ; (es. spalla_sx:4)'
   },
   sess: {
     id: 'identificativo', w: 'settimana del piano', date: 'data', day: 'giorno del piano', sede: 'Casa o Trasferta',
     mod: 'Pesi, Bande, Corpo libero, Ridotta (45′), Minima (15′), Essenziale (picco), Riposo', min: 'durata in minuti', en: 'energia 1-5',
-    warm: 'riscaldamento completo Sì/No', sig: 'segnale articolare Sì/No (anche se spalla sopra 5)', dol: 'spalla sinistra, massimo durante la seduta 0-10', note: 'nota libera'
+    warm: 'riscaldamento completo Sì/No', sig: 'Sì se un dolore ha superato 5/10', dol: 'dolore massimo durante la seduta 0-10 (qualsiasi zona)',
+    dolz: 'dolore per zona durante la seduta, zona:valore separati da ;', note: 'nota libera'
   },
   mis: { w: 'settimana', date: 'data', peso: 'kg', torace: 'cm, a fine espirazione', bic: 'braccio cm', coscia: 'cm', vita: 'cm', note: 'nota' },
   ben: {
     date: 'data', w: 'settimana', refl: 'reflusso 0-3 (sera)', resp: 'respirazione 4-7 fatta (sera)', camm: 'camminate dopo i pasti 0-2 (sera)',
     hrv: 'HRV notturna da Zepp (mattino)', read: 'readiness Zepp (mattino)', sonno: 'ore di sonno (mattino)', alc: 'alcol la sera prima (mattino)',
     peso: 'peso a digiuno kg (mattino, vuoto in trasferta)', rhr: 'FC a riposo (mattino)', stress: 'stress 0-3 (sera)', mente: 'testa 1-5 (sera)',
-    passi: 'passi medi della settimana (domenica)', ipo: 'indice di ipopnea eventi/ora (domenica)', dolm: 'spalla sinistra al mattino 0-10',
+    passi: 'passi medi della settimana (domenica)', ipo: 'indice di ipopnea eventi/ora (domenica)', dolm: 'dolore massimo al mattino 0-10 (qualsiasi zona)',
+    dolmz: 'dolore al mattino per zona, zona:valore separati da ;',
     cibP: 'proteine del giorno g', cibC: 'carboidrati g', cibG: 'grassi g', cibJ: 'pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto)',
     sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', note: 'nota libera'
   },
@@ -52,7 +55,8 @@ const COLONNE = {
     kcal: 'calorie medie', prot: 'proteine medie g', carb: 'carboidrati medi g', grassi: 'grassi medi g', hrv: 'HRV mediana', rhr: 'FC a riposo mediana',
     sonno: 'sonno medio h', sonno_fuori: 'sonno medio nelle notti fuori', rec_bassi: 'giorni con recupero basso', prog: 'progressione scelta',
     diagnosi: 'titoli della diagnosi automatica', prot_gkg: 'proteine g/kg', vita_altezza: 'rapporto vita/altezza',
-    spalla_mattina: 'spalla al mattino, media 0-10', spalla_seduta_max: 'spalla in seduta, massimo 0-10',
+    dolore_mattina: 'dolore al mattino, media dei massimi giornalieri 0-10', dolore_seduta_max: 'dolore in seduta, massimo 0-10',
+    dolore_zone: 'zone di dolore della settimana con il numero di rilevazioni (es. lombare×3)',
     serie_gruppo: 'serie per gruppo, conteggio frazionario', picco: 'Sì se settimana di picco', kpi_fuori: 'KPI in attenzione o fuori (chiavi App_KPI)',
     bene: 'chiusura: cosa è andato bene', cambia: 'chiusura: una cosa da cambiare', piano_sett: 'giorni decisi per la settimana dopo', agg: 'data'
   },
@@ -61,7 +65,7 @@ const COLONNE = {
     bersaglio: 'bersaglio', fonte: 'fonte del bersaglio', link: 'link alla fonte', valore: 'valore attuale', testo: 'valore leggibile',
     stato: 'ok, attenzione, fuori, dati insufficienti', agg: 'data'
   },
-  cfg: { k: 'gruppo (e #parte se spezzato)', gruppo: 'patches, impostazioni, chiusure, coach', parte: 'numero del pezzo', parti: 'pezzi totali',
+  cfg: { k: 'gruppo (e #parte se spezzato)', gruppo: 'patches, impostazioni, chiusure, coach, prodotti', parte: 'numero del pezzo', parti: 'pezzi totali',
     ts: 'orologio della modifica (ms): vince il più recente', v: 'contenuto JSON (o un suo pezzo)' }
 };
 const SCHEDE = { log: 'App_Log', sess: 'App_Sessioni', mis: 'App_Misure', ben: 'App_Benessere', sim: 'App_Simmetria', mob: 'App_Mobilita',
@@ -70,8 +74,8 @@ const SCHEDE = { log: 'App_Log', sess: 'App_Sessioni', mis: 'App_Misure', ben: '
 /* le colonne reali, dal codice: un campione di stato con ogni tipo di riga */
 function colonneReali() {
   const S = ctx.S, oggi = ctx.today();
-  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, top: true, note: '', rec: 120, duro: 'S' }];
-  S.sess = [{ id: 's', w: 40, date: oggi, day: 'A', sede: 'Casa', mod: 'Pesi', min: 60, en: 4, warm: true, sig: false, dol: 2, note: '' }];
+  S.log = [{ id: 'l', w: 40, date: oggi, day: 'A', ex: 'Floor Press manubri', side: '', band: '', load: 20, reps: [10], rir: 2, top: true, note: '', rec: 120, duro: 'S', dolz: '' }];
+  S.sess = [{ id: 's', w: 40, date: oggi, day: 'A', sede: 'Casa', mod: 'Pesi', min: 60, en: 4, warm: true, sig: false, dol: 2, dolz: 'lombare:2', note: '' }];
   S.mis = [{ w: 40, date: oggi, peso: 66, torace: 95, bic: 33, coscia: 54, vita: 80, note: '' }];
   S.ben = [{ date: oggi, w: 40, hrv: 50 }];
   S.sim = [{ date: oggi, w: 40, ex: 'x', q: 'q', a: 'Sì', side: '' }];
@@ -100,10 +104,11 @@ function genera() {
   L.push('');
   L.push(riga(['Momento', 'Cosa', 'Tempo']));
   L.push(riga(['---', '---', '---']));
-  [['Al risveglio', 'HRV, FC a riposo, sonno, readiness (da Zepp), peso a digiuno (a casa), dove hai dormito, alcol la sera prima, spalla sinistra 0-10', '1 minuto'],
-   ['Dopo ogni pasto', 'Il pasto: da catalogo, ricetta, «come ieri» o a parole (il coach converte)', '20 secondi'],
+  [['Al risveglio', 'HRV, FC a riposo, sonno, readiness (da Zepp), peso a digiuno (a casa), dove hai dormito, alcol la sera prima, dolori: zona e intensità 0-10', '1 minuto'],
+   ['Durante un esercizio', 'Se qualcosa fa male: pulsante Dolore, zona e intensità (è il «flag» della guida tecnica)', '10 secondi'],
+   ['Dopo ogni pasto', 'Il pasto: codice a barre, catalogo, ricetta, «come ieri» o a parole (il coach converte)', '20 secondi'],
    ['Durante la seduta', 'Serie (ripetizioni o secondi), carico o banda, RIR dell\'ultima serie, lato più duro, note', 'in seduta'],
-   ['Fine seduta', 'Durata, energia 1-5, spalla sinistra 0-10 (massimo), altri segnali, note', '30 secondi'],
+   ['Fine seduta', 'Durata, energia 1-5, dolore per zona (il massimo, già compilato dagli esercizi), note', '30 secondi'],
    ['Prima di dormire', 'Reflusso 0-3, camminate dopo i pasti 0-2, respirazione 4-7, stress 0-3, testa 1-5', '30 secondi'],
    ['Domenica', 'Chiusura della settimana (tre domande, giorni delle sedute), passi medi e ipopnea da Zepp', '2 minuti'],
    ['Ogni 14 giorni', 'Misure: peso, vita, torace, braccio, coscia (mattino, a digiuno)', '3 minuti'],
@@ -137,7 +142,8 @@ function genera() {
     ['Recupero', 'Livello 2 (carichi fermi, mai un invito a scendere): HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo.'],
     ['Piano flessibile', 'Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.'],
     ['Settimana di picco', 'Bersaglio 2 sedute essenziali (E1, E2) a carichi invariati, 2 serie per esercizio: mantenimento ([Spiering 2021](' + ctx.FONTI.spiering.u + ')).'],
-    ['Spalla sinistra', 'Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, o se il mattino dopo non è sceso, la diagnosi lo segnala e le salite si fermano ([Silbernagel 2007](' + ctx.FONTI.silbernagel.u + ')).'],
+    ['Dolore', 'In qualsiasi zona (17, sinistra e destra separate). Fino a 5/10 in seduta è accettabile se al mattino è rientrato; sopra 5, se il mattino dopo non è sceso, o se la stessa zona torna 3 volte in 14 giorni, la diagnosi lo segnala ([Silbernagel 2007](' + ctx.FONTI.silbernagel.u + ')). Zone: ' + ctx.ZONE.map(z => '`' + z[0] + '`').join(', ') + '.'],
+    ['Codice a barre', 'Valori per 100 g da [Open Food Facts](https://world.openfoodfacts.org) (licenza ODbL) o dall\'etichetta; il prodotto resta sul telefono e nel foglio (gruppo `prodotti` di App_Config). Le voci del pasto lette col codice hanno il campo `bc`.'],
     ['Peso e calorie', 'Pendenza su regressione delle pesate (esclusi i rientri da trasferta). Ricalibrazione di ±150 kcal solo dopo due letture consecutive fuori corridoio, al massimo ogni 14 giorni, e sempre con conferma.']
   ].forEach(r => { L.push('- **' + r[0] + '.** ' + r[1]); });
   L.push('');

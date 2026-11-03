@@ -115,10 +115,11 @@ function kpiValori(){
   var s7=mediaUltimi("sonno",7); put("sonno7", s7==null?null:r1(s7), s7==null? "–" : dec(r1(s7))+" h");
   var st7=mediaUltimi("stress",7); put("stress7", st7==null?null:r1(st7), st7==null? "–" : dec(r1(st7)));
   var rf7=mediaUltimi("refl",7); put("reflusso7", rf7==null?null:r1(rf7), rf7==null? "–" : dec(r1(rf7)));
-  var dm=mediaUltimi("dolm",7), ds=S.sess.filter(function(s){ return s.dol!=null && s.dol!=="" && dataOk(s.date) && giorniDa(s.date)<14; }).map(function(s){ return +s.dol; });
-  var dsMax=ds.length? Math.max.apply(null, ds) : null;
-  put("spalla", dm==null? dsMax : r1(dm), (dm==null?"mattina –":"mattina "+dec(r1(dm)))+(dsMax==null?"":" · seduta max "+dsMax),
-      (dsMax!=null && dsMax>5) ? "ko" : statoSoglia(D.spalla, dm==null? null : dm));
+  var dg=dolGiorni(7).filter(function(g){ return g.compilato; }), dm=dg.length? media(dg.map(function(g){ return g.max; })) : null;
+  var ds=S.sess.filter(function(s){ return dataOk(s.date) && giorniDa(s.date)<14; }).map(function(s){ return dolMax(dolDi(s,"dolz","dol")); }).filter(function(v){ return v>0; });
+  var dsMax=ds.length? Math.max.apply(null, ds) : null, zf=dolZoneFrequenti(14, 1)[0];
+  put("dolore", dm==null? dsMax : r1(dm), (dm==null?"mattina –":"mattina "+dec(r1(dm)))+(dsMax==null?"":" · seduta max "+dsMax)+(zf? " · più spesso: "+zonaNome(zf.z).toLowerCase() : ""),
+      (dsMax!=null && dsMax>5) ? "ko" : statoSoglia(D.dolore, dm==null? null : dm));
   var pw=S.ben.filter(function(b){ return b.passi; }).slice(-1)[0];
   put("passi", pw? pw.passi : null, pw? kfmt(pw.passi) : "–");
   var ip=S.ben.filter(function(b){ return b.ipo!=null && b.ipo!==""; }).slice(-1)[0];
@@ -180,7 +181,7 @@ function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente
 function simDue(){ var w=weekOf(today()); return w>=31 && (w-31)%4===0 && !(S.sim||[]).some(function(x){ return x.w===w; }); }
 function agendaVoci(){
   var oggi=today(), b=benOn(oggi), now=oraMin(), o=orari(), dom=new Date().getDay()===0, w=weekOf(oggi), v=[];
-  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, spalla",
+  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, dolori",
     fatto:mattinaFatta(b), dovuto: now>=hm(o.mattina)-90, a:"benm"});
   var g=cibDay(oggi), attesi=[["col",600],["sm",720],["pra",900],["sp",1080],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });
   var regi=MEALS.filter(function(m){ return m.k!=="ex" && (g[m.k]||[]).length; }).length;

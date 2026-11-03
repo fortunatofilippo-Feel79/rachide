@@ -66,6 +66,7 @@ async function avvia(){
   var c_era = statoDaSalvato(await Store.get());
   if(!c_era){ S.installed=today(); await save(); }
   if(!S.installed) S.installed=today();
+  if(dolMigra()) save();   /* il vecchio dolore alla spalla diventa la zona spalla_sx */
   /* la banda "azzurra" non esiste nel set: e' la blu */
   S.log.forEach(function(r){ if(r.band==="azzurra") r.band="blu"; });
   if(S.draft && S.draft.ex) S.draft.ex.forEach(function(e){ if(e.band==="azzurra") e.band="blu"; });

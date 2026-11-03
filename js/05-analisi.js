@@ -333,14 +333,8 @@ function diagnose(){
     if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso \u00b7 reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
       m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio \u00e8 pi\u00f9 alto ("+gr.length+" giornate contro "+gl.length+"). Non \u00e8 una prova di causa, ma \u00e8 il primo posto dove guardare."});
   }
-  /* 3a. spalla sinistra: sopra 5/10 in seduta, o non rientrata la mattina dopo (Silbernagel 2007) */
-  S.sess.filter(function(s){ return s.dol!=null && s.dol!=="" && dataOk(s.date) && giorniDa(s.date)<=14; }).forEach(function(s){
-    var dopo=new Date(s2d(s.date).getTime()+86400000), bm=benOn(d2s(dopo));
-    if(+s.dol>5) out.push({k:"segnale", t:"Spalla sinistra "+s.dol+"/10 · "+s.date.slice(0,5),
-      m:"Sopra 5 durante la seduta. Niente salite di carico sugli esercizi di spinta e sul Reverse Fly finché non torna sotto 3 al mattino. Se si ripete, al fisioterapista."});
-    else if(bm && bm.dolm!=null && bm.dolm!=="" && +bm.dolm>=3 && +bm.dolm>=+s.dol) out.push({k:"segnale", t:"Spalla non rientrata · "+d2s(dopo).slice(0,5),
-      m:"Il mattino dopo la seduta era "+bm.dolm+"/10, non meno di durante ("+s.dol+"). Il carico di quel giorno era troppo per la spalla: la prossima volta tieni i carichi fermi."});
-  });
+  /* 3a. dolore in qualsiasi zona: sopra 5 in seduta, non rientrato al mattino, ricorrente (Silbernagel 2007) */
+  dolDiagnosi().forEach(function(x){ out.push(x); });
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
   if(sig.length) out.push({k:"segnale", t:"Ultimo segnale articolare: "+sig[sig.length-1].date,
@@ -565,8 +559,11 @@ function statoRows(){
       diagnosi: cur? dg.map(function(x){ return x.t; }).join(" | ").slice(0,900) : "",
       prot_gkg: (function(){ if(!cib.length) return ""; var pe=pes.length? media(pes) : ultimoPeso(); return pe? r1(media(cib.map(function(b){ return b.cibP||0; }))/pe) : ""; })(),
       vita_altezza: (function(){ var mm=S.mis.filter(function(x){ return x.w===w && x.vita; })[0], al=S.profilo&&S.profilo.altezza; return (mm&&al)? Math.round(mm.vita/al*1000)/1000 : ""; })(),
-      spalla_mattina: (function(){ var v=bb.filter(function(b){ return b.dolm!=null && b.dolm!==""; }).map(function(b){ return +b.dolm; }); return v.length? r1(media(v)) : ""; })(),
-      spalla_seduta_max: (function(){ var v=S.sess.filter(function(s){ return s.w===w && s.dol!=null && s.dol!==""; }).map(function(s){ return +s.dol; }); return v.length? Math.max.apply(null,v) : ""; })(),
+      dolore_mattina: (function(){ var v=bb.filter(function(b){ return (b.dolmz||"")!=="" || (b.dolm!=null && b.dolm!==""); }).map(function(b){ return dolMax(dolDi(b,"dolmz","dolm")); }); return v.length? r1(media(v)) : ""; })(),
+      dolore_seduta_max: (function(){ var v=S.sess.filter(function(s){ return s.w===w && ((s.dolz||"")!=="" || (s.dol!=null && s.dol!=="")); }).map(function(s){ return dolMax(dolDi(s,"dolz","dol")); }); return v.length? Math.max.apply(null,v) : ""; })(),
+      dolore_zone: (function(){ var c={}; bb.forEach(function(b){ var m=dolDi(b,"dolmz","dolm"); Object.keys(m).forEach(function(z){ if(m[z]>0) c[z]=(c[z]||0)+1; }); });
+        S.sess.filter(function(s){ return s.w===w; }).forEach(function(s){ var m=dolDi(s,"dolz","dol"); Object.keys(m).forEach(function(z){ if(m[z]>0) c[z]=(c[z]||0)+1; }); });
+        return Object.keys(c).sort(function(x,y){ return c[y]-c[x]; }).map(function(z){ return z+"×"+c[z]; }).join(" "); })(),
       serie_gruppo: Object.keys(TGT).map(function(g){ return g+" "+(k.grp[g]||0); }).join(" · "),
       picco: picco(w)? "Sì" : "",
       kpi_fuori: cur? (function(){ var v=kpiValori(); return KPI.filter(function(d){ return v[d.id].stato==="ko"||v[d.id].stato==="att"; }).map(function(d){ return d.id; }).join(" "); })() : "",

@@ -305,7 +305,9 @@ function exCard(e,i,def){
         '<button data-a="v+" data-i="'+i+'">+</button></div></div>';
     }
     if(m.sec) h+=holdBox(i, Object.assign({n:e.n}, def));
-    h+='<button class="btn amb" style="margin-top:10px" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+(full?" (extra)":"")+' fatta</button>';
+    if(e.dol && dolMax(e.dol)>0) h+='<div class="xs" style="margin-top:8px;color:'+dolColore(dolMax(e.dol))+';font-weight:700">Dolore segnato: '+esc(dolTesto(e.dol))+'</div>';
+    h+='<div class="setrow"><button class="btn amb" data-a="set" data-i="'+i+'">Serie '+(sets.length+1)+(full?" (extra)":"")+' fatta</button>'+
+       '<button class="btn dolbtn" data-a="doles" data-i="'+i+'" aria-label="Segnala dolore">⚠ Dolore</button></div>';
   }
   if(full){
     h+='<button class="btn sm ghost" style="margin-top:8px" data-a="setmore" data-i="'+i+'">'+

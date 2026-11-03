@@ -22,6 +22,11 @@ document.addEventListener("click", function(ev){
     toast(S.picco[wk]? "Settimana di picco: bersaglio 2 sedute essenziali" : "Bersaglio di nuovo a 4 sedute"); return; }
   if(a==="libf"){ LIB_F=v; render(); return; }
   if(a==="kpi"){ kpiSheet(v); return; }
+  if(a==="dz"){ dolTocca(el.dataset.p, el.dataset.z); return; }
+  if(a==="dv"){ dolValore(el.dataset.p, el.dataset.z, +v); return; }
+  if(a==="dnone"){ dolNessuno(el.dataset.p); return; }
+  if(a==="doles"){ dolEsercizio(i); return; }
+  if(a==="dolesok"){ dolEsercizioSalva(i); return; }
   if(a==="scan"){ scanApri(el.dataset.m); return; }
   if(a==="scanman"){ scanManuale(); return; }
   if(a==="scanmanok"){ var nn=document.getElementById("scann"); SCAN.letto=false; scanTrovato(nn? nn.value : ""); if(!SCAN.letto) toast("Il numero non è un codice a barre valido: controlla le cifre"); return; }
@@ -343,10 +348,8 @@ function closeSession(){
     '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
     '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
       [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
-    '<label class="fld"><span class="eyebrow">Spalla sinistra durante la seduta · il massimo, 0-10</span>'+pillScala("fDol","do",10,null)+'</label>'+
-    '<div class="xs mut" style="margin-top:4px">Fino a 5 va bene se domattina è rientrato (pain-monitoring model). Sopra 5 ferma le salite.</div>'+
-    '<label class="fld"><span class="eyebrow">Altro segnale articolare</span><div class="pills" id="fSig">'+
-      '<button class="pill on" data-sig="0">No</button><button class="pill" data-sig="1">Sì</button></div></label>'+
+    dolEditor("s", dolDaSeduta(d), "Dolore durante la seduta · il massimo per zona")+
+    '<div class="xs mut" style="margin-top:4px">Fino a 5 va bene se domattina è rientrato (pain-monitoring model). Sopra 5 ferma le salite. Le zone segnate sugli esercizi sono già qui.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><textarea id="fNote" placeholder="Cosa è successo oggi"></textarea></label>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savesess">Salva</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Torna indietro</button>');
@@ -355,30 +358,30 @@ async function commitSession(){
   var d=S.draft, p=PLAN[d.day];
   var de=document.getElementById("fDate"); if(de){ var nd=fromIso(de.value); if(/^\d{2}\/\d{2}\/\d{4}$/.test(nd)) d.date=nd; }
   var w=weekOf(d.date);
-  var en=document.querySelector("#fEn .pill.on"), sg=document.querySelector("#fSig .pill.on"), dl=document.querySelector("#fDol .pill.on");
-  var dol=dl? +dl.dataset.do : null;
+  var en=document.querySelector("#fEn .pill.on");
+  var dm=Object.assign({}, DOLED.s||dolDaSeduta(d)), dol=Object.keys(dm).length? dolMax(dm) : null;
   d.ex.forEach(function(e,i){
     var def=e.def||p.ex[i]; if(!e.sets.length) return;
     if(def.u){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
         S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
-          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||""});
+          reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
       });
     } else {
       var reps=e.sets.map(s=>s.v);
       S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
-        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets)});
+        reps:reps, rir:e.rir, top:isTop(reps, def.hi, def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
     }
   });
   var lu=d.luogo||"casa";
   S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:(lu==="casa"? p.sede : "Trasferta"),
     mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.ess?"Essenziale":(lu==="corpo"?"Corpo libero":((lu==="bande"||p.sede!=="Casa")?"Bande":"Pesi"))))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
-    warm:d.warm.every(Boolean), sig: (sg? sg.dataset.sig==="1":false) || (dol!=null && dol>5), dol:dol,
+    warm:d.warm.every(Boolean), sig: (dol!=null && dol>5), dol:dol, dolz:dolStr(dm),
     note:document.getElementById("fNote").value});
   S.draft=null; stopRest(); hold=null; WG=null; var okS=await save(); closeSheet(); V="prog"; window._sy=0; render(); suono("salvata");
-  if(dol!=null && dol>5) setTimeout(function(){ toast("Spalla a "+dol+"/10: annotato. Domattina segna com'è: se non è rientrata, niente salite"); }, 2600);
+  if(dol!=null && dol>5) setTimeout(function(){ toast(dolTesto(dm)+": annotato. Domattina segna com'è: se non è rientrato, niente salite"); }, 2600);
   if(SYNC.on()){
     var sent=await doPush(false);
     toast(sent? "Sessione salvata sul foglio" : "Foglio non raggiunto: usa Coach → Invia tutto");
@@ -451,7 +454,7 @@ function formBen(date, isAdd, momento){
     '<div id="bCittaW" style="display:'+(sede==="Fuori"?"block":"none")+'"><input type="text" id="bCitta" placeholder="Dove (es. Parma)" value="'+esc(b.citta||(sede==="Fuori"?(ie.citta||""):""))+'"></div>'+
     '<label class="fld"><span class="eyebrow">Alcol ieri sera</span><div class="pills" id="bAlc">'+
       '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
-    '<label class="fld"><span class="eyebrow">Spalla sinistra stamattina · 0 niente · 10 massimo'+hi(ie.dolm)+'</span>'+pillScala("bDol","dl",10,b.dolm)+'</label>';
+    dolEditor("m", dolDi(b,"dolmz","dolm"), "Dolore stamattina · dove e quanto"+(ie.dolm? " (ieri "+dolTesto(dolDi(ie,"dolmz","dolm"))+")" : ""));
   }
   if(ser){
     h+='<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato'+hi(ie.refl)+'</span><div class="pills" id="bRefl">'+
@@ -486,7 +489,8 @@ async function saveBen(origDate){
     hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
     sonno:g("bSonno",prev.sonno==null?null:prev.sonno), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
-    dolm:pick("#bDol","dl",prev.dolm==null?null:prev.dolm),
+    dolm: c("#ded-m")? dolMax(DOLED.m||{}) : (prev.dolm==null?null:prev.dolm),
+    dolmz: c("#ded-m")? dolStr(DOLED.m||{}) : (prev.dolmz||""),
     passi:(prev.passi===undefined?null:prev.passi), ipo:(prev.ipo===undefined?null:prev.ipo),
     sede: c("#bSede")? (sedeEl? sedeEl.dataset.sd : (prev.sede||"")) : (prev.sede||""),
     citta: c("#bSede")? ((sedeEl && sedeEl.dataset.sd==="Fuori" && cit)? cit.value.trim() : "") : (prev.citta||""),

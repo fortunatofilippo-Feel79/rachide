@@ -29,7 +29,7 @@ function icsPromemoria(){
       "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsTesto(titolo),"TRIGGER:PT0M","END:VALARM","END:VEVENT"].join("\r\n"));
   };
   add("mattino", "Rachide · mattino (1 minuto)", domani, o.mattina, "FREQ=DAILY",
-      "Da Zepp: HRV, FC a riposo, sonno. Peso dopo il bagno, a digiuno. Spalla sinistra 0-10.");
+      "Da Zepp: HRV, FC a riposo, sonno. Peso dopo il bagno, a digiuno. Dolori: dove e quanto (0-10).");
   add("sera", "Rachide · sera (30 secondi)", domani, o.sera, "FREQ=DAILY",
       "Reflusso, camminate dopo i pasti, stress, testa. Controlla che i pasti siano tutti registrati.");
   add("domenica", "Rachide · chiusura della settimana", domenica, o.domenica, "FREQ=WEEKLY;BYDAY=SU",
