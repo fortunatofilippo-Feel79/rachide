@@ -21,12 +21,12 @@ function finto(segreto) {
     };
   };
   const ss = { getSheetByName: n => fogli[n] || null, insertSheet: n => (fogli[n] = new Foglio(n)) };
-  const props = { SEGRETO: segreto };
+  const props = {}; if (segreto !== undefined) props.SEGRETO = segreto;
   const ctx = {
     SpreadsheetApp: { getActive: () => ss },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; }, getProperties: () => Object.assign({}, props) }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
-    ContentService: { MimeType: { JSON: 'json', JAVASCRIPT: 'js' }, createTextOutput: s => ({ s, setMimeType(m) { this.m = m; return this; } }) },
+    ContentService: { MimeType: { JSON: 'json', JAVASCRIPT: 'js', TEXT: 'text' }, createTextOutput: s => ({ s, setMimeType(m) { this.m = m; return this; } }) },
     Utilities: { getUuid: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', formatDate: () => '01/11/2026' },
     Logger: { log() {} }, Session: { getScriptTimeZone: () => 'Europe/Rome' },
     DriveApp: { getFilesByName: () => ({ hasNext: () => false }) }, MimeType: { GOOGLE_DOCS: 'doc' }, DocumentApp: {},
@@ -111,4 +111,36 @@ test('generaSegreto salva una frase di 32 caratteri nelle proprieta', () => {
   const k = ctx.generaSegreto();
   assert.equal(k.length, 32);
   assert.equal(ctx.__props.SEGRETO, k);
+});
+
+test('aperto dal browser senza niente: pagina di stato, senza dati e senza la frase', () => {
+  const ctx = finto('segreto-di-prova-123');
+  const r = get(ctx, {});
+  assert.equal(r.m, 'text');
+  assert.match(r.s, /script del foglio v3\.1/);
+  assert.match(r.s, /Frase segreta: impostata \(20 caratteri\)/);
+  assert.ok(!r.s.includes('segreto-di-prova-123'), 'la frase non si vede');
+  assert.match(r.s, /App_Config: non ancora creata/);
+  /* con un parametro qualsiasi resta la risposta dell'app */
+  assert.equal(JSON.parse(get(ctx, { k: 'no' }).s).ok, false);
+  const vuoto = finto(undefined);
+  assert.match(get(vuoto, {}).s, /NON impostata/);
+});
+
+test('installa: tiene la frase che c\'e\' gia\', anche quella dello script vecchio, e crea le schede nuove', () => {
+  const a = finto('frase-gia-presente-1');
+  const t = a.installa();
+  assert.equal(a.__props.SEGRETO, 'frase-gia-presente-1');
+  assert.match(t, /la stessa di prima/);
+  assert.ok(a.__fogli.App_Config && a.__fogli.App_KPI, 'schede nuove create');
+  /* script v2 con la frase in un'altra proprieta' */
+  const b = finto(undefined); b.__props.SECRET = 'frase-della-v2-xyz';
+  b.installa();
+  assert.equal(b.__props.SEGRETO, 'frase-della-v2-xyz');
+  assert.equal(JSON.parse(get(b, { k: 'frase-della-v2-xyz' }).s).ok, true, 'l\'app continua a funzionare con la stessa frase');
+  /* nessuna frase: ne crea una nuova e la scrive */
+  const c = finto(undefined);
+  const tc = c.installa();
+  assert.equal(c.__props.SEGRETO.length, 32);
+  assert.match(tc, /FRASE SEGRETA NUOVA: [a-z0-9]{32}/);
 });

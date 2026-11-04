@@ -680,10 +680,10 @@ async function syncDiag(){
   var segretoKo=res.filter(r=>/segreto non valido/.test(r.v)).length>=1;
   var tuttoOk=res.filter(r=>r.bad).length===0;
   var verdetto = segretoKo
-    ? "Il foglio risponde, quindi rete e distribuzione funzionano. Rifiuta solo la frase segreta: quella nell'app non coincide con quella nella distribuzione attiva. Se l'hai cambiata nel codice, ricordati di ridistribuire con una VERSIONE NUOVA, altrimenti online resta il segreto vecchio."
+    ? "Il foglio risponde, quindi rete e deployment funzionano. Rifiuta solo la frase segreta: quella nell'app non è quella dello script. In Apps Script esegui la funzione installa: nel log di esecuzione trovi la frase giusta. Incollala qui in Modifica (secondo campo) e Salva e prova."
     : (framed && netKo)
     ? "Questo contenitore impedisce all'app di contattare Google. Non è un problema del tuo foglio: è l'ambiente. Serve pubblicare l'app su un indirizzo proprio."
-    : netKo ? "La rete verso Google non passa. Controlla che la distribuzione sia attiva e l'accesso impostato su Chiunque."
+    : netKo ? "La rete verso Google non passa. Controlla che il deployment sia attivo e l'accesso impostato su Chiunque."
     : tuttoOk ? "Il collegamento funziona."
     : "Qualcosa non torna: guarda le righe rosse qui sopra.";
   sheet('<div class="eyebrow amb">Diagnostica collegamento</div>'+
@@ -695,9 +695,9 @@ async function syncDiag(){
 function syncForm(){
   var c=S.sync||{};
   sheet('<div class="eyebrow glow">Collegamento al foglio</div><h2 style="margin:4px 0 10px">Collega questo telefono</h2>'+
-    '<div class="sm mut">Li ottieni installando lo script nel foglio: Estensioni → Apps Script, incolli il codice, Distribuisci come app web.</div>'+
+    '<div class="sm mut">Li ottieni installando lo script nel foglio: Estensioni → Apps Script, incolli il codice, esegui installa e poi il deployment come app web.</div>'+
     '<div class="flag info" style="margin-top:8px">•<div><b>Telefono nuovo?</b> Incolla nel primo campo il <b>codice di collegamento</b> (inizia con RACHIDE1:) preso dal vecchio telefono in Coach → Telefono nuovo: basta quello. Va bene anche il link di prova con <b>?k=</b> stampato da <i>verifica</i>.</div></div>'+
-    '<label class="fld"><span class="eyebrow">Codice di collegamento, oppure URL della distribuzione (finisce con /exec)</span>'+
+    '<label class="fld"><span class="eyebrow">Codice di collegamento, oppure indirizzo del deployment (finisce con /exec)</span>'+
     '<input type="text" id="syU" value="'+esc(c.url||"")+'" placeholder="https://script.google.com/macros/s/…/exec"></label>'+
     '<label class="fld"><span class="eyebrow">Frase segreta (la stessa dello script)</span>'+
     '<input type="text" id="syK" value="'+esc(c.secret||"")+'" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'+

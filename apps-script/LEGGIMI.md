@@ -14,19 +14,32 @@ Cosa cambia rispetto alla v2:
 
 L'app funziona con entrambe: finché non installi la v3 resta tutto come oggi.
 
-## Installazione (10 minuti, una volta)
+## Installazione (10 minuti, una volta, da computer)
 
 1. **Copia di sicurezza.** Nell'app: Coach → Backup .json. Nel foglio: File → Crea una copia.
-2. **Annota la proposta della domenica.** Apri lo script attuale (Estensioni → Apps Script) e cerca come legge la proposta: se usa un file su Drive, copia il nome esatto del file.
-3. **Sostituisci il codice.** Cancella il contenuto di `Codice.gs` e incolla tutto [`Rachide.gs`](Rachide.gs). Se al punto 2 hai trovato un nome di file, scrivilo in `PROPOSTA_FILE` tra le virgolette. In alternativa la proposta si può scrivere nell'ultima riga della scheda `App_Proposta` (colonne `id`, `data`, `testo`).
-4. **Frase segreta nuova.** In alto scegli la funzione `generaSegreto` e premi Esegui. Autorizza lo script quando te lo chiede. In Esecuzioni → Registro trovi la frase: copiala.
-5. **Ridistribuisci con una versione nuova.** Distribuisci → Gestisci distribuzioni → matita sulla distribuzione esistente → Versione: *Nuova versione* → Distribuisci. L'indirizzo `/exec` resta lo stesso. Accesso: *Chiunque*.
-6. **Nell'app.** Coach → Collegamento al foglio → Modifica → incolla la frase nuova → Salva e prova.
-7. **Prima scrittura.** Coach → Invia tutto. Le schede `App_*` vengono riscritte nel formato v3 e nasce `App_Config`. Da qui in poi l'app invia solo le modifiche.
+2. **Apri lo script del foglio.** Nel foglio: Estensioni → Apps Script.
+3. **Sostituisci il codice.** Apri [la versione da copiare](https://raw.githubusercontent.com/fortunatofilippo-Feel79/rachide/main/apps-script/Rachide.gs), seleziona tutto (Cmd+A o Ctrl+A) e copia. Nell'editor, a sinistra, deve esserci **un solo file** di codice (di solito `Codice.gs`): cancellane tutto il contenuto, incolla, poi **salva** (icona del dischetto o Cmd+S). Se ci sono altri file `.gs` del vecchio script, eliminali: due funzioni `doGet` si pestano i piedi.
+4. **Esegui `installa`.** In alto, nel menu a tendina delle funzioni, scegli `installa` e premi **Esegui**. La prima volta Google chiede l'autorizzazione: *Rivedi autorizzazioni* → scegli il tuo account → se compare «Google non ha verificato questa app»: *Avanzate* → *Vai a … (non sicuro)* → *Consenti*. È il tuo script, sul tuo foglio. In basso si apre il **Log di esecuzione**: leggi cosa dice sulla frase segreta.
+   - «la stessa di prima»: nell'app non devi cambiare niente;
+   - «FRASE SEGRETA NUOVA: …»: copiala, ti serve al punto 7.
+5. **Ridistribuisci con una versione nuova.** **Esegui il deployment** (in alto a destra; in inglese *Deploy*) → **Gestisci deployment** → scegli il deployment attivo → **Modifica** (matita) → Versione: **Nuova versione** → **Esegui il deployment**. Esegui come: *Me*; Chi ha accesso: *Chiunque*. L'indirizzo `/exec` resta lo stesso. (Non usare «Nuovo deployment»: creerebbe un indirizzo diverso da quello che conosce l'app.)
+6. **Controllo.** Apri l'indirizzo `/exec` nel browser: deve comparire «Rachide · script del foglio v3.1 · attivo» con la frase *impostata*. Se vedi altro, il deployment non è aggiornato: rifai il punto 5.
+7. **Nell'app.** Coach → Collegamento al foglio. Se al punto 4 c'era una frase nuova: Modifica → incollala nel secondo campo → Salva e prova. Poi **Invia tutto**: nel foglio nascono `App_Config` e `App_KPI`, e da qui in poi l'app invia solo le modifiche.
 
 Nella scheda Coach deve comparire: *Script v3: storico, piano e impostazioni sul foglio*.
 
-**Se qualcosa non va:** Gestisci distribuzioni → scegli la versione precedente → Distribuisci. Torni alla v2 senza perdere dati.
+### Se non funziona
+
+| Cosa vedi | Perché | Cosa fare |
+|---|---|---|
+| In Coach c'è ancora «Script v2» | Codice salvato ma non ridistribuito | Punto 5: Gestisci deployment → Modifica → *Nuova versione* |
+| In Coach: «segreto non valido» | La frase dell'app non è quella dello script | Esegui `installa`, copia la frase dal log, incollala in Coach → Modifica (secondo campo) |
+| Aprendo `/exec`: «Funzione script non trovata: doGet» | Codice incompleto o non salvato | Ricopia tutto dal link del punto 3, salva, ridistribuisci |
+| Al salvataggio: «Errore di sintassi» | Copia a metà | Ricopia tutto dal link del punto 3 (l'ultima riga del file è una `}`) |
+| Aprendo `/exec`: «Autorizzazione richiesta» o pagina di accesso | Deployment non aperto a tutti | Gestisci deployment → Modifica → Chi ha accesso: *Chiunque* |
+| L'indirizzo `/exec` è cambiato | È stato creato un deployment nuovo | Nell'app: Coach → Collegamento → Modifica → incolla il nuovo indirizzo |
+
+**Per tornare indietro:** Gestisci deployment → Modifica → Versione: quella precedente → Esegui il deployment. Torni alla v2 senza perdere dati.
 
 ## Telefono nuovo, o app a un indirizzo nuovo
 
@@ -34,7 +47,7 @@ Nella scheda Coach deve comparire: *Script v3: storico, piano e impostazioni sul
 2. Sul nuovo: aggiungi l'app alla schermata Home, aprila da lì, tocca *Collega il foglio* e incolla il codice nel primo campo.
 3. Storico, piano, settimane, cibo e impostazioni tornano dal foglio.
 
-Senza il vecchio telefono: l'indirizzo `/exec` è in *Distribuisci → Gestisci distribuzioni*, la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Incollali nei due campi.
+Senza il vecchio telefono: l'indirizzo `/exec` è in *Esegui il deployment → Gestisci deployment*, la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Incollali nei due campi.
 
 La memoria del browser è legata all'indirizzo: anche spostando l'app (per esempio da GitHub Pages a Cloudflare Pages, vedi il README) si ricollega il foglio e si riparte da lì.
 

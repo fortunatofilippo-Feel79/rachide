@@ -15,6 +15,7 @@
    ============================================================ */
 
 var VERSIONE = 3;
+var VERSIONE_TESTO = "3.1 (04/11/2026)";
 
 /* Frase segreta: meglio nelle proprietà dello script (Impostazioni progetto →
    Proprietà dello script → SEGRETO), oppure esegui una volta generaSegreto().
@@ -44,6 +45,8 @@ var DA_LEGGERE = ["log","sess","mis","ben","sim","mob","cfg"];
 /* ---------- ingresso ---------- */
 function doGet(e){
   var p = (e && e.parameter) || {}, cb = p.callback;
+  /* aperto dal browser senza niente: una pagina di stato, senza dati e senza la frase */
+  if(!Object.keys(p).length) return stato_();
   if(!segretoOk_(p.k)) return risposta_({ok:false, err:"segreto non valido"}, cb);
   if(p.azione === "proposta") return risposta_({ok:true, ver:VERSIONE, proposta:proposta_()}, cb);
   return risposta_(leggiTutto_(), cb);
@@ -71,6 +74,53 @@ function doPost(e){
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ---------- installazione e controllo ----------
+   installa(): da eseguire UNA volta dall'editor dopo aver incollato il codice.
+   - tiene la frase segreta che c'e' gia' (anche quella dello script v2, se era nelle
+     proprieta' dello script): in quel caso nell'app non va cambiato niente;
+   - altrimenti ne crea una nuova e la scrive nel registro, da incollare nell'app;
+   - crea le schede nuove App_Config e App_KPI.
+   Poi: Esegui il deployment → Gestisci deployment → Modifica → Nuova versione → Esegui il deployment. */
+function installa(){
+  var pr = PropertiesService.getScriptProperties(), s = String(pr.getProperty("SEGRETO") || ""), da = "", nuova = false;
+  if(s.length >= 8) da = "proprietà SEGRETO (già presente)";
+  else if(String(SEGRETO_QUI).length >= 8){ s = String(SEGRETO_QUI); da = "SEGRETO_QUI, scritta nel codice"; }
+  else {
+    var tutte = (pr.getProperties && pr.getProperties()) || {};
+    var cand = Object.keys(tutte).filter(function(k){ return k !== "SEGRETO" && String(tutte[k] || "").length >= 8; });
+    if(cand.length === 1){ s = String(tutte[cand[0]]); pr.setProperty("SEGRETO", s); da = "proprietà " + cand[0] + " dello script vecchio"; }
+  }
+  if(s.length < 8){ s = generaSegreto(); nuova = true; }
+  foglio_(SCHEDE.cfg.nome); foglio_(SCHEDE.kpi.nome);
+  var L = [];
+  L.push("RACHIDE · script del foglio v" + VERSIONE_TESTO + " installato.");
+  if(nuova){
+    L.push("FRASE SEGRETA NUOVA: " + s);
+    L.push("Va messa nell'app: Coach → Collegamento al foglio → Modifica → secondo campo (frase segreta) → Salva e prova.");
+  } else {
+    L.push("Frase segreta: la stessa di prima (" + da + "). Nell'app non devi cambiarla. Per controllo: " + s);
+  }
+  L.push("ADESSO: Esegui il deployment → Gestisci deployment → Modifica (matita) → Versione: Nuova versione → Esegui il deployment. L'indirizzo /exec resta lo stesso.");
+  L.push("Poi apri l'indirizzo /exec nel browser: deve comparire «script del foglio v" + VERSIONE_TESTO + " · attivo».");
+  L.push("Infine nell'app: Coach → Invia tutto.");
+  L.forEach(function(x){ Logger.log(x); });
+  return L.join("\n");
+}
+/* Pagina di stato: aprendo l'indirizzo /exec nel browser si vede se gira la v3. Niente dati, niente frase. */
+function stato_(){
+  var s = segreto_(), ss = SpreadsheetApp.getActive(), L = [];
+  L.push("Rachide · script del foglio v" + VERSIONE_TESTO + " · attivo");
+  L.push("Frase segreta: " + (s.length >= 8 ? "impostata (" + s.length + " caratteri)" : "NON impostata: nell'editor esegui la funzione installa"));
+  L.push("");
+  Object.keys(SCHEDE).forEach(function(c){
+    var sh = ss.getSheetByName(SCHEDE[c].nome);
+    L.push(SCHEDE[c].nome + ": " + (sh ? Math.max(0, sh.getLastRow() - 1) + " righe" : "non ancora creata (nasce col primo invio)"));
+  });
+  L.push("");
+  L.push("Se leggi questa pagina il deployment è aggiornato. Nell'app: Coach → Collegamento al foglio deve dire «Script v3». Se dice «segreto non valido», incolla in Modifica la frase scritta nel registro da installa.");
+  return ContentService.createTextOutput(L.join("\n")).setMimeType(ContentService.MimeType.TEXT);
 }
 
 /* ---------- segreto ---------- */
