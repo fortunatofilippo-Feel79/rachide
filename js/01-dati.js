@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.6.0";
+var VERSIONE_APP = "4.6.1";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
@@ -428,7 +428,20 @@ var G = {
 "Band pull-down":{p:"Banda fissata in alto (sopra la porta chiusa), braccia tese verso l'ancoraggio. Tira i gomiti verso i fianchi abbassando le scapole, torna lento.",
  f:"Gran dorsale, sotto le ascelle.",
  e:"Ti pieghi indietro per aiutarti. Le spalle salgono verso le orecchie.",
- c:"Busto fermo, pensa «gomiti nelle tasche posteriori». Ritorno in 2 secondi."}
+ c:"Busto fermo, pensa «gomiti nelle tasche posteriori». Ritorno in 2 secondi."},
+/* esercizi storici, ancora aggiungibili a una seduta: hanno figura e scheda come gli altri */
+"Kick back tricipiti":{p:"Busto quasi orizzontale, schiena piatta, una mano appoggiata a una sedia, ginocchia morbide. Omero parallelo al pavimento accanto al busto, avambraccio che pende. Distendi il braccio indietro fino a dritto, torna fino all'avambraccio verticale.",
+ f:"Il tricipite che si contrae a braccio disteso, nella parte posteriore del braccio. La spalla resta ferma.",
+ e:"Il gomito scende e il braccio dondola: lavora la spalla, non il tricipite. La schiena si arrotonda. Il manubrio sale con lo slancio.",
+ c:"Fissa il gomito più alto della spalla, se ci riesci, e scendi di peso: questo esercizio si fa leggero e lento, con 1 secondo fermo a braccio disteso."},
+"Incline Press manubri":{p:"Panca inclinata a 30-45°, schiena e scapole appoggiate, piedi a terra. Manubri ai lati della parte alta del petto, gomiti sotto i manubri. Spingi in alto fino a braccia distese, i manubri si avvicinano sopra le spalle.",
+ f:"La parte alta del petto e la spalla davanti. Le scapole restano appoggiate.",
+ e:"La lombare si stacca dalla panca. I gomiti si aprono a 90° dal busto. I manubri scendono sotto il petto con le spalle che si arrotolano avanti.",
+ c:"Gomiti a 45-60° dal busto, scendi fino a un leggero allungamento del petto e non oltre. Fastidio alla spalla sinistra: ferma la serie e attiva il flag."},
+"RDL (Romanian Deadlift)":{p:"Piedi alla larghezza delle anche, ginocchia appena piegate e ferme. Spingi il bacino INDIETRO con la schiena neutra, i manubri scorrono vicino alle gambe. Scendi finché senti l'allungamento dei femorali, poi risali spingendo il bacino avanti.",
+ f:"Allungamento netto nei femorali, glutei che si contraggono nella risalita. Lombare neutra e ferma.",
+ e:"La schiena si arrotonda: STOP. Pieghi le ginocchia per scendere più in basso: diventa uno squat. I manubri si allontanano dalle gambe.",
+ c:"Scendi solo fin dove la schiena resta piatta: per molti è appena sotto il ginocchio. Prova prima il test del muro dello Split-stance RDL."}
 };
 
 /* ============================================================

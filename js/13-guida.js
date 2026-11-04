@@ -48,9 +48,13 @@ function chipsEsercizio(n){
   return '<div class="chips">'+c.filter(Boolean).map(function(x){ return '<span>'+esc(x)+'</span>'; }).join("")+'</div>';
 }
 function guideSheet(n, tip, giorno){
-  var g=G[n], h='<div class="eyebrow amb">Come si fa</div><h2 style="margin:3px 0 6px;font-size:19px">'+esc(n)+'</h2>';
+  /* scheda: quella dell'esercizio; per una variante senza scheda propria, quella dell'esercizio di cui usa la figura */
+  var fi=figuraDi(n), gDa=(!G[n] && fi.tipo==="simile" && G[fi.da])? fi.da : null, g=G[n] || (gDa? G[gDa] : null);
+  var h='<div class="eyebrow amb">Come si fa</div><h2 style="margin:3px 0 6px;font-size:19px">'+esc(n)+'</h2>';
   if(EX[n]) h+=chipsEsercizio(n);
   if(figHas(n)) h+=posBlock(n);
+  if(fi.tipo==="simile") h+='<div class="xs mut" style="margin:6px 0 2px">Figura di «'+esc(fi.da)+'»: il movimento è lo stesso'+(gDa? ', e anche la scheda qui sotto è la sua.' : '.')+'</div>';
+  else if(fi.tipo==="nessuna" && (g||tip)) h+='<div class="xs mut" style="margin:6px 0 2px">Questo esercizio non ha ancora una figura: segui il testo. Il coach lo vede nel briefing.</div>';
   if(tip) h+='<div class="flag info"><b>Oggi</b><div>'+esc(tip)+'</div></div>';
   if(g){
     h+='<div class="gsez"><div class="eyebrow glow">Posizione e movimento</div><div class="sm">'+esc(g.p)+'</div></div>';

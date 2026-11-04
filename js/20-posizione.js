@@ -74,7 +74,7 @@ var POS={
  "Reverse Fly":{a:0, b:1, co:[["en","Apri fino all'altezza delle spalle, gomiti appena piegati"],["sn","Scapole strette, spalle basse"],["back","Busto a 45° (vedi miniatura): schiena dritta"]],
    gl:[{k:"h", at:"sh"}], err:{k:1, f:function(p){ return fgM(p,{tl:0.85, hk:0.75, hg:0, an:[112,100], af:[-112,-100]}); }, t:"Ti raddrizzi per dare slancio e senti il collo: 6 kg è il tetto"}, no:["spalla_sx","collo"]},
 
- "Pike push-up":{a:0, b:1, co:[["hip","Bacino alto: V rovesciata"],["head","La testa scende in verticale, tra le mani"],["hn","Mani a terra, poco più larghe delle spalle"],["an","Piedi vicini alle mani"]],
+ "Pike push-up":{a:0, b:1, co:[["hip","Bacino alto, sopra le mani: V rovesciata"],["head","La testa scende verso il pavimento, davanti alle mani"],["en","Gomiti sopra le mani: non scappano indietro"],["an","Piedi vicini alle mani"]],
    err:{k:1, f:function(p){ return fgBacino(p, 14, -8); }, t:"Il movimento diventa orizzontale: è un push-up, non una spinta verticale"}, no:["collo","spalla_sx","polso_sx","polso_dx"]},
  "Hip hinge una gamba":{a:0, b:1, co:[["an","Peso sulla gamba d'appoggio"],["back","Busto e gamba formano una linea"],["hip","Bacino indietro, fianchi orizzontali"],["kn","Ginocchio d'appoggio appena piegato"]],
    gl:[{k:"l", a:"tf", b:"head"}], err:{k:1, f:function(p){ return fgM(p,{sp:10, nk:-25}); }, t:"La schiena si arrotonda e il bacino ruota"}, no:["lombare","ginocchio_sx","ginocchio_dx"]},
@@ -105,6 +105,12 @@ var POS={
    err:{k:1, f:function(p){ return fgM(p,{tl:0.85, hk:0.75, hg:0, an:[112,100], af:[-112,-100]}); }, t:"Ti raddrizzi e senti il collo: riduci l'inclinazione"}, no:["collo","spalla_sx"]},
  "Hip thrust a una gamba":{a:0, b:1, co:[["tf","Una gamba distesa: il bacino non ruota"],["hip","Sali con il gluteo della gamba a terra"],["sh","Scapole sul bordo del letto"]],
    gl:[{k:"l", a:"sh", b:"kn"}], err:{k:1, f:function(p){ return fgM(p,{sp:-8, hip:[p.hip[0],p.hip[1]-8]}); }, t:"Ti inarchi e il bacino ruota verso la gamba sollevata"}, no:["lombare","anca_sx","anca_dx"]},
+ "Kick back tricipiti":{a:0, b:1, co:[["en","Gomito alto e fermo: omero parallelo al pavimento"],["hn","Distendi il braccio indietro fino a dritto"],["back","Schiena piatta, busto quasi orizzontale"],["hf","L'altra mano su una sedia"]],
+   ang:[[["sh","en","hn"],"Gomito"]], gl:[{k:"h", at:"sh"}], err:{k:1, f:function(p){ return fgM(p,{an:[-35,-75]}); }, t:"Il gomito scende e il braccio dondola: lavora la spalla, non il tricipite"}, no:["gomito_dx","spalla_dx","lombare"]},
+ "Incline Press manubri":{a:0, b:1, co:[["hn","Manubri ai lati della parte alta del petto"],["en","Gomiti sotto i manubri, a 45-60° dal busto"],["back","Schiena e scapole sulla panca"],["an","Piedi a terra"]],
+   err:{k:0, f:function(p){ return fgM(p,{sp:-9}); }, t:"La lombare si stacca dalla panca: scendi di peso"}, no:["spalla_sx","spalla_dx","lombare"]},
+ "RDL (Romanian Deadlift)":{a:0, b:1, co:[["an","Piedi alla larghezza delle anche"],["back","Schiena neutra, bacino indietro"],["kn","Ginocchia appena piegate e ferme"],["hn","Manubri vicino alle gambe"]],
+   gl:[{k:"l", a:"hip", b:"head"}], err:{k:1, f:function(p){ return fgM(p,{sp:11, nk:-25}); }, t:"La schiena si arrotonda: stop immediato. Se pieghi le ginocchia per scendere è uno squat"}, no:["lombare","ginocchio_sx","ginocchio_dx"]},
  "Band pull-down":{a:0, b:1, co:[["hn","Banda fissata in alto, braccia tese"],["en","Tira i gomiti verso i fianchi"],["sh","Scapole giù, non verso le orecchie"]],
    err:{k:1, f:function(p){ return fgM(p,{t:p.t-12}); }, t:"Ti pieghi indietro per aiutarti"}, no:["spalla_sx","collo"]}
 };

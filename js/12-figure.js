@@ -18,7 +18,7 @@ function fgM(a,b){ var r={}, k; for(k in a) r[k]=a[k]; for(k in (b||{})) r[k]=b[
 function fgR(n){ return Math.round(n*10)/10; }
 
 /* due segmenti dalla base al bersaglio: giuntura in mezzo, piegata dal lato s */
-function fgIK(b, t, l1, l2, s, morb){
+function fgIK(b, t, l1, l2, s, morb, rig){
   var dx=t[0]-b[0], dy=t[1]-b[1], d=Math.sqrt(dx*dx+dy*dy)||0.001;
   var dd=Math.max(Math.abs(l1-l2)+0.01, Math.min(d, l1+l2-0.01));
   var ux=dx/d, uy=dy/d, a=(l1*l1-l2*l2+dd*dd)/(2*dd), h=Math.sqrt(Math.max(0, l1*l1-a*a));
@@ -26,10 +26,11 @@ function fgIK(b, t, l1, l2, s, morb){
   /* quasi distesa = distesa: in piedi le gambe (e le braccia lungo i fianchi) devono leggersi dritte.
      Il primo segmento ruota verso la retta tenendo la sua lunghezza; il passaggio e' graduale,
      cosi' l'animazione non scatta. Con morb=1 (gomiti o ginocchia "morbidi", come chiede la tecnica)
-     la piega resta quella vera. */
-  var r=dd/(l1+l2);
-  if(r>0.955 && !(morb>=1)){
-    var k=Math.max(0, Math.min(1, (r-0.955)/0.03))*(1-(morb||0)), vx=(j[0]-b[0])*(1-k)+ux*l1*k, vy=(j[1]-b[1])*(1-k)+uy*l1*k, vl=Math.sqrt(vx*vx+vy*vy)||1;
+     la piega resta quella vera; con rig=1 (gambe rigide, come nel pike) restano distese anche quando
+     il bacino si sposta su un arco e nel mezzo del movimento la distanza cala un poco. */
+  var r=dd/(l1+l2), soglia=0.955-0.06*(rig||0);
+  if(r>soglia && !(morb>=1)){
+    var k=Math.max(0, Math.min(1, (r-soglia)/0.03))*(1-(morb||0)), vx=(j[0]-b[0])*(1-k)+ux*l1*k, vy=(j[1]-b[1])*(1-k)+uy*l1*k, vl=Math.sqrt(vx*vx+vy*vy)||1;
     j=[b[0]+vx/vl*l1, b[1]+vy/vl*l1];
   }
   return { j:j, e:[b[0]+ux*dd, b[1]+uy*dd] };
@@ -86,7 +87,7 @@ function fgPosa(p){
     }
     var fv=(lato==="f" && piedeF)? piedeF : (p["f"+lato]||[p.hip[0], FG_ANK]), ft=rf.indexOf(lato)>=0 ? fgSom(Hp[lato], fv) : fv;
     var kb=(p.kb&&p.kb[lato]!=null)? p.kb[lato] : -1;
-    var g=fgIK(Hp[lato], ft, LT, FL.sh, kb, p.mg);
+    var g=fgIK(Hp[lato], ft, LT, FL.sh, kb, p.mg, p.gr);
     var ta=p["t"+lato]; if(ta==null) ta=90;
     out.gambe[lato]={h:Hp[lato], k:g.j, a:g.e, toe:fgSom(g.e, fgDir(ta), FL.ft)};
   });
@@ -98,7 +99,7 @@ function fgAssoluto(p, chiave){
   var P=fgPosa(p), lato=chiave.charAt(1);
   return chiave.charAt(0)==="h" ? P.braccia[lato].h : P.gambe[lato].a;
 }
-var FG_DEF0={mb:0, mg:0, ub:1, fb:1, gc:1};
+var FG_DEF0={mb:0, mg:0, gr:0, ub:1, fb:1, gc:1};
 function fgLerp(p0, p1, x){
   var r={}, k;
   for(k in p0) r[k]=p0[k];
@@ -166,6 +167,8 @@ function fgProp(o){
   if(o.k==="box") return '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+(o.h||(FG_PAV-o.y))+'" rx="'+(o.r==null?3:o.r)+'"'+c+'/>';
   if(o.k==="sedia") return '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+(FG_PAV-o.y)+'" rx="3"'+c+'/>'+
     (o.schienale? '<rect x="'+(o.x-5)+'" y="'+(o.y-38)+'" width="6" height="'+(FG_PAV-o.y+38)+'" rx="2"'+c+'/>' : '');
+  if(o.k==="panca") return '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+(FG_PAV-o.y)+'" rx="3"'+c+'/>'+
+    '<rect x="'+(o.px-o.L)+'" y="'+o.py+'" width="'+o.L+'" height="6" rx="2.5" transform="rotate('+o.a+' '+o.px+' '+o.py+')"'+c+'/>';
   if(o.k==="sediaF") return '<rect x="'+(o.x+3)+'" y="'+(o.y-40)+'" width="'+(o.w-6)+'" height="38" rx="3"'+c+'/>'+
     '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="4" rx="1.5"'+c+'/>'+
     '<rect x="'+(o.x+1)+'" y="'+(o.y+4)+'" width="3" height="'+(FG_PAV-o.y-4)+'"'+c+'/><rect x="'+(o.x+o.w-4)+'" y="'+(o.y+4)+'" width="3" height="'+(FG_PAV-o.y-4)+'"'+c+'/>';
@@ -335,6 +338,7 @@ var MU={
   "Bulgarian split squat 3s":["quadricipiti","glutei"], "Affondi indietro manubri":["quadricipiti","glutei"], "Affondi indietro":["quadricipiti","glutei"],
   "Calf raise monopodalico":["polpacci"], "Hip thrust con banda":["glutei","femorali"], "Hip thrust a una gamba":["glutei","femorali"], "Glute bridge":["glutei"],
   "Split-stance RDL":["femorali","glutei"], "Hip hinge una gamba":["femorali","glutei"],
+  "Kick back tricipiti":["tricipiti"], "Incline Press manubri":["petto","deltoidi","tricipiti"], "RDL (Romanian Deadlift)":["femorali","glutei"],
   "Plank":["addome"], "Dead bug":["addome"], "Side plank":["obliqui"], "Bird-dog con pausa 3s":["glutei","addome"],
   "Rotazioni toraciche":["dorso"], "Cat-cow":["lombari"]
 };
@@ -557,9 +561,11 @@ var FIG={
 
  /* ---------- trasferta ---------- */
  "Pike push-up":{fx:"arm", k:[
-   /* in alto braccia distese in linea col busto; in basso le spalle scendono quasi in verticale e i gomiti restano sopra le mani */
-   {p:fgM({hip:[76.7,81.7], t:45, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[62.3,128], ff:[59.3,128], tn:40, tf:40, nk:-20, eb:{n:-1,f:-1}}), h:0.3, d:2, c:"V rovesciata: bacino alto, testa fra le braccia"},
-   {p:fgM({hip:[86.7,86.1], t:30.6, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[62.3,128], ff:[59.3,128], tn:40, tf:40, nk:15, eb:{n:-1,f:-1}}), h:0.2, d:1, c:"La testa scende in verticale verso il pavimento, poi spingi"}]},
+   /* in alto spalle sopra le mani e bacino alto (V rovesciata, piedi vicini). Scendendo il bacino va avanti
+      sopra le mani, le spalle scendono quasi in verticale, i gomiti restano sopra le mani (aperti a 45°:
+      di lato l'omero si vede corto) e la testa arriva verso il pavimento davanti alle mani */
+   {p:fgM({hip:[92.5,79.55], t:61, gr:1, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[90.3,128], ff:[87.3,128], tn:40, tf:40, nk:-25}), h:0.3, d:2, c:"V rovesciata: bacino alto, spalle sopra le mani"},
+   {p:fgM({hip:[115.5,86.6], t:29.1, gr:1, ub:0.55, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[90.3,128], ff:[87.3,128], tn:40, tf:40, nk:20}), h:0.2, d:1, c:"La testa scende verso il pavimento davanti alle mani, gomiti sopra le mani: poi spingi"}]},
  "Hip hinge una gamba":{fx:"leg", tr:"hip", k:[
    {p:pIn({hip:[108,85], mg:1, fn:[112,FG_ANK], ff:[102,124], tf:60}), h:0.3, d:2.5, c:"In piedi su una gamba, l'altra appena dietro"},
    {p:pIn({hip:[104,85.5], t:96, mg:1, fn:[112,FG_ANK], ff:[54.5,84], tf:-90, hn:[0.5,36.3], hf:[-1,36.3]}), h:0.4, d:1.5, c:"Bacino indietro: busto e gamba formano una linea. Risali col gluteo"}]},
@@ -610,7 +616,20 @@ var FIG={
    {p:fgM({hip:[101.6,105.3], t:-98.4, hn:[20,6], hf:[18,6], fn:[124,FG_ANK], rf:"f", ff:[48,-6], nk:-35}), h:1, d:2, c:"Sali col gluteo della gamba a terra, bacino che non ruota"}]},
  "Band pull-down":{fx:"trunk", props:[{k:"porta", x:150}], band:[{c:"verde", p:[[152,12],"hn"]}], k:[
    {p:pIn({hn:[12.5,-34.4], hf:[10.5,-34.4]}), h:0.2, d:1, c:"Banda fissata in alto, braccia tese verso l'ancoraggio"},
-   {p:pIn({hn:[18,6], hf:[16,6]}), h:0.5, d:2, c:"Tira i gomiti verso i fianchi, scapole giù"}]}
+   {p:pIn({hn:[18,6], hf:[16,6]}), h:0.5, d:2, c:"Tira i gomiti verso i fianchi, scapole giù"}]},
+
+ /* ---------- esercizi storici, ancora aggiungibili a una seduta ---------- */
+ /* ExRx Dumbbell Kickback: omero parallelo al pavimento, distendi fino a braccio dritto. In casa: una mano su una sedia */
+ "Kick back tricipiti":{fx:"arm", db:"n", props:[{k:"sedia", x:146, y:109, w:26}], tr:"hn", k:[
+   {p:fgM({hip:[92,86], t:100, mg:1, abs:"f", an:[-93,0], hf:[153,107], fn:[104,FG_ANK], ff:[98,FG_ANK], nk:-8}), h:0.3, d:1, c:"Busto quasi orizzontale, una mano sulla sedia: omero parallelo al pavimento"},
+   {p:fgM({hip:[92,86], t:100, mg:1, abs:"f", an:[-93,-93], hf:[153,107], fn:[104,FG_ANK], ff:[98,FG_ANK], nk:-8}), h:1, d:2, c:"Distendi fino a braccio dritto, fermo 1 secondo. Il gomito non scende"}]},
+ /* ExRx Dumbbell Incline Bench Press: manubri ai lati della parte alta del petto, gomiti sotto i manubri, spinta fino a braccia distese */
+ "Incline Press manubri":{fx:"trunk", db:"nf", props:[{k:"panca", x:78, y:104, w:32, px:94, py:106, a:40, L:56}], tr:"hn", k:[
+   {p:fgM({hip:[96,100], t:230, ub:0.8, hn:[8,-5], hf:[7,-5], fn:[124,FG_ANK], ff:[120,FG_ANK]}), h:0.3, d:1, c:"Panca a 30-45°, manubri ai lati della parte alta del petto: spingi"},
+   {p:fgM({hip:[96,100], t:230, hn:[1,-36.3], hf:[0,-36.3], fn:[124,FG_ANK], ff:[120,FG_ANK]}), h:0.3, d:2.5, c:"In alto i manubri si avvicinano sopra le spalle. Scendi in 2-3 secondi"}]},
+ "RDL (Romanian Deadlift)":{fx:"leg", db:"nf", tr:"hip", k:[
+   {p:pIn({hip:[107,85], t:178, mg:1, fn:[113,FG_ANK], ff:[108,FG_ANK], hn:[1.5,36.3], hf:[-0.5,36.3]}), h:0.3, d:2.5, c:"Piedi alla larghezza delle anche, ginocchia appena piegate"},
+   {p:pIn({hip:[93,89.5], t:108, mg:1, fn:[113,FG_ANK], ff:[108,FG_ANK], hn:[-7,35.6], hf:[-9,35.2]}), h:0.3, d:1.2, c:"Bacino INDIETRO: scendi finché senti i femorali, schiena piatta"}]}
 };
 /* varianti che si muovono come un'altra figura */
 function fgCopia(base, mod){ var d=fgM(FIG[base], mod||{}); return d; }
@@ -659,6 +678,7 @@ function fgInquadra(n){
   }
   (def.props||[]).forEach(function(pr){
     if(pr.k==="sediaF"){ add([pr.x, pr.y-40]); add([pr.x+pr.w, FG_PAV]); }
+    else if(pr.k==="panca"){ var ar=pr.a*Math.PI/180; add([pr.px-pr.L*Math.cos(ar), pr.py-pr.L*Math.sin(ar)]); add([pr.x+pr.w, FG_PAV]); }
     else if(pr.k==="box"||pr.k==="sedia"){ add([pr.x-(pr.schienale?6:0), pr.y-(pr.schienale?38:0)]); add([pr.x+pr.w, FG_PAV]); }
     else if(pr.k==="muro"||pr.k==="porta"){ add([pr.x, y0<1e8? y0 : 60]); add([pr.x+10, FG_PAV]); }
     else if(pr.k==="tappetino"){ add([pr.x, FG_PAV]); add([pr.x+pr.w, FG_PAV]); }
