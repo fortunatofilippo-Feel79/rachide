@@ -34,7 +34,7 @@ const COLONNE = {
     peso: 'peso a digiuno kg (mattino, vuoto in trasferta)', rhr: 'FC a riposo (mattino)', stress: 'stress 0-3 (sera)', mente: 'testa 1-5 (sera)',
     passi: 'passi medi della settimana (domenica)', ipo: 'indice di ipopnea eventi/ora (domenica)', dolm: 'dolore massimo al mattino 0-10 (qualsiasi zona)',
     dolmz: 'dolore al mattino per zona, zona:valore separati da ;',
-    cibP: 'proteine del giorno g', cibC: 'carboidrati g', cibG: 'grassi g', cibJ: 'pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto)',
+    cibP: 'proteine del giorno g', cibC: 'carboidrati g', cibG: 'grassi g', cibJ: 'pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto; salta = pasti segnati come saltati). Gli spuntini sono facoltativi: conta il totale del giorno',
     sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', note: 'nota libera'
   },
   sim: { date: 'data', w: 'settimana', ex: 'esercizio del check', q: 'domanda', a: 'risposta Sì/No/Non verificato', side: 'lato che limita' },

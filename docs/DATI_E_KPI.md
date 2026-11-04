@@ -1,6 +1,6 @@
 # Dati e KPI di Rachide
 
-> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.4.2). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
+> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.4.3). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
 
 Riferimento per il coach: che cosa misura l'app, quando, con quale formula e quale bersaglio, da dove viene ogni bersaglio, come sono fatte le schede del foglio e quali regole applica il motore da solo.
 
@@ -169,7 +169,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `cibP` | proteine del giorno g |
 | `cibC` | carboidrati g |
 | `cibG` | grassi g |
-| `cibJ` | pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto) |
+| `cibJ` | pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto; salta = pasti segnati come saltati). Gli spuntini sono facoltativi: conta il totale del giorno |
 | `sede` | dove hai dormito: Casa o Fuori |
 | `citta` | città, se fuori |
 | `note` | nota libera |
