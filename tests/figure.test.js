@@ -85,3 +85,30 @@ test('in piedi le gambe distese si leggono dritte', () => {
     assert.ok(dist(g.h, g.a, g.k) < 1.2, 'ginocchio fuori linea di ' + dist(g.h, g.a, g.k).toFixed(2));
   }
 });
+
+test('vista di fronte simmetrica: gambe dietro la maglia, braccia davanti, stessi colori ai due lati', () => {
+  const ctx = carica();
+  const P = ctx.fgPosa(ctx.pFronte({})), s = ctx.fgCorpo(P, ctx.pFronte({}), { db: 'nf' });
+  const maglia = s.indexOf('class="fg-shirt"');
+  const ultimaGamba = s.lastIndexOf('fg-pants');
+  const primoBraccio = s.indexOf('fg-sleeve');
+  assert.ok(ultimaGamba < maglia, 'le due gambe prima della maglia');
+  assert.ok(primoBraccio > maglia, 'le braccia dopo la maglia');
+  assert.ok(!/fg-far/.test(s), 'nessun lato "lontano" piu\' scuro di fronte');
+});
+
+test('calf raise: la gamba libera si piega come un ginocchio vero (ginocchio avanti, piede dietro)', () => {
+  const ctx = carica();
+  for (const k of ctx.FIG['Calf raise monopodalico'].k) {
+    const g = ctx.fgPosa(k.p).gambe.f;
+    assert.ok(g.k[0] > g.a[0], 'il ginocchio sta davanti al piede');
+  }
+});
+
+test('rotazioni toraciche: il braccio che lavora passa sotto il busto e poi sale', () => {
+  const ctx = carica();
+  const d = ctx.FIG['Rotazioni toraciche'], a = ctx.fgPosa(d.k[0].p), b = ctx.fgPosa(d.k[1].p);
+  assert.ok(a.braccia.f.h[1] > a.hip[1], 'all\'inizio la mano e\' sotto il busto');
+  assert.ok(b.braccia.f.h[1] < b.hc[1], 'alla fine la mano e\' sopra la testa');
+  assert.equal(d.chiaro, 'bf', 'il braccio che lavora ha il colore pieno');
+});
