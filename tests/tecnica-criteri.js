@@ -1,0 +1,162 @@
+/* Criteri di tecnica per le figure degli esercizi.
+   Ogni criterio dice: esercizio, fotogramma chiave (indice in FIG[n].k), che cosa si misura,
+   l'intervallo accettato e la fonte esterna da cui viene. Lo usano il test di conformita'
+   (tests/tecnica.test.js) e la revisione documentata in docs/REVISIONE_ESERCIZI.md.
+
+   Nota sugli angoli: la figura e' disegnata in 2D. Quando un arto esce dal piano del disegno
+   (gomiti a 45° nel push-up, omero aperto nello shoulder press) l'angolo che si vede e' piu'
+   piccolo di quello vero: per questi casi il criterio guarda anche la posizione (avambraccio
+   verticale, gomito a terra, gomito all'altezza della spalla), che e' quello che l'occhio legge. */
+
+const FONTI = {
+  pushup: { t: 'ExRx: Push-up', u: 'https://exrx.net/WeightExercises/PectoralSternal/BWPushup' },
+  pushup90: { t: "Tom's Guide: errori comuni nel push-up (gomito a 90°, gomiti a 45° dal busto)", u: 'https://www.tomsguide.com/wellness/fitness/im-a-personal-trainer-these-are-the-3-most-common-push-up-mistakes-i-see-and-how-to-fix-them' },
+  floorpress: { t: 'ExRx: Barbell Floor Press (si scende finche\' i tricipiti appoggiano a terra)', u: 'https://exrx.net/WeightExercises/PectoralSternal/BBFloorPress' },
+  rowDB: { t: 'ExRx: Barbell Bent-over Row (ginocchia leggermente piegate, schiena dritta)', u: 'https://exrx.net/WeightExercises/BackGeneral/BBBentOverRow' },
+  rowDB1: { t: 'ExRx: Dumbbell Bent-over Row (tira fino al costato, poi braccio disteso)', u: 'https://exrx.net/WeightExercises/BackGeneral/DBBentOverRow' },
+  rdl: { t: 'ExRx: Romanian Deadlift', u: 'https://exrx.net/WeightExercises/OlympicLifts/RomanianDeadlift' },
+  sldl: { t: 'ExRx: Dumbbell Single Leg Stiff-leg Deadlift', u: 'https://exrx.net/WeightExercises/GluteusMaximus/DBSingleLegStiffLegDeadlift' },
+  latraise: { t: 'ExRx: Dumbbell Lateral Raise', u: 'https://exrx.net/WeightExercises/DeltoidLateral/DBLateralRaise' },
+  rearraise: { t: 'ExRx: Dumbbell Rear Lateral Raise', u: 'https://exrx.net/WeightExercises/DeltoidPosterior/DBRearLateralRaise' },
+  tricext: { t: 'ExRx: Dumbbell Triceps Extension', u: 'https://exrx.net/WeightExercises/Triceps/DBTriExt' },
+  tricext1: { t: 'ExRx: Dumbbell One Arm Triceps Extension', u: 'https://exrx.net/WeightExercises/Triceps/DBOneArmTriExt' },
+  boxsquat: { t: 'ExRx: Barbell Box Squat', u: 'https://exrx.net/WeightExercises/GluteusMaximus/BBBoxSquat' },
+  squat: { t: 'ExRx: Squat', u: 'https://exrx.net/WeightExercises/Quadriceps/BWSquat' },
+  splitsquat: { t: 'ExRx: Dumbbell Split Squat', u: 'https://exrx.net/WeightExercises/GluteusMaximus/DBSplitSquat' },
+  hipthrust: { t: 'ExRx: Barbell Hip Thrust', u: 'https://exrx.net/WeightExercises/GluteusMaximus/BBHipThrust' },
+  hipthrust90: { t: 'The Barbell Physio: varianti di hip thrust (tibie verticali e ginocchia a 90° in alto)', u: 'https://thebarbellphysio.com/the-best-hip-thrust-variations-for-stronger-glutes/' },
+  bridge: { t: 'ExRx: Single Leg Hip Bridge', u: 'https://exrx.net/WeightExercises/GluteusMaximus/BWLyingHipExtension' },
+  seatedrow: { t: 'ExRx: Cable Straight Back Seated Row', u: 'https://exrx.net/WeightExercises/BackGeneral/CBStraightBackSeatedRow' },
+  pikepu: { t: 'ExRx: Pike Push-up', u: 'https://exrx.net/WeightExercises/PectoralClavicular/BWPikePushup' },
+  pullapart: { t: 'StrengthLog: Band Pull-Apart', u: 'https://www.strengthlog.com/?p=2637' },
+  facepull: { t: 'StrengthLog: Face Pull', u: 'https://www.strengthlog.com/face-pull/' },
+  facepull2: { t: 'Major Fitness: come fare il face pull (gomito tra 45° e 90°, gomiti alti)', u: 'https://www.majorfitness.com/blogs/training-tips/how-to-do-the-face-pull' },
+  shpress: { t: 'ExRx: Dumbbell Shoulder Press', u: 'https://exrx.net/WeightExercises/DeltoidAnterior/DBShoulderPress' },
+  coach: { t: 'Scheda tecnica del coach nell\'app (js/01-dati.js)', u: '' }
+};
+
+const M = {
+  ang(A, B, C) { const u = [A[0] - B[0], A[1] - B[1]], v = [C[0] - B[0], C[1] - B[1]]; return Math.acos(Math.max(-1, Math.min(1, (u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v) || 1)))) * 180 / Math.PI; },
+  /* direzione di a->b rispetto alla verticale: 0 = dritto in giu', in valore assoluto */
+  dalGiu(a, b) { return Math.abs(Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI); },
+  /* direzione di a->b rispetto alla verticale in su, in valore assoluto */
+  dalSu(a, b) { return Math.abs(Math.atan2(b[0] - a[0], -(b[1] - a[1])) * 180 / Math.PI); },
+  gom(P, l) { const b = P.braccia[l || 'n']; return M.ang(b.s, b.e, b.h); },
+  gin(P, l) { const g = P.gambe[l || 'n']; return M.ang(g.h, g.k, g.a); },
+  anca(P) { return M.ang(P.sh, P.hip, P.gambe.n.k); },
+  linea(P, l) { return M.ang(P.sh, P.hip, P.gambe[l || 'n'].a); },
+  busto(P) { return M.dalSu(P.hip, P.sh); },
+  avambraccio(P, l) { const b = P.braccia[l || 'n']; return Math.min(M.dalGiu(b.e, b.h), M.dalSu(b.e, b.h)); },
+  tibia(P, l) { const g = P.gambe[l || 'n']; return M.dalSu(g.a, g.k); }
+};
+
+/* c = cosa si misura, k = fotogramma, f = misura, [min, max], s = fonte */
+const C = (n, k, c, f, min, max, s) => ({ n, k, c, f, min, max, s });
+const CRITERI = [
+  /* spinte orizzontali */
+  C('Push-up', 0, 'in alto braccia distese', P => M.gom(P), 165, 180, 'pushup'),
+  C('Push-up', 0, 'in alto mani sotto le spalle (distanza orizzontale)', P => Math.abs(P.braccia.n.h[0] - P.sh[0]), 0, 6, 'pushup'),
+  C('Push-up', 1, 'in basso gomito vicino a 90° (visto di lato)', P => M.gom(P), 65, 95, 'pushup90'),
+  C('Push-up', 1, 'in basso avambraccio verticale', P => M.avambraccio(P), 0, 15, 'pushup90'),
+  C('Push-up', 1, 'corpo in linea spalla-anca-caviglia', P => M.linea(P), 172, 180, 'pushup'),
+  C('Push-up stretti', 1, 'gomiti stretti: il gomito va indietro, dietro la spalla', P => P.sh[0] - P.braccia.n.e[0], 10, 30, 'coach'),
+  C('Push-up piedi rialzati con banda', 1, 'in basso gomito vicino a 90° (visto di lato)', P => M.gom(P), 65, 95, 'pushup90'),
+  C('Push-up piedi rialzati con banda', 1, 'in basso avambraccio verticale', P => M.avambraccio(P), 0, 15, 'pushup90'),
+  C('Floor Press manubri', 1, 'in basso il gomito tocca terra', P => P.braccia.n.e[1], 129, 136, 'floorpress'),
+  C('Floor Press manubri', 1, 'in basso avambraccio verticale, manubrio sopra il gomito', P => M.avambraccio(P), 0, 12, 'floorpress'),
+  C('Floor Press manubri', 1, 'in basso gomito vicino a 90° (visto di lato)', P => M.gom(P), 60, 95, 'floorpress'),
+  /* tirate */
+  C('Rematore manubri', 0, 'ginocchia morbide', P => M.gin(P), 145, 170, 'rowDB'),
+  C('Rematore manubri', 0, 'braccia che pendono distese', P => M.gom(P), 165, 180, 'rowDB1'),
+  C('Rematore manubri', 0, 'busto a 45° dalla verticale (scelta del coach)', P => M.busto(P), 40, 60, 'coach'),
+  C('Rematore manubri', 1, 'a fine tirata avambraccio verticale', P => M.avambraccio(P), 0, 15, 'rowDB1'),
+  C('Rematore manubri', 1, 'a fine tirata gomito tra 80° e 110°', P => M.gom(P), 80, 110, 'rowDB1'),
+  C('Band row seduto', 0, 'ginocchia leggermente piegate', P => M.gin(P), 145, 170, 'seatedrow'),
+  C('Band row seduto', 0, 'partenza a braccia distese', P => M.gom(P), 168, 180, 'seatedrow'),
+  C('Band row seduto', 1, 'mani alla vita, gomito tra 70° e 95°', P => M.gom(P), 70, 95, 'seatedrow'),
+  C('Band row seduto', 1, 'busto eretto', P => M.busto(P), 0, 10, 'seatedrow'),
+  C('Rematore al telaio della porta', 0, 'partenza a braccio disteso', P => M.gom(P), 168, 180, 'coach'),
+  C('Rematore al telaio della porta', 1, 'a fine tirata gomito tra 65° e 90°', P => M.gom(P), 65, 90, 'coach'),
+  C('Rematore al telaio della porta', 1, 'corpo dritto', P => M.linea(P), 175, 180, 'coach'),
+  C('Band pull-down', 0, 'braccia tese verso l\'ancoraggio', P => M.gom(P), 165, 180, 'coach'),
+  C('Band pull-down', 1, 'gomito sotto la spalla, piegato tra 50° e 80°', P => M.gom(P), 50, 80, 'coach'),
+  /* spalle */
+  C('Shoulder Press manubri', 0, 'in basso gomiti sotto i polsi (avambraccio verticale)', P => M.avambraccio(P), 0, 10, 'shpress'),
+  C('Shoulder Press manubri', 0, 'in basso gomito tra 70° e 95°', P => M.gom(P), 70, 95, 'shpress'),
+  C('Shoulder Press manubri', 0, 'in basso manubri ai lati della testa, sopra le spalle', P => P.sh[1] - P.braccia.n.h[1], 8, 22, 'shpress'),
+  C('Shoulder Press manubri', 1, 'in alto braccia quasi distese', P => M.gom(P), 165, 180, 'shpress'),
+  C('Shoulder press con banda', 0, 'in basso gomiti sotto i polsi (avambraccio verticale)', P => M.avambraccio(P), 0, 10, 'shpress'),
+  C('Shoulder press con banda', 1, 'in alto braccia quasi distese', P => M.gom(P), 165, 180, 'shpress'),
+  C('Alzate laterali', 0, 'gomiti appena piegati (10°-30°)', P => M.gom(P), 150, 170, 'latraise'),
+  C('Alzate laterali', 1, 'gomiti appena piegati (10°-30°)', P => M.gom(P), 150, 170, 'latraise'),
+  C('Alzate laterali', 1, 'gomito all\'altezza della spalla', P => Math.abs(P.braccia.n.e[1] - P.braccia.n.s[1]), 0, 3, 'latraise'),
+  C('Alzate laterali', 1, 'gomito non sotto il polso', P => P.braccia.n.h[1] - P.braccia.n.e[1], 0, 10, 'latraise'),
+  C('Alzate laterali con banda', 1, 'gomito all\'altezza della spalla', P => Math.abs(P.braccia.n.e[1] - P.braccia.n.s[1]), 0, 3, 'latraise'),
+  C('Alzate laterali con banda', 1, 'gomiti appena piegati (10°-30°)', P => M.gom(P), 150, 170, 'latraise'),
+  C('Reverse Fly', 1, 'gomiti piegati di 10°-30°, fissi', P => M.gom(P), 150, 170, 'rearraise'),
+  C('Reverse Fly', 1, 'gomito all\'altezza della spalla', P => Math.abs(P.braccia.n.e[1] - P.braccia.n.s[1]), 0, 3, 'rearraise'),
+  C('Reverse Fly', 0, 'manubri che pendono, gomiti appena piegati', P => M.gom(P), 150, 170, 'rearraise'),
+  C('Face pull', 1, 'gomiti alti, all\'altezza delle spalle', P => Math.abs(P.braccia.n.e[1] - P.braccia.n.s[1]), 0, 4, 'facepull'),
+  C('Face pull', 1, 'gomito piegato tra 80° e 110°, mani sopra i gomiti', P => M.gom(P), 80, 110, 'facepull2'),
+  C('Face pull', 1, 'mani piu\' in alto dei gomiti (rotazione esterna)', P => P.braccia.n.e[1] - P.braccia.n.h[1], 10, 20, 'facepull'),
+  C('Band pull-apart', 1, 'braccia distese', P => M.gom(P), 170, 180, 'pullapart'),
+  C('Band pull-apart', 1, 'mani all\'altezza delle spalle', P => Math.abs(P.braccia.n.h[1] - P.braccia.n.s[1]), 0, 4, 'pullapart'),
+  C('Band pull-apart', 0, 'partenza: mani davanti al petto, alla larghezza delle spalle', P => Math.abs(P.braccia.n.h[0] - P.braccia.n.s[0]), 0, 6, 'pullapart'),
+  C('Y-T-W a busto inclinato', 0, 'Y: braccia distese sopra le spalle', P => M.gom(P), 170, 180, 'rearraise'),
+  C('Y-T-W a busto inclinato', 1, 'T: braccia distese all\'altezza delle spalle', P => Math.abs(P.braccia.n.e[1] - P.braccia.n.s[1]), 0, 3, 'rearraise'),
+  C('Y-T-W a busto inclinato', 2, 'W: gomiti piegati tra 80° e 110°', P => M.gom(P), 80, 110, 'coach'),
+  /* braccia */
+  C('French Press', 1, 'in basso il gomito si piega fino a 35°-60°', P => M.gom(P), 35, 60, 'tricext'),
+  C('French Press', 1, 'omero verticale, gomiti in alto', P => M.dalSu(P.braccia.n.s, P.braccia.n.e), 0, 15, 'tricext'),
+  C('French Press', 0, 'in alto braccia distese', P => M.gom(P), 170, 180, 'tricext'),
+  C('Band tricep extension', 0, 'in basso il gomito si piega fino a 35°-60°', P => M.gom(P), 35, 60, 'tricext'),
+  C('Overhead extension 1 braccio', 1, 'in basso il gomito si piega fino a 35°-60°', P => M.gom(P), 35, 60, 'tricext1'),
+  C('Curl bicipiti manubri', 1, 'gomito fermo accanto al busto', P => Math.abs(P.braccia.n.e[0] - P.braccia.n.s[0]), 0, 4, 'coach'),
+  C('Band curl bicipiti', 1, 'gomito fermo accanto al busto', P => Math.abs(P.braccia.n.e[0] - P.braccia.n.s[0]), 0, 4, 'coach'),
+  /* gambe */
+  C('Box Squat', 1, 'in basso coscia vicina all\'orizzontale (ginocchio 80°-105°)', P => M.gin(P), 80, 105, 'squat'),
+  C('Box Squat', 1, 'tibia quasi verticale', P => M.tibia(P), 0, 12, 'boxsquat'),
+  C('Box Squat', 1, 'busto inclinato in avanti 30°-50°', P => M.busto(P), 30, 50, 'boxsquat'),
+  C('Box Squat', 0, 'in piedi gambe distese', P => M.gin(P), 170, 180, 'squat'),
+  C('Box squat alla sedia 3s', 1, 'ginocchio 90°-110° sul bordo della sedia', P => M.gin(P), 90, 110, 'squat'),
+  C('Box squat alla sedia 3s', 0, 'braccia distese avanti', P => M.gom(P), 165, 180, 'coach'),
+  C('Bulgarian Split Squat manubri', 1, 'ginocchio davanti a 80°-100°', P => M.gin(P), 80, 100, 'splitsquat'),
+  C('Bulgarian Split Squat manubri', 1, 'busto quasi dritto', P => M.busto(P), 0, 15, 'splitsquat'),
+  C('Bulgarian Split Squat manubri', 1, 'manubri lungo i fianchi, braccia distese', P => M.gom(P), 165, 180, 'splitsquat'),
+  C('Affondi indietro manubri', 2, 'ginocchio davanti a 80°-100°', P => M.gin(P), 80, 100, 'splitsquat'),
+  C('Affondi indietro manubri', 2, 'tibia davanti quasi verticale', P => M.tibia(P), 0, 12, 'splitsquat'),
+  C('Affondi indietro manubri', 2, 'busto dritto', P => M.busto(P), 0, 15, 'splitsquat'),
+  C('Split-stance RDL', 0, 'ginocchio davanti appena piegato', P => M.gin(P), 150, 170, 'rdl'),
+  C('Split-stance RDL', 1, 'ginocchio davanti appena piegato e fermo', P => M.gin(P), 145, 170, 'rdl'),
+  C('Split-stance RDL', 1, 'cerniera d\'anca: busto 45°-80° in avanti', P => M.busto(P), 45, 80, 'rdl'),
+  C('Split-stance RDL', 1, 'braccia distese, manubri vicino alla gamba', P => M.gom(P), 165, 180, 'rdl'),
+  C('Hip hinge una gamba', 1, 'ginocchio d\'appoggio appena piegato', P => M.gin(P), 145, 170, 'sldl'),
+  C('Hip hinge una gamba', 1, 'gamba libera distesa', P => M.gin(P, 'f'), 170, 180, 'sldl'),
+  C('Hip hinge una gamba', 1, 'busto e gamba libera in linea', P => M.linea(P, 'f'), 160, 180, 'sldl'),
+  C('Glute bridge', 1, 'in alto anca distesa: spalle-anca-ginocchio in linea', P => M.anca(P), 170, 180, 'bridge'),
+  C('Glute bridge', 1, 'in alto ginocchio vicino a 90°', P => M.gin(P), 80, 100, 'bridge'),
+  C('Hip thrust con banda', 1, 'in alto anca distesa: spalle-anca-ginocchio in linea', P => M.anca(P), 170, 180, 'hipthrust'),
+  C('Hip thrust con banda', 1, 'in alto ginocchio a 80°-100°', P => M.gin(P), 80, 100, 'hipthrust90'),
+  C('Hip thrust con banda', 1, 'in alto tibia verticale', P => M.tibia(P), 0, 12, 'hipthrust90'),
+  C('Hip thrust a una gamba', 1, 'in alto ginocchio a 80°-100°', P => M.gin(P), 80, 100, 'hipthrust90'),
+  C('Hip thrust a una gamba', 1, 'gamba libera distesa', P => M.gin(P, 'f'), 170, 180, 'coach'),
+  C('Calf raise monopodalico', 1, 'ginocchio d\'appoggio disteso', P => M.gin(P), 170, 180, 'coach'),
+  /* corpo libero e core */
+  C('Pike push-up', 0, 'in alto braccia distese in linea col busto', P => M.gom(P), 165, 180, 'pikepu'),
+  C('Pike push-up', 0, 'V rovesciata: anca chiusa, gambe distese', P => M.anca(P), 45, 95, 'pikepu'),
+  C('Pike push-up', 1, 'in basso gomito tra 80° e 105°', P => M.gom(P), 80, 105, 'pikepu'),
+  C('Plank', 0, 'gomiti sotto le spalle', P => Math.abs(P.braccia.n.e[0] - P.sh[0]), 0, 4, 'coach'),
+  C('Plank', 0, 'corpo in linea', P => M.linea(P), 172, 180, 'coach'),
+  C('Bird-dog con pausa 3s', 1, 'gamba distesa', P => M.gin(P, 'f'), 170, 180, 'coach'),
+  C('Bird-dog con pausa 3s', 1, 'braccio disteso in linea col busto', P => M.ang(P.braccia.n.h, P.sh, P.hip), 170, 180, 'coach'),
+  C('Bird-dog con pausa 3s', 1, 'il piede non sale sopra l\'anca', P => P.gambe.f.a[1] - P.hip[1], -3, 6, 'coach'),
+  C('Cat-cow', 0, 'mani sotto le spalle', P => Math.abs(P.braccia.n.h[0] - P.sh[0]), 0, 4, 'coach'),
+  C('Cat-cow', 0, 'ginocchia sotto le anche', P => Math.abs(P.gambe.n.k[0] - P.hip[0]), 0, 4, 'coach'),
+  C('Dead bug', 0, 'anche e ginocchia a 90°', P => M.gin(P), 80, 100, 'coach'),
+  C('Dead bug', 1, 'gamba che si allunga distesa', P => M.gin(P, 'f'), 160, 180, 'coach'),
+  C('Dead bug', 1, 'braccio che si allunga disteso', P => M.gom(P), 170, 180, 'coach'),
+  C('Pullover manubrio', 1, 'gomiti quasi distesi e fissi', P => M.gom(P), 150, 168, 'coach'),
+  C('Pullover manubrio', 0, 'gomiti quasi distesi e fissi', P => M.gom(P), 150, 168, 'coach')
+];
+
+module.exports = { CRITERI, FONTI, M };

@@ -40,21 +40,27 @@ test('le figure non producono coordinate non valide in nessun momento del ciclo'
   }
 });
 
-test('braccia e gambe non cambiano lunghezza durante il movimento', () => {
+test('braccia e gambe non cambiano lunghezza durante il movimento (salvo lo scorcio dichiarato)', () => {
   const ctx = carica();
   const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   for (const n of Object.keys(ctx.FIG)) {
     const def = ctx.FIG[n], tot = ctx.fgDurata(def);
     for (let i = 0; i <= 12; i++) {
-      const P = ctx.fgPosa(ctx.fgAl(def, tot * i / 12).p);
+      const p = ctx.fgAl(def, tot * i / 12).p, P = ctx.fgPosa(p);
+      /* lo scorcio (ub omero, gc coscia) e' l'unico modo in cui un segmento si accorcia: un arto che va verso chi guarda */
+      const ub = p.ub == null ? 1 : p.ub, gc = p.gc == null ? 1 : p.gc;
+      assert.ok(ub >= 0.3 && ub <= 1 && gc >= 0.25 && gc <= 1, n + ' scorcio fuori misura');
       for (const l of ['n', 'f']) {
         const b = P.braccia[l], g = P.gambe[l];
-        assert.ok(Math.abs(d(b.s, b.e) - ctx.FL.ua) < 0.05, n + ' omero');
-        assert.ok(Math.abs(d(g.h, g.k) - ctx.FL.th) < 0.05, n + ' femore');
+        if (!b.av) assert.ok(Math.abs(d(b.s, b.e) - ctx.FL.ua * ub) < 0.05, n + ' omero');
+        assert.ok(Math.abs(d(g.h, g.k) - ctx.FL.th * gc) < 0.05, n + ' femore');
         assert.ok(d(g.k, g.a) <= ctx.FL.sh + 0.05, n + ' tibia');
       }
     }
   }
+  /* senza scorcio dichiarato, le lunghezze sono quelle vere */
+  const P = ctx.fgPosa(ctx.pIn({}));
+  assert.ok(Math.abs(d(P.braccia.n.s, P.braccia.n.e) - ctx.FL.ua) < 0.05);
 });
 
 test('piedi: nessun salto tra un fotogramma e il successivo, e in piedi a gambe parallele i piedi sono allineati', () => {

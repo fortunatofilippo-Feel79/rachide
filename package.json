@@ -1,6 +1,6 @@
 {
   "name": "rachide",
-  "version": "4.5.1",
+  "version": "4.6.0",
   "private": true,
   "description": "Registro personale di allenamento, cibo e salute (web app statica, nessuna dipendenza).",
   "scripts": {

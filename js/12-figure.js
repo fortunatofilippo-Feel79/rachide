@@ -18,17 +18,18 @@ function fgM(a,b){ var r={}, k; for(k in a) r[k]=a[k]; for(k in (b||{})) r[k]=b[
 function fgR(n){ return Math.round(n*10)/10; }
 
 /* due segmenti dalla base al bersaglio: giuntura in mezzo, piegata dal lato s */
-function fgIK(b, t, l1, l2, s){
+function fgIK(b, t, l1, l2, s, morb){
   var dx=t[0]-b[0], dy=t[1]-b[1], d=Math.sqrt(dx*dx+dy*dy)||0.001;
   var dd=Math.max(Math.abs(l1-l2)+0.01, Math.min(d, l1+l2-0.01));
   var ux=dx/d, uy=dy/d, a=(l1*l1-l2*l2+dd*dd)/(2*dd), h=Math.sqrt(Math.max(0, l1*l1-a*a));
   var j=[b[0]+ux*a-uy*h*s, b[1]+uy*a+ux*h*s];
   /* quasi distesa = distesa: in piedi le gambe (e le braccia lungo i fianchi) devono leggersi dritte.
      Il primo segmento ruota verso la retta tenendo la sua lunghezza; il passaggio e' graduale,
-     cosi' l'animazione non scatta. */
+     cosi' l'animazione non scatta. Con morb=1 (gomiti o ginocchia "morbidi", come chiede la tecnica)
+     la piega resta quella vera. */
   var r=dd/(l1+l2);
-  if(r>0.955){
-    var k=Math.max(0, Math.min(1, (r-0.955)/0.03)), vx=(j[0]-b[0])*(1-k)+ux*l1*k, vy=(j[1]-b[1])*(1-k)+uy*l1*k, vl=Math.sqrt(vx*vx+vy*vy)||1;
+  if(r>0.955 && !(morb>=1)){
+    var k=Math.max(0, Math.min(1, (r-0.955)/0.03))*(1-(morb||0)), vx=(j[0]-b[0])*(1-k)+ux*l1*k, vy=(j[1]-b[1])*(1-k)+uy*l1*k, vl=Math.sqrt(vx*vx+vy*vy)||1;
     j=[b[0]+vx/vl*l1, b[1]+vy/vl*l1];
   }
   return { j:j, e:[b[0]+ux*dd, b[1]+uy*dd] };
@@ -65,24 +66,27 @@ function fgPosa(p){
     var wpe=Math.max(0, Math.min(1, (14-dx)/5))*Math.max(0, Math.min(1, (3-dy)/1.5));
     if(wpe>0) piedeF=[p.ff[0]+(p.fn[0]-1.2-p.ff[0])*wpe, p.ff[1]];
   }
+  /* scorcio: un arto che va verso chi guarda si vede piu' corto (ub omero, fb avambraccio, gc coscia).
+     mb e mg: gomiti e ginocchia morbidi, la piega leggera resta visibile. */
+  var LU=FL.ua*(p.ub==null?1:p.ub), LA=FL.fa*(p.fb==null?1:p.fb), LT=FL.th*(p.gc==null?1:p.gc);
   ["n","f"].forEach(function(lato){
-    var hv=p["h"+lato]||[0,FL.ua+FL.fa-1], tg=abs.indexOf(lato)>=0 ? hv : fgSom(S[lato], hv);
+    var hv=p["h"+lato]||[0,LU+LA-1], tg=abs.indexOf(lato)>=0 ? hv : fgSom(S[lato], hv);
     var eb=(p.eb&&p.eb[lato]!=null)? p.eb[lato] : 1;
     var fk=p["a"+lato];
     if(fk){   /* angoli di braccio e avambraccio: il gomito resta fermo, l'avambraccio ruota ad arco */
-      var e1=fgSom(S[lato], fgDir(fk[0]), FL.ua);
-      out.braccia[lato]={s:S[lato], e:e1, h:fgSom(e1, fgDir(fk[1]), FL.fa)};
+      var e1=fgSom(S[lato], fgDir(fk[0]), LU);
+      out.braccia[lato]={s:S[lato], e:e1, h:fgSom(e1, fgDir(fk[1]), LA)};
     } else if((p.av||"").indexOf(lato)>=0){   /* avambraccio verso chi guarda: si vede solo il gomito a terra */
       var dd=[tg[0]-S[lato][0], tg[1]-S[lato][1]], LL=Math.sqrt(dd[0]*dd[0]+dd[1]*dd[1])||1;
       var ee=[S[lato][0]+dd[0]/LL*FL.ua, S[lato][1]+dd[1]/LL*FL.ua];
       out.braccia[lato]={s:S[lato], e:ee, h:ee, av:true};
     } else {
-      var a=fgIK(S[lato], tg, FL.ua, FL.fa, eb);
+      var a=fgIK(S[lato], tg, LU, LA, eb, p.mb);
       out.braccia[lato]={s:S[lato], e:a.j, h:a.e};
     }
     var fv=(lato==="f" && piedeF)? piedeF : (p["f"+lato]||[p.hip[0], FG_ANK]), ft=rf.indexOf(lato)>=0 ? fgSom(Hp[lato], fv) : fv;
     var kb=(p.kb&&p.kb[lato]!=null)? p.kb[lato] : -1;
-    var g=fgIK(Hp[lato], ft, FL.th, FL.sh, kb);
+    var g=fgIK(Hp[lato], ft, LT, FL.sh, kb, p.mg);
     var ta=p["t"+lato]; if(ta==null) ta=90;
     out.gambe[lato]={h:Hp[lato], k:g.j, a:g.e, toe:fgSom(g.e, fgDir(ta), FL.ft)};
   });
@@ -94,10 +98,14 @@ function fgAssoluto(p, chiave){
   var P=fgPosa(p), lato=chiave.charAt(1);
   return chiave.charAt(0)==="h" ? P.braccia[lato].h : P.gambe[lato].a;
 }
+var FG_DEF0={mb:0, mg:0, ub:1, fb:1, gc:1};
 function fgLerp(p0, p1, x){
   var r={}, k;
   for(k in p0) r[k]=p0[k];
+  /* scorci e arti morbidi: se una posa non li dice valgono il default, e si passa da uno all'altro senza scatti */
+  for(k in FG_DEF0){ if((k in p0)||(k in p1)){ var a0=(k in p0)? p0[k] : FG_DEF0[k], b0=(k in p1)? p1[k] : FG_DEF0[k]; r[k]=a0+(b0-a0)*x; } }
   for(k in p1){
+    if(k in FG_DEF0) continue;
     var a=p0[k], b=p1[k];
     if(typeof b==="number" && typeof a==="number") r[k]=a+(b-a)*x;
     else if(Array.isArray(b) && Array.isArray(a) && typeof b[0]==="number") r[k]=[a[0]+(b[0]-a[0])*x, a[1]+(b[1]-a[1])*x];
@@ -142,6 +150,7 @@ function fgPunto(P, ref){
     case "tn": return P.gambe.n.toe; case "tf": return P.gambe.f.toe;
     case "kn": return P.gambe.n.k; case "kf": return P.gambe.f.k;
     case "sh": return P.sh; case "hip": return P.hip; case "head": return P.hc;
+    case "sn": return P.braccia.n.s; case "sf": return P.braccia.f.s;   /* la spalla dell'arto (di fronte P.sh e' il centro) */
     case "back": return fgSom(fgSpina(P,0.55).q, fgSpina(P,0.55).nf, -7);
     case "lomb": return fgSom(fgSpina(P,0.15).q, fgSpina(P,0.15).nf, -7);
     case "chest": return fgSom(fgSpina(P,0.8).q, fgSpina(P,0.8).nf, 6);
@@ -157,6 +166,9 @@ function fgProp(o){
   if(o.k==="box") return '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+(o.h||(FG_PAV-o.y))+'" rx="'+(o.r==null?3:o.r)+'"'+c+'/>';
   if(o.k==="sedia") return '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+(FG_PAV-o.y)+'" rx="3"'+c+'/>'+
     (o.schienale? '<rect x="'+(o.x-5)+'" y="'+(o.y-38)+'" width="6" height="'+(FG_PAV-o.y+38)+'" rx="2"'+c+'/>' : '');
+  if(o.k==="sediaF") return '<rect x="'+(o.x+3)+'" y="'+(o.y-40)+'" width="'+(o.w-6)+'" height="38" rx="3"'+c+'/>'+
+    '<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="4" rx="1.5"'+c+'/>'+
+    '<rect x="'+(o.x+1)+'" y="'+(o.y+4)+'" width="3" height="'+(FG_PAV-o.y-4)+'"'+c+'/><rect x="'+(o.x+o.w-4)+'" y="'+(o.y+4)+'" width="3" height="'+(FG_PAV-o.y-4)+'"'+c+'/>';
   if(o.k==="muro") return '<rect x="'+o.x+'" y="6" width="10" height="'+(FG_PAV-6)+'"'+c+'/>';
   if(o.k==="porta") return '<rect x="'+o.x+'" y="10" width="7" height="'+(FG_PAV-10)+'" rx="2"'+c+'/>';
   if(o.k==="tappetino") return '<rect x="'+o.x+'" y="'+(FG_PAV-2)+'" width="'+o.w+'" height="3" rx="1.5" class="fg-mat"/>';
@@ -205,7 +217,9 @@ function fgPiedeFronte(G, cl){
   return '<path d="M'+p(-3.2,3)+'L'+p(3.2,3)+'Q'+p(3.9,0.6)+' '+p(1.6,-1.6)+'L'+p(-1.6,-1.6)+'Q'+p(-3.9,0.6)+' '+p(-3.2,3)+'Z" class="'+cl+'"/>';
 }
 function fgGamba(G, c, fronte){
-  return fgPath(fgCaps(G.h, G.k, 5.0, 3.6), c.pt)+fgPath(fgCaps(G.k, G.a, 3.6, 2.4), c.pt)+(fronte? fgPiedeFronte(G, c.so) : fgPiede(G, c.so));
+  /* di fronte e seduto la coscia viene verso chi guarda: si vede il ginocchio, tondo */
+  var gin=(fronte && Math.sqrt(Math.pow(G.k[0]-G.h[0],2)+Math.pow(G.k[1]-G.h[1],2))<12)? '<ellipse cx="'+fgR(G.k[0])+'" cy="'+fgR(G.k[1])+'" rx="5" ry="4.3" class="'+c.pt+'"/>' : '';
+  return fgPath(fgCaps(G.h, G.k, 5.0, 3.6), c.pt)+fgPath(fgCaps(G.k, G.a, 3.6, 2.4), c.pt)+gin+(fronte? fgPiedeFronte(G, c.so) : fgPiede(G, c.so));
 }
 /* arco di cerchio come poligono, da un angolo all'altro passando per l'angolo "via" */
 function fgArco(c, r, a0, a1, via){
@@ -429,19 +443,23 @@ function fgTraccia(nome, def){
 }
 
 /* ---------- catalogo delle figure ---------- */
-function pIn(o){ return fgM({hip:[110,85], t:180, hn:[3,35], hf:[-3,35], fn:[113,FG_ANK], ff:[106,FG_ANK]}, o); }
+function pIn(o){ return fgM({hip:[110,85], t:180, hn:[2,36.3], hf:[-2,36.3], fn:[113,FG_ANK], ff:[106,FG_ANK]}, o); }
 function pSeduto(o){ return fgM({hip:[98,100], t:180, hn:[16,30], hf:[12,31], fn:[128,FG_ANK], ff:[122,FG_ANK]}, o); }
 function pSupino(o){ return fgM({hip:[100,127], t:-90, hn:[2,-35], hf:[1,-35], fn:[126,FG_ANK], ff:[122,FG_ANK]}, o); }
 function pQuattro(o){ return fgM({hip:[82,108], t:109, abs:"nf", hn:[117,FG_ANK], hf:[113,FG_ANK], fn:[58,FG_ANK], ff:[55,FG_ANK], tn:-90, tf:-90}, o); }
-function pPiegato(o){ return fgM({hip:[96,87], t:128, hn:[2,35], hf:[-1,35], fn:[112,FG_ANK], ff:[106,FG_ANK]}, o); }
-function pFronte(o){ return fgM({hip:[110,85], t:180, sw:10, hw:6, hn:[4,35], hf:[-4,35], fn:[117,FG_ANK], ff:[103,FG_ANK], tn:60, tf:120, eb:{n:1,f:-1}, kb:{n:-1,f:1}}, o); }
+/* busto a 45°, ginocchia morbide (circa 155°), braccia che pendono */
+function pPiegato(o){ return fgM({hip:[96,87.7], t:128, mg:1, hn:[1,36.3], hf:[-1,36.3], fn:[112,FG_ANK], ff:[106,FG_ANK]}, o); }
+function pFronte(o){ return fgM({hip:[110,85], t:180, sw:10, hw:6, hn:[4,36.1], hf:[-4,36.1], fn:[117,FG_ANK], ff:[103,FG_ANK], tn:60, tf:120, eb:{n:1,f:-1}, kb:{n:-1,f:1}}, o); }
 function pChino(o){ /* di fronte, busto inclinato: il busto appare accorciato */
-  return pFronte(fgM({hip:[110,86], tl:0.56, hs:0.95, hk:0.3, hg:1, fn:[116,FG_ANK], ff:[104,FG_ANK]}, o));
+  return pFronte(fgM({hip:[110,85], tl:0.56, hs:0.95, hk:0.3, hg:1, fn:[116,FG_ANK], ff:[104,FG_ANK]}, o));
 }
+/* di fronte, seduto: le cosce vengono verso chi guarda e si vedono corte (scorcio), gli stinchi scendono a terra */
+function pSedutoF(o){ return pFronte(fgM({hip:[110,102], gc:0.3, mg:1, fn:[119,FG_ANK], ff:[101,FG_ANK]}, o)); }
 function pPlank(ank, shY, o){ var L=fgLinea(ank, shY); return fgM({hip:L.hip, t:L.t, fn:ank, ff:[ank[0]-3, ank[1]], tn:35, tf:35}, o); }
 
 var SEDIA={k:"sedia", x:80, y:104, w:30, schienale:true};
 var SGABELLO={k:"sedia", x:84, y:104, w:28};
+var SEDIA_F={k:"sediaF", x:94, y:103, w:32};
 
 var FIG={
  /* ---------- riscaldamento ---------- */
@@ -451,50 +469,51 @@ var FIG={
  /* il braccio che lavora e' quello lontano: passa SOTTO il busto (si vede tra petto e tappetino) e poi
     si apre verso il soffitto dietro la schiena; l'altro resta a terra davanti. Stesso colore, si legge bene. */
  "Rotazioni toraciche":{fx:"arm", chiaro:"bf", tr:"hf", props:[{k:"tappetino", x:40, w:110}], k:[
-   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[126,FG_ANK], hf:[-20,27], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:-25}), h:0.3, d:2.2, c:"Seduto sui talloni: la mano passa sotto il petto, verso l'altro lato"},
-   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[126,FG_ANK], hf:[4,-36], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:65}), h:1.2, d:2.2, c:"Apri il braccio verso il soffitto e segui la mano con lo sguardo"}]},
+   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[133,FG_ANK], hf:[-20,27], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:-25}), h:0.3, d:2.2, c:"Seduto sui talloni: la mano passa sotto il petto, verso l'altro lato"},
+   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[133,FG_ANK], hf:[4,-36], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:65}), h:1.2, d:2.2, c:"Apri il braccio verso il soffitto e segui la mano con lo sguardo"}]},
  "Bird-dog con pausa 3s":{fx:"core", tr:"hn", k:[
    {p:pQuattro(), h:0.5, d:1.5, c:"A quattro zampe, schiena neutra"},
-   {p:pQuattro({abs:"f", hn:[36,-3], ff:[36,104]}), h:3, d:1.5, c:"Braccio e gamba opposti in linea: fermo 3 secondi, bacino che non ruota"}]},
+   {p:pQuattro({abs:"f", hn:[34.5,-11.9], ff:[34,107]}), h:3, d:1.5, c:"Braccio e gamba opposti in linea: fermo 3 secondi, bacino che non ruota"}]},
  "Respirazione costale asimmetrica":{fx:"", props:[SGABELLO], k:[
    {p:pSeduto({hn:[3,18], hf:[-9,12], eb:{n:1,f:-1}, br:0}), h:0.3, d:4, c:"Inspira 4 secondi: le costole di sinistra spingono contro la mano"},
    {p:pSeduto({hn:[3,18], hf:[-9,12], eb:{n:1,f:-1}, br:1}), h:0.3, d:6.5, c:"Espira 6-7 secondi, lento: a destra il torace si sgonfia verso il centro"}]},
  "Glute bridge":{fx:"leg", tr:"hip", k:[
-   {p:pSupino({hn:[22,5], hf:[20,5]}), h:0.3, d:1.2, c:"Piedi a terra, ginocchia piegate"},
-   {p:pSupino({hip:[101,111], t:-66, hn:[22,7], hf:[20,7]}), h:1, d:1.6, c:"Spingi coi talloni e stringi i glutei: linea spalle-ginocchia"}]},
+   {p:pSupino({hip:[97,127], hn:[22,5], hf:[20,5]}), h:0.3, d:1.2, c:"Piedi a terra, ginocchia piegate"},
+   {p:pSupino({hip:[95.3,116.9], t:-73.8, hn:[22,7], hf:[20,7]}), h:1, d:1.6, c:"Spingi coi talloni e stringi i glutei: linea spalle-ginocchia"}]},
 
  /* ---------- giorno A ---------- */
  "Floor Press manubri":{fx:"trunk", db:"nf", tr:"hn", k:[
    {p:pSupino({hn:[1,-36], hf:[0,-36]}), h:0.4, d:3, c:"Scendi in 3 secondi: gomiti a 45° dal busto"},
-   {p:pSupino({hn:[9,-13], hf:[8,-13]}), h:0.3, d:1, c:"I gomiti sfiorano il pavimento, poi spingi senza bloccarli"}]},
+   {p:pSupino({ub:0.75, hn:[13.5,-13.5], hf:[12.5,-13.5]}), h:0.3, d:1, c:"I gomiti sfiorano il pavimento, poi spingi senza bloccarli"}]},
  "Rematore manubri":{fx:"trunk", db:"nf", tr:"hn", k:[
    {p:pPiegato(), h:0.3, d:1, c:"Busto a 45°, schiena dritta, manubri che pendono"},
-   {p:pPiegato({hn:[-22,20], hf:[-24,20]}), h:0.6, d:2, c:"Gomiti verso le tasche posteriori, scapole strette. Giù in 2 secondi"}]},
- "Shoulder Press manubri":{fx:"arm", db:"nf", props:[SEDIA], tr:"hn", k:[
-   {p:pSeduto({hn:[6,-4], hf:[4,-4]}), h:0.3, d:1, c:"Seduto, schiena appoggiata: spingi espirando"},
-   {p:pSeduto({hn:[3,-36], hf:[2,-36]}), h:0.3, d:2, c:"Scendi controllato fino all'altezza del mento"}]},
+   {p:pPiegato({hn:[-19,21], hf:[-21,21]}), h:0.6, d:2, c:"Gomiti verso le tasche posteriori, scapole strette. Giù in 2 secondi"}]},
+ /* vista di fronte: e' il piano in cui si muovono le braccia. Manubri ai lati delle spalle, gomiti sotto i polsi */
+ "Shoulder Press manubri":{fx:"arm", db:"nf", props:[SEDIA_F], tr:"hn", k:[
+   {p:pSedutoF({an:[78,180], af:[-78,180], ub:0.7}), h:0.3, d:1, c:"Seduto, schiena appoggiata: spingi espirando"},
+   {p:pSedutoF({an:[170,178], af:[-170,182]}), h:0.3, d:2, c:"Scendi controllato fino all'altezza del mento"}]},
  "Push-up piedi rialzati con banda":{fx:"trunk", props:[{k:"box", x:16, y:122, w:34}], band:[{c:"gialla", p:["hn","bk","hf"]}], k:[
-   {p:pPlank([40,118], 96, {abs:"nf", hn:[120,FG_ANK], hf:[117,FG_ANK], tn:40, tf:40}), h:0.3, d:2, c:"Banda sulle scapole, piedi sul rialzo: corpo in linea"},
-   {p:pPlank([40,118], 117, {abs:"nf", hn:[120,FG_ANK], hf:[117,FG_ANK], tn:40, tf:40}), h:0.2, d:1, c:"Scendi in blocco, poi spingi: la banda tira di più in alto"}]},
+   {p:pPlank([40,118], 96, {abs:"nf", hn:[116,FG_ANK], hf:[113,FG_ANK], tn:40, tf:40}), h:0.3, d:2, c:"Banda sulle scapole, piedi sul rialzo: corpo in linea"},
+   {p:pPlank([40,118], 117, {abs:"nf", hn:[116,FG_ANK], hf:[113,FG_ANK], tn:40, tf:40, ub:0.65}), h:0.2, d:1, c:"Scendi in blocco, poi spingi: la banda tira di più in alto"}]},
  "French Press":{fx:"arm", db:"2", props:[SEDIA], k:[
    {p:pSeduto({an:[172,176], af:[170,176]}), h:0.3, d:2, c:"Gomiti puntati avanti e fermi: il manubrio scende dietro la nuca"},
-   {p:pSeduto({an:[172,326], af:[170,326]}), h:0.2, d:1, c:"Distendi senza aprire i gomiti"}]},
+   {p:pSeduto({an:[172,307], af:[170,305]}), h:0.2, d:1, c:"Distendi senza aprire i gomiti"}]},
  "Plank":{fx:"core", k:[
    {p:pPlank([37,128], 114, {abs:"nf", hn:[139,FG_ANK], hf:[136,FG_ANK]}), h:0.5, d:2.5, c:"Avambracci sotto le spalle, corpo in linea da testa a talloni"},
    {p:pPlank([37,128], 113.4, {abs:"nf", hn:[139,FG_ANK], hf:[136,FG_ANK]}), h:0.5, d:2.5, c:"Conta i secondi a voce: non puoi contare in apnea"}]},
 
  /* ---------- giorno B ---------- */
- "Box Squat":{fx:"leg", db:"2", props:[{k:"box", x:64, y:103, w:32}], tr:"hip", k:[
+ "Box Squat":{fx:"leg", db:"2", props:[{k:"box", x:60, y:111, w:34}], tr:"hip", k:[
    {p:pIn({hip:[108,85], hn:[12,10], hf:[10,10], fn:[113,FG_ANK], ff:[108,FG_ANK]}), h:0.3, d:2, c:"Spingi i fianchi indietro, talloni a terra"},
-   {p:pIn({hip:[89,98], t:142, hn:[12,10], hf:[10,10], fn:[113,FG_ANK], ff:[108,FG_ANK]}), h:0.3, d:1, c:"Sfiora il box senza sederti, poi risali coi talloni"}]},
+   {p:pIn({hip:[91.4,104.9], t:138, hn:[12,10], hf:[10,10], fn:[113,FG_ANK], ff:[108,FG_ANK]}), h:0.3, d:1, c:"Sfiora il box senza sederti, poi risali coi talloni"}]},
  "Bulgarian Split Squat manubri":{fx:"leg", db:"nf", props:[{k:"box", x:28, y:108, w:34}], tr:"hip", k:[
    {p:pIn({hip:[102,88], t:176, fn:[118,FG_ANK], ff:[57,103], tf:-100}), h:0.3, d:2, c:"Piede dietro sul rialzo, piede davanti avanzato"},
    {p:pIn({hip:[94,108], t:172, fn:[118,FG_ANK], ff:[57,103], tf:-100}), h:0.2, d:1, c:"Scendi a 90°, ginocchio sopra la caviglia. Spingi col piede davanti"}]},
  "Calf raise monopodalico":{fx:"leg", props:[{k:"box", x:124, y:120, w:40}, {k:"muro", x:178}], k:[
-   {p:pIn({hip:[118,76], abs:"n", hn:[176,46], hf:[-2,34], rf:"f", fn:[120,124], ff:[-12,34], tn:120, kb:{n:-1,f:-1}}), h:0.2, d:1, c:"Sali sulla punta: una mano al muro solo per l'equilibrio"},
-   {p:pIn({hip:[120,66], abs:"n", hn:[176,40], hf:[-2,34], rf:"f", fn:[121,114], ff:[-12,34], tn:50, kb:{n:-1,f:-1}}), h:1, d:2, c:"Pausa di 1 secondo in alto, poi scendi lento sotto il bordo"}]},
+   {p:pIn({hip:[118,76], abs:"n", hn:[176,46], hf:[-1,36.3], rf:"f", fn:[120,124], ff:[-12,34], tn:120, kb:{n:-1,f:-1}}), h:0.2, d:1, c:"Sali sulla punta: una mano al muro solo per l'equilibrio"},
+   {p:pIn({hip:[120,66], abs:"n", hn:[176,40], hf:[-1,36.3], rf:"f", fn:[121,114], ff:[-12,34], tn:50, kb:{n:-1,f:-1}}), h:1, d:2, c:"Pausa di 1 secondo in alto, poi scendi lento sotto il bordo"}]},
  "Band tricep extension":{fx:"arm", band:[{c:"rossa", p:["an","bkh","hn"]}], k:[
-   {p:pIn({an:[172,326], af:[170,326]}), h:0.3, d:1, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
+   {p:pIn({an:[172,307], af:[170,305]}), h:0.3, d:1, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
    {p:pIn({an:[172,176], af:[170,176]}), h:0.2, d:2, c:"Distendi le braccia senza aprire i gomiti, ritorno in 2 secondi"}]},
  "Side plank":{fx:"core", k:[
    {p:fgM(fgLinea([156,129], 112, -1), {vf:1, tw:6.5, av:"n", abs:"nf", hn:[73,FG_ANK], hf:[74,76], fn:[156,129], ff:[159,126], tn:10, tf:10, eb:{n:1,f:1}}), h:0.5, d:2.5, c:"Gomito sotto la spalla, bacino alto: linea retta spalla-caviglia"},
@@ -502,91 +521,96 @@ var FIG={
 
  /* ---------- giorno C ---------- */
  "Pullover manubrio":{fx:"trunk", db:"2", tr:"hn", k:[
-   {p:pSupino({hn:[1,-36], hf:[0,-36]}), h:0.3, d:2.5, c:"Espira mentre porti il peso dietro: le costole restano basse"},
-   {p:pSupino({hn:[-33,-10], hf:[-34,-10]}), h:0.3, d:1.5, c:"Fermati dove la schiena resta a terra, poi torna sopra il petto"}]},
+   {p:pSupino({mb:1, hn:[1,-36.3], hf:[0,-36.3]}), h:0.3, d:2.5, c:"Espira mentre porti il peso dietro: le costole restano basse"},
+   {p:pSupino({mb:1, hn:[-35,-9.6], hf:[-35.5,-9.6]}), h:0.3, d:1.5, c:"Fermati dove la schiena resta a terra, poi torna sopra il petto"}]},
  "Push-up":{fx:"trunk", k:[
-   {p:pPlank([34,128], 97, {abs:"nf", hn:[114,FG_ANK], hf:[111,FG_ANK]}), h:0.3, d:2, c:"Mani poco più larghe delle spalle, glutei stretti"},
-   {p:pPlank([34,128], 119, {abs:"nf", hn:[114,FG_ANK], hf:[111,FG_ANK]}), h:0.2, d:1, c:"Scendi in blocco con i gomiti a 45°, poi spingi via il pavimento"}]},
+   {p:pPlank([34,128], 97, {abs:"nf", hn:[108,FG_ANK], hf:[105,FG_ANK]}), h:0.3, d:2, c:"Mani poco più larghe delle spalle, glutei stretti"},
+   /* gomiti a 45°: di lato l'omero si vede piu' corto (scorcio), l'avambraccio resta verticale */
+   {p:pPlank([34,128], 117, {abs:"nf", hn:[108,FG_ANK], hf:[105,FG_ANK], ub:0.65}), h:0.2, d:1, c:"Scendi in blocco con i gomiti a 45°, poi spingi via il pavimento"}]},
  "Curl bicipiti manubri":{fx:"arm", db:"nf", tr:"hn", k:[
    {p:pIn({an:[3,8], af:[2,8]}), h:0.2, d:1, c:"Gomiti accanto al busto, fermi"},
    {p:pIn({an:[3,152], af:[2,150]}), h:0.3, d:2, c:"Scendi in 2 secondi: la discesa è metà dello stimolo"}]},
+ /* angoli di omero e avambraccio: la piega del gomito (circa 15°) resta la stessa per tutto il movimento */
  "Alzate laterali":{fx:"arm", db:"nf", k:[
-   {p:pFronte(), h:0.2, d:1.2, c:"Gomiti appena piegati e fissi"},
-   {p:pFronte({hn:[33,3], hf:[-33,3]}), h:0.2, d:2, c:"Fino all'altezza delle spalle, non oltre. Le spalle non salgono"}]},
- "Face pull":{fx:"arm", db:"nf", tr:"hn", k:[
-   {p:pPiegato({eb:{n:-1,f:-1}}), h:0.2, d:1.2, c:"Busto a 45°, un manubrio per mano"},
-   {p:pPiegato({hn:[8,-3], hf:[6,-3], eb:{n:-1,f:-1}}), h:0.6, d:2, c:"Tira verso il viso con i gomiti ALTI, apri a fine corsa"}]},
+   {p:pFronte({an:[8,-8], af:[-8,8]}), h:0.2, d:1.2, c:"Gomiti appena piegati e fissi"},
+   {p:pFronte({an:[90,72], af:[-90,-72]}), h:0.2, d:2, c:"Fino all'altezza delle spalle, non oltre. Le spalle non salgono"}]},
+ /* di fronte, come il reverse fly: gomiti alti all'altezza delle spalle, avambracci verso la testa (a "porta da calcio") */
+ "Face pull":{fx:"arm", db:"nf", tr:"hn", inset:{p:pPiegato(), t:"busto a 45°"}, k:[
+   {p:pChino({an:[4,0], af:[-4,0]}), h:0.2, d:1.2, c:"Busto a 45°, un manubrio per mano"},
+   {p:pChino({an:[88,172], af:[-88,-172]}), h:0.6, d:2, c:"Tira verso il viso con i gomiti ALTI, apri a fine corsa"}]},
 
  /* ---------- giorno D ---------- */
  "Hip thrust con banda":{fx:"leg", props:[{k:"box", x:30, y:106, w:42}], band:[{c:"rossa", ring:"kn"}], tr:"hip", k:[
    {p:fgM({hip:[92,124], t:-134, hn:[16,10], hf:[14,10], fn:[124,FG_ANK], ff:[120,FG_ANK], nk:-10}), h:0.3, d:1, c:"Scapole sul divano, banda sopra le ginocchia"},
-   {p:fgM({hip:[96,103], t:-97, hn:[20,6], hf:[18,6], fn:[124,FG_ANK], ff:[120,FG_ANK], nk:-35}), h:1, d:2, c:"Contrai i glutei e sali fino alla linea retta: pausa 1 secondo"}]},
+   {p:fgM({hip:[101.6,105.3], t:-98.4, hn:[20,6], hf:[18,6], fn:[124,FG_ANK], ff:[120,FG_ANK], nk:-35}), h:1, d:2, c:"Contrai i glutei e sali fino alla linea retta: pausa 1 secondo"}]},
  "Split-stance RDL":{fx:"leg", db:"nf", tr:"hip", k:[
-   {p:pIn({hip:[106,86], t:178, fn:[118,FG_ANK], ff:[90,128], tf:40, hn:[2,35], hf:[0,35]}), h:0.3, d:2.5, c:"80% del peso sul piede davanti, l'altro solo in punta"},
-   {p:pIn({hip:[93,90], t:104, fn:[118,FG_ANK], ff:[90,128], tf:40, hn:[1,34], hf:[-1,34]}), h:0.3, d:1.2, c:"Bacino INDIETRO, non in basso: schiena neutra, manubri vicino alla gamba"}]},
+   {p:pIn({hip:[106,86], t:178, mg:1, fn:[118,FG_ANK], ff:[90,128], tf:40, hn:[1.5,36.3], hf:[-0.5,36.3]}), h:0.3, d:2.5, c:"80% del peso sul piede davanti, l'altro solo in punta"},
+   {p:pIn({hip:[94,91.5], t:108, mg:1, fn:[118,FG_ANK], ff:[90,128], tf:40, hn:[-7,35.6], hf:[-9,35.2]}), h:0.3, d:1.2, c:"Bacino INDIETRO, non in basso: schiena neutra, manubri vicino alla gamba"}]},
  "Affondi indietro manubri":{fx:"leg", db:"nf", tr:"hip", k:[
    {p:pIn({fn:[116,FG_ANK], ff:[108,FG_ANK]}), h:0.3, d:0.7, c:"In piedi, manubri lungo i fianchi"},
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:1.3, c:"Passo INDIETRO"},
    {p:pIn({hip:[96,108], t:176, fn:[118,FG_ANK], ff:[72,130], tf:40}), h:0.2, d:1, c:"Scendi con le ginocchia a 90°, poi spingi con la gamba davanti"},
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:0.7, c:"Torna su"}]},
- "Reverse Fly":{fx:"arm", db:"nf", inset:{p:pPiegato({hn:[2,35], hf:[-1,35]}), t:"busto a 45°"}, k:[
-   {p:pChino(), h:0.2, d:1.3, c:"Visto di fronte, busto a 45°: manubri che pendono"},
-   {p:pChino({hn:[33,2], hf:[-33,2]}), h:0.5, d:2, c:"Apri fino all'altezza delle spalle stringendo le scapole. 6 kg è il tetto"}]},
+ "Reverse Fly":{fx:"arm", db:"nf", inset:{p:pPiegato(), t:"busto a 45°"}, k:[
+   {p:pChino({an:[8,-8], af:[-8,8]}), h:0.2, d:1.3, c:"Visto di fronte, busto a 45°: manubri che pendono"},
+   {p:pChino({an:[90,72], af:[-90,-72]}), h:0.5, d:2, c:"Apri fino all'altezza delle spalle stringendo le scapole. 6 kg è il tetto"}]},
 
  /* ---------- trasferta ---------- */
  "Pike push-up":{fx:"arm", k:[
-   {p:fgM({hip:[90,86], t:fgAng([32,17]), abs:"nf", hn:[128,FG_ANK], hf:[125,FG_ANK], fn:[66,128], ff:[63,128], tn:40, tf:40, nk:-20}), h:0.3, d:2, c:"V rovesciata: bacino alto, testa fra le braccia"},
-   {p:fgM({hip:[92,88], t:fgAng([30,26]), abs:"nf", hn:[128,FG_ANK], hf:[125,FG_ANK], fn:[66,128], ff:[63,128], tn:40, tf:40, nk:-20}), h:0.2, d:1, c:"La testa scende in verticale verso il pavimento, poi spingi"}]},
+   /* in alto braccia distese in linea col busto; in basso le spalle scendono quasi in verticale e i gomiti restano sopra le mani */
+   {p:fgM({hip:[76.7,81.7], t:45, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[62.3,128], ff:[59.3,128], tn:40, tf:40, nk:-20, eb:{n:-1,f:-1}}), h:0.3, d:2, c:"V rovesciata: bacino alto, testa fra le braccia"},
+   {p:fgM({hip:[86.7,86.1], t:30.6, abs:"nf", hn:[128,FG_ANK], hf:[127,FG_ANK], fn:[62.3,128], ff:[59.3,128], tn:40, tf:40, nk:15, eb:{n:-1,f:-1}}), h:0.2, d:1, c:"La testa scende in verticale verso il pavimento, poi spingi"}]},
  "Hip hinge una gamba":{fx:"leg", tr:"hip", k:[
-   {p:pIn({hip:[108,85], fn:[112,FG_ANK], ff:[102,124], tf:60}), h:0.3, d:2.5, c:"In piedi su una gamba, l'altra appena dietro"},
-   {p:pIn({hip:[103,88], t:96, fn:[112,FG_ANK], ff:[56,84], tf:-90, hn:[1,34], hf:[-1,34]}), h:0.4, d:1.5, c:"Bacino indietro: busto e gamba formano una linea. Risali col gluteo"}]},
+   {p:pIn({hip:[108,85], mg:1, fn:[112,FG_ANK], ff:[102,124], tf:60}), h:0.3, d:2.5, c:"In piedi su una gamba, l'altra appena dietro"},
+   {p:pIn({hip:[104,85.5], t:96, mg:1, fn:[112,FG_ANK], ff:[54.5,84], tf:-90, hn:[0.5,36.3], hf:[-1,36.3]}), h:0.4, d:1.5, c:"Bacino indietro: busto e gamba formano una linea. Risali col gluteo"}]},
  "Band row seduto":{fx:"trunk", band:[{c:"rossa", p:["tn","hn"]}], props:[{k:"tappetino", x:56, w:90}], k:[
-   {p:fgM({hip:[78,126], t:176, hn:[33,10], hf:[31,10], fn:[126,131], ff:[122,131], tn:170, tf:170}), h:0.2, d:1, c:"Seduto, banda attorno ai piedi, busto eretto"},
-   {p:fgM({hip:[78,126], t:178, hn:[-8,17], hf:[-9,17], fn:[126,131], ff:[122,131], tn:170, tf:170}), h:0.5, d:2, c:"Gomiti indietro, scapole strette. Ritorno lento"}]},
+   {p:fgM({hip:[78,126], t:176, mg:1, hn:[35.5,8], hf:[35.4,8], fn:[126,131], ff:[125,130], tn:170, tf:170}), h:0.2, d:1, c:"Seduto, banda attorno ai piedi, busto eretto"},
+   {p:fgM({hip:[78,126], t:178, mg:1, hn:[-6,23.5], hf:[-7,23.5], fn:[126,131], ff:[125,130], tn:170, tf:170}), h:0.5, d:2, c:"Gomiti indietro, scapole strette. Ritorno lento"}]},
  "Band row un braccio":{fx:"trunk", band:[{c:"nera", p:["tn","hn"]}], props:[{k:"tappetino", x:56, w:90}], k:[
-   {p:fgM({hip:[78,126], t:176, hn:[33,10], hf:[24,22], fn:[126,131], ff:[122,131], tn:170, tf:170}), h:0.2, d:1, c:"Un braccio alla volta: il busto non ruota"},
-   {p:fgM({hip:[78,126], t:178, hn:[-8,17], hf:[24,22], fn:[126,131], ff:[122,131], tn:170, tf:170}), h:0.5, d:2, c:"Tira verso il fianco. Parti dal lato debole e pareggia"}]},
- "Band pull-apart":{fx:"trunk", band:[{c:"verde", p:["hn","hf"]}], k:[
-   {p:pFronte({hn:[-6,7], hf:[6,7]}), h:0.2, d:1, c:"Braccia tese davanti al petto"},
-   {p:pFronte({hn:[32,3], hf:[-32,3]}), h:0.4, d:3, c:"Apri fino a sfiorare il petto, ritorno lento in 3 secondi"}]},
+   {p:fgM({hip:[78,126], t:176, mg:1, hn:[35.5,8], hf:[24,22], fn:[126,131], ff:[125,130], tn:170, tf:170}), h:0.2, d:1, c:"Un braccio alla volta: il busto non ruota"},
+   {p:fgM({hip:[78,126], t:178, mg:1, hn:[-6,23.5], hf:[24,22], fn:[126,131], ff:[125,130], tn:170, tf:170}), h:0.5, d:2, c:"Tira verso il fianco. Parti dal lato debole e pareggia"}]},
+ /* di fronte le braccia tese in avanti vengono verso chi guarda: si vedono corte (scorcio). La miniatura le mostra di lato */
+ "Band pull-apart":{fx:"trunk", band:[{c:"verde", p:["hn","hf"]}], inset:{p:pIn({hn:[36.3,2], hf:[36.2,2]}), t:"di lato"}, k:[
+   {p:pFronte({an:[-18,-18], af:[18,18], ub:0.34, fb:0.34}), h:0.2, d:1, c:"Braccia tese davanti al petto"},
+   {p:pFronte({an:[88,90], af:[-88,-90]}), h:0.4, d:3, c:"Apri fino a sfiorare il petto, ritorno lento in 3 secondi"}]},
  "Band curl bicipiti":{fx:"arm", band:[{c:"nera", p:["an","hn"]}], tr:"hn", k:[
    {p:pIn({an:[3,8], af:[2,8]}), h:0.2, d:1, c:"Banda sotto i piedi, gomiti fermi"},
    {p:pIn({an:[3,152], af:[2,150]}), h:0.3, d:3, c:"Il ritorno è la parte importante: 3 secondi"}]},
  "Dead bug":{fx:"core", k:[
    {p:pSupino({hn:[1,-36], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[22,-25]}), h:0.4, d:2, c:"Lombare schiacciata a terra, anche e ginocchia a 90°"},
-   {p:pSupino({hn:[-34,-8], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[47,-7]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"},
+   {p:pSupino({hn:[-35.5,-8], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[47,-7]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"},
    {p:pSupino({hn:[1,-36], hf:[0,-36], rf:"nf", fn:[24,-25], ff:[22,-25]}), h:0.4, d:2, c:"Torna e cambia lato"},
-   {p:pSupino({hn:[1,-36], hf:[-34,-8], rf:"nf", fn:[47,-7], ff:[22,-25]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"}]},
+   {p:pSupino({hn:[1,-36], hf:[-35.5,-8], rf:"nf", fn:[47,-7], ff:[22,-25]}), h:0.6, d:1.5, c:"Allunga braccio e gamba opposti espirando: la lombare non si stacca"}]},
  "Overhead extension 1 braccio":{fx:"arm", db:"n", props:[SGABELLO], k:[
    {p:pSeduto({an:[172,176], hf:[4,-17]}), h:0.3, d:3, c:"Seduto senza schienale: scendi dietro la testa in 3 secondi"},
-   {p:pSeduto({an:[172,326], hf:[4,-17]}), h:0.2, d:1, c:"L'altra mano sostiene il gomito. Risali espirando"}]},
+   {p:pSeduto({an:[172,307], hf:[4,-17]}), h:0.2, d:1, c:"L'altra mano sostiene il gomito. Risali espirando"}]},
 
  /* ---------- alternative a corpo libero e con bande ---------- */
  "Rematore al telaio della porta":{fx:"trunk", props:[{k:"porta", x:148}], k:[
-   {p:fgM(fgInclinato([137,FG_ANK], 18), {abs:"n", hn:[147,56], hf:[-4,34], fn:[137,FG_ANK], ff:[132,FG_ANK]}), h:0.3, d:1, c:"Una mano sul telaio, piedi vicini, corpo dritto inclinato indietro"},
-   {p:fgM(fgInclinato([137,FG_ANK], 5), {abs:"n", hn:[147,56], hf:[-4,34], fn:[137,FG_ANK], ff:[132,FG_ANK]}), h:0.5, d:2, c:"Porta il petto verso la porta, gomito vicino al busto. Giù lento"}]},
- "Shoulder press con banda":{fx:"arm", band:[{c:"verde", p:["an","hn"]}], k:[
-   {p:pIn({hn:[6,-4], hf:[4,-4]}), h:0.3, d:1, c:"Banda sotto i piedi, mani all'altezza delle spalle"},
-   {p:pIn({hn:[3,-36], hf:[2,-36]}), h:0.3, d:2, c:"Spingi in alto espirando, scendi controllato"}]},
+   {p:fgM(fgInclinato([137,FG_ANK], 18), {abs:"n", hn:[147,56], hf:[-1,36.3], fn:[137,FG_ANK], ff:[132,FG_ANK]}), h:0.3, d:1, c:"Una mano sul telaio, piedi vicini, corpo dritto inclinato indietro"},
+   {p:fgM(fgInclinato([137,FG_ANK], 8), {abs:"n", hn:[147,56], hf:[-1,36.3], fn:[137,FG_ANK], ff:[132,FG_ANK]}), h:0.5, d:2, c:"Porta il petto verso la porta, gomito vicino al busto. Giù lento"}]},
+ "Shoulder press con banda":{fx:"arm", band:[{c:"verde", p:["an","hn"]}, {c:"verde", p:["af","hf"]}], k:[
+   {p:pFronte({an:[78,180], af:[-78,180], ub:0.7}), h:0.3, d:1, c:"Banda sotto i piedi, mani all'altezza delle spalle"},
+   {p:pFronte({an:[170,178], af:[-170,182]}), h:0.3, d:2, c:"Spingi in alto espirando, scendi controllato"}]},
  "Box squat alla sedia 3s":{fx:"leg", props:[SEDIA], tr:"hip", k:[
-   {p:pIn({hip:[108,85], hn:[30,6], hf:[28,6], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:0.3, d:3, c:"Braccia avanti per l'equilibrio: scendi in 3 secondi"},
-   {p:pIn({hip:[96,99], t:146, hn:[30,6], hf:[28,6], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:1, d:1, c:"Sfiora la sedia, pausa 1 secondo, risali spingendo coi talloni"}]},
+   {p:pIn({hip:[108,85], hn:[36.3,1], hf:[36.2,1], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:0.3, d:3, c:"Braccia avanti per l'equilibrio: scendi in 3 secondi"},
+   {p:pIn({hip:[98,101], t:146, hn:[36.3,1], hf:[36.2,1], fn:[118,FG_ANK], ff:[113,FG_ANK]}), h:1, d:1, c:"Sfiora la sedia, pausa 1 secondo, risali spingendo coi talloni"}]},
  "Curl isometrico asciugamano":{fx:"arm", band:[{c:"asciugamano", p:["an","hn"]}], k:[
    {p:pIn({an:[2,92], af:[1,92]}), h:0.2, d:2.5, c:"Asciugamano sotto il piede, gomiti a 90° accanto al busto"},
    {p:pIn({an:[2,96], af:[1,96]}), h:0.2, d:2.5, c:"Tira verso l'alto con tutta la forza e tieni 20-30 secondi respirando"}]},
  "Alzate laterali con banda":{fx:"arm", band:[{c:"gialla", p:["an","hn"]}, {c:"gialla", p:["af","hf"]}], k:[
-   {p:pFronte(), h:0.2, d:1.2, c:"Banda sotto i piedi, gomiti appena piegati"},
-   {p:pFronte({hn:[33,3], hf:[-33,3]}), h:0.3, d:2, c:"Fino all'altezza delle spalle, ritorno lento"}]},
- "Y-T-W a busto inclinato":{fx:"arm", inset:{p:pPiegato({hn:[22,-24], hf:[20,-24]}), t:"busto a 45°"}, k:[
-   {p:pChino({hn:[22,-27], hf:[-22,-27]}), h:0.8, d:1.2, c:"Y: braccia in alto a V, pollici in su"},
-   {p:pChino({hn:[33,2], hf:[-33,2]}), h:0.8, d:1.2, c:"T: braccia aperte all'altezza delle spalle"},
-   {p:pChino({hn:[12,-10], hf:[-12,-10]}), h:0.8, d:1.2, c:"W: gomiti indietro e in basso, scapole strette"}]},
+   {p:pFronte({an:[8,-8], af:[-8,8]}), h:0.2, d:1.2, c:"Banda sotto i piedi, gomiti appena piegati"},
+   {p:pFronte({an:[90,72], af:[-90,-72]}), h:0.3, d:2, c:"Fino all'altezza delle spalle, ritorno lento"}]},
+ "Y-T-W a busto inclinato":{fx:"arm", inset:{p:pPiegato({hn:[26,-24], hf:[24,-24]}), t:"busto a 45°"}, k:[
+   {p:pChino({an:[150,154], af:[-150,-154]}), h:0.8, d:1.2, c:"Y: braccia in alto a V, pollici in su"},
+   {p:pChino({an:[90,86], af:[-90,-86]}), h:0.8, d:1.2, c:"T: braccia aperte all'altezza delle spalle"},
+   {p:pChino({an:[55,140], af:[-55,-140]}), h:0.8, d:1.2, c:"W: gomiti indietro e in basso, scapole strette"}]},
  "Hip thrust a una gamba":{fx:"leg", props:[{k:"box", x:30, y:106, w:42}], tr:"hip", k:[
-   {p:fgM({hip:[92,124], t:-134, hn:[16,10], hf:[14,10], fn:[124,FG_ANK], rf:"f", ff:[40,-12], nk:-10}), h:0.3, d:1, c:"Una gamba a terra, l'altra distesa"},
-   {p:fgM({hip:[96,103], t:-97, hn:[20,6], hf:[18,6], fn:[124,FG_ANK], rf:"f", ff:[46,-6], nk:-35}), h:1, d:2, c:"Sali col gluteo della gamba a terra, bacino che non ruota"}]},
+   {p:fgM({hip:[92,124], t:-134, hn:[16,10], hf:[14,10], fn:[124,FG_ANK], rf:"f", ff:[46,-14], nk:-10}), h:0.3, d:1, c:"Una gamba a terra, l'altra distesa"},
+   {p:fgM({hip:[101.6,105.3], t:-98.4, hn:[20,6], hf:[18,6], fn:[124,FG_ANK], rf:"f", ff:[48,-6], nk:-35}), h:1, d:2, c:"Sali col gluteo della gamba a terra, bacino che non ruota"}]},
  "Band pull-down":{fx:"trunk", props:[{k:"porta", x:150}], band:[{c:"verde", p:[[152,12],"hn"]}], k:[
-   {p:pIn({hn:[12,-34], hf:[10,-34]}), h:0.2, d:1, c:"Banda fissata in alto, braccia tese verso l'ancoraggio"},
-   {p:pIn({hn:[14,3], hf:[12,3]}), h:0.5, d:2, c:"Tira i gomiti verso i fianchi, scapole giù"}]}
+   {p:pIn({hn:[12.5,-34.4], hf:[10.5,-34.4]}), h:0.2, d:1, c:"Banda fissata in alto, braccia tese verso l'ancoraggio"},
+   {p:pIn({hn:[18,6], hf:[16,6]}), h:0.5, d:2, c:"Tira i gomiti verso i fianchi, scapole giù"}]}
 };
 /* varianti che si muovono come un'altra figura */
 function fgCopia(base, mod){ var d=fgM(FIG[base], mod||{}); return d; }
@@ -603,8 +627,8 @@ FIG["Hammer curl con banda"]=fgCopia("Band curl bicipiti", {k:[
   {p:FIG["Band curl bicipiti"].k[0].p, h:0.2, d:1, c:"Presa neutra, banda sotto i piedi"},
   {p:FIG["Band curl bicipiti"].k[1].p, h:0.3, d:3, c:"Ritorno in 3 secondi, gomiti fermi"}]});
 FIG["Push-up stretti"]=fgCopia("Push-up", {fx:"arm", k:[
-  {p:FIG["Push-up"].k[0].p, h:0.3, d:2, c:"Mani sotto le spalle"},
-  {p:FIG["Push-up"].k[1].p, h:0.2, d:1, c:"Gomiti lungo i fianchi, non aperti a T"}]});
+  {p:pPlank([34,128], 97, {abs:"nf", hn:[111,FG_ANK], hf:[108,FG_ANK]}), h:0.3, d:2, c:"Mani sotto le spalle"},
+  {p:pPlank([34,128], 117, {abs:"nf", hn:[111,FG_ANK], hf:[108,FG_ANK]}), h:0.2, d:1, c:"Gomiti lungo i fianchi, non aperti a T"}]});
 FIG["Push-up piedi rialzati"]=fgCopia("Push-up piedi rialzati con banda", {band:[]});
 FIG["Bulgarian split squat 3s"]=fgCopia("Bulgarian Split Squat manubri", {db:"", k:[
   {p:fgM(FIG["Bulgarian Split Squat manubri"].k[0].p, {hn:[8,26], hf:[6,26]}), h:0.3, d:3, c:"Senza manubri lo stimolo viene dalla durata: 3 secondi in discesa"},
@@ -634,7 +658,8 @@ function fgInquadra(n){
     ["n","f"].forEach(function(l){ var b=P.braccia[l], g=P.gambe[l]; add(b.e,4); add(b.h, def.db?7:4); add(g.k,5); add(g.a,4); add(g.toe,3); });
   }
   (def.props||[]).forEach(function(pr){
-    if(pr.k==="box"||pr.k==="sedia"){ add([pr.x-(pr.schienale?6:0), pr.y-(pr.schienale?38:0)]); add([pr.x+pr.w, FG_PAV]); }
+    if(pr.k==="sediaF"){ add([pr.x, pr.y-40]); add([pr.x+pr.w, FG_PAV]); }
+    else if(pr.k==="box"||pr.k==="sedia"){ add([pr.x-(pr.schienale?6:0), pr.y-(pr.schienale?38:0)]); add([pr.x+pr.w, FG_PAV]); }
     else if(pr.k==="muro"||pr.k==="porta"){ add([pr.x, y0<1e8? y0 : 60]); add([pr.x+10, FG_PAV]); }
     else if(pr.k==="tappetino"){ add([pr.x, FG_PAV]); add([pr.x+pr.w, FG_PAV]); }
   });
