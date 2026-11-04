@@ -56,3 +56,32 @@ test('braccia e gambe non cambiano lunghezza durante il movimento', () => {
     }
   }
 });
+
+test('piedi: nessun salto tra un fotogramma e il successivo, e in piedi a gambe parallele i piedi sono allineati', () => {
+  const ctx = carica();
+  for (const n of Object.keys(ctx.FIG)) {
+    const def = ctx.FIG[n], tot = ctx.fgDurata(def);
+    let prima = null;
+    for (let i = 0; i <= 240; i++) {
+      const P = ctx.fgPosa(ctx.fgAl(def, tot * i / 240).p);
+      const a = P.gambe.f.a;
+      if (prima) assert.ok(Math.hypot(a[0] - prima[0], a[1] - prima[1]) < 3, n + ': il piede lontano salta al fotogramma ' + i);
+      prima = a;
+    }
+  }
+  /* in piedi, piedi paralleli: il piede lontano e' dietro quello vicino, non mezzo passo indietro */
+  const P = ctx.fgPosa(ctx.pIn({}));
+  assert.ok(Math.abs(P.gambe.n.a[0] - P.gambe.f.a[0]) < 2);
+  /* nell'affondo il piede dietro resta dietro */
+  const aff = ctx.FIG['Affondi indietro manubri'], Pa = ctx.fgPosa(aff.k[1].p);
+  assert.ok(Pa.gambe.n.a[0] - Pa.gambe.f.a[0] > 20);
+});
+
+test('in piedi le gambe distese si leggono dritte', () => {
+  const ctx = carica();
+  const P = ctx.fgPosa(ctx.pFronte({}));
+  for (const l of ['n', 'f']) {
+    const g = P.gambe[l], dist = (a, b, c) => Math.abs((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+    assert.ok(dist(g.h, g.a, g.k) < 1.2, 'ginocchio fuori linea di ' + dist(g.h, g.a, g.k).toFixed(2));
+  }
+});

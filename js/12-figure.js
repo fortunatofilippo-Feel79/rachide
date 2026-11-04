@@ -22,7 +22,16 @@ function fgIK(b, t, l1, l2, s){
   var dx=t[0]-b[0], dy=t[1]-b[1], d=Math.sqrt(dx*dx+dy*dy)||0.001;
   var dd=Math.max(Math.abs(l1-l2)+0.01, Math.min(d, l1+l2-0.01));
   var ux=dx/d, uy=dy/d, a=(l1*l1-l2*l2+dd*dd)/(2*dd), h=Math.sqrt(Math.max(0, l1*l1-a*a));
-  return { j:[b[0]+ux*a-uy*h*s, b[1]+uy*a+ux*h*s], e:[b[0]+ux*dd, b[1]+uy*dd] };
+  var j=[b[0]+ux*a-uy*h*s, b[1]+uy*a+ux*h*s];
+  /* quasi distesa = distesa: in piedi le gambe (e le braccia lungo i fianchi) devono leggersi dritte.
+     Il primo segmento ruota verso la retta tenendo la sua lunghezza; il passaggio e' graduale,
+     cosi' l'animazione non scatta. */
+  var r=dd/(l1+l2);
+  if(r>0.955){
+    var k=Math.max(0, Math.min(1, (r-0.955)/0.03)), vx=(j[0]-b[0])*(1-k)+ux*l1*k, vy=(j[1]-b[1])*(1-k)+uy*l1*k, vl=Math.sqrt(vx*vx+vy*vy)||1;
+    j=[b[0]+vx/vl*l1, b[1]+vy/vl*l1];
+  }
+  return { j:j, e:[b[0]+ux*dd, b[1]+uy*dd] };
 }
 
 /* corpo dritto dalla caviglia alla spalla (plank, push-up): bacino e busto */
@@ -46,6 +55,16 @@ function fgPosa(p){
   var S={n:fgSom(sh, perp, sw), f:fgSom(sh, perp, -sw)}, Hp={n:fgSom(p.hip, perp, hw), f:fgSom(p.hip, perp, -hw)};
   var out={hip:p.hip, sh:sh, t:t, u:u, back:back, perp:perp, sp:p.sp||0, br:p.br||0, tw:p.tw||9.5, front:!!(sw||p.vf),
     hc:fgSom(sh, fgDir(t+(p.nk||0)), (FL.nk+FL.hd*(p.hs||1))*(p.hk==null?1:p.hk)), braccia:{}, gambe:{}};
+  /* di lato, con i due piedi a terra vicini (appoggio parallelo), il piede lontano sta dietro
+     quello vicino: spostato di poco, non di mezzo passo. Gli affondi e lo split stance restano. */
+  var piedeF=p.ff;
+  if(!out.front && p.fn && p.ff && rf.indexOf("n")<0 && rf.indexOf("f")<0){
+    /* peso graduale: pieno con i piedi vicini e a terra, nullo quando si separano o uno si alza
+       (cosi' nell'animazione di un affondo il piede dietro non salta) */
+    var dx=Math.abs(p.fn[0]-p.ff[0]), dy=Math.max(Math.abs(p.fn[1]-FG_ANK), Math.abs(p.ff[1]-FG_ANK));
+    var wpe=Math.max(0, Math.min(1, (14-dx)/5))*Math.max(0, Math.min(1, (3-dy)/1.5));
+    if(wpe>0) piedeF=[p.ff[0]+(p.fn[0]-1.2-p.ff[0])*wpe, p.ff[1]];
+  }
   ["n","f"].forEach(function(lato){
     var hv=p["h"+lato]||[0,FL.ua+FL.fa-1], tg=abs.indexOf(lato)>=0 ? hv : fgSom(S[lato], hv);
     var eb=(p.eb&&p.eb[lato]!=null)? p.eb[lato] : 1;
@@ -61,7 +80,7 @@ function fgPosa(p){
       var a=fgIK(S[lato], tg, FL.ua, FL.fa, eb);
       out.braccia[lato]={s:S[lato], e:a.j, h:a.e};
     }
-    var fv=p["f"+lato]||[p.hip[0], FG_ANK], ft=rf.indexOf(lato)>=0 ? fgSom(Hp[lato], fv) : fv;
+    var fv=(lato==="f" && piedeF)? piedeF : (p["f"+lato]||[p.hip[0], FG_ANK]), ft=rf.indexOf(lato)>=0 ? fgSom(Hp[lato], fv) : fv;
     var kb=(p.kb&&p.kb[lato]!=null)? p.kb[lato] : -1;
     var g=fgIK(Hp[lato], ft, FL.th, FL.sh, kb);
     var ta=p["t"+lato]; if(ta==null) ta=90;
@@ -168,8 +187,31 @@ function fgBraccio(A, c){
   if(A.av) return o+'<ellipse cx="'+fgR(A.e[0])+'" cy="'+fgR(A.e[1]+0.8)+'" rx="7" ry="2.9" class="'+cl+'"/>';
   return o+fgPath(fgCaps(A.e, A.h, 2.9, 2.2), cl)+'<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="3.1" class="'+cl+'"/>';
 }
-function fgGamba(G, c){
-  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), c.pt)+fgPath(fgCaps(G.k, G.a, 3.8, 2.5), c.pt)+fgPath(fgCaps(G.a, G.toe, 2.7, 1.7), c.so);
+/* la scarpa: tallone dietro la caviglia, suola piatta, punta arrotondata. Il verso della suola
+   e' quello che guarda il pavimento (o, sulle punte, il lato del tallone). */
+function fgPiede(G, cl){
+  var a=G.a, d=[G.toe[0]-a[0], G.toe[1]-a[1]], L=Math.sqrt(d[0]*d[0]+d[1]*d[1])||1; d=[d[0]/L, d[1]/L];
+  var n=[-d[1], d[0]]; if(n[1]<0) n=[-n[0], -n[1]];
+  var tl=FL.ft+1.6, so=3.0, hb=3.6;
+  var q=function(u,v){ return fgPt([a[0]+d[0]*u+n[0]*v, a[1]+d[1]*u+n[1]*v]); };
+  return '<path d="M'+q(-1.5,-2.4)+'L'+q(1.6,-2.0)+'Q'+q(tl-3,-0.8)+' '+q(tl-1.2,0.5)+'Q'+q(tl+0.4,1.6)+' '+q(tl-0.6,so)+
+    'L'+q(-hb+1.3,so)+'Q'+q(-hb-0.2,so)+' '+q(-hb,1.2)+'Q'+q(-hb+0.2,-1.5)+' '+q(-1.5,-2.4)+'Z" class="'+cl+'"/>';
+}
+/* di fronte la scarpa si vede dalla punta: corta e larga, appoggiata a terra, appena girata in fuori */
+function fgPiedeFronte(G, cl){
+  var a=G.a, d=[G.toe[0]-a[0], G.toe[1]-a[1]], L=Math.sqrt(d[0]*d[0]+d[1]*d[1])||1, ox=d[0]/L*1.3, x=a[0]+ox, y=a[1];
+  var p=function(dx,dy){ return fgPt([x+dx, y+dy]); };
+  return '<path d="M'+p(-3.3,3)+'L'+p(3.3,3)+'Q'+p(4,0.6)+' '+p(1.6,-1.6)+'L'+p(-1.6,-1.6)+'Q'+p(-4,0.6)+' '+p(-3.3,3)+'Z" class="'+cl+'"/>';
+}
+function fgGamba(G, c, fronte){
+  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), c.pt)+fgPath(fgCaps(G.k, G.a, 3.8, 2.6), c.pt)+(fronte? fgPiedeFronte(G, c.so) : fgPiede(G, c.so));
+}
+/* arco di cerchio come poligono, da un angolo all'altro passando per l'angolo "via" */
+function fgArco(c, r, a0, a1, via){
+  var norm=function(x){ while(x<0) x+=360; while(x>=360) x-=360; return x; };
+  var d1=norm(a1-a0), dv=norm(via-a0), dir=(dv<=d1)? 1 : -1, span=(dir>0)? d1 : 360-d1, pts=[];
+  for(var i=0;i<=12;i++){ var t=(a0+dir*span*i/12)*Math.PI/180; pts.push([c[0]+Math.cos(t)*r, c[1]+Math.sin(t)*r]); }
+  return pts;
 }
 /* punto della colonna (curva quadratica) a frazione s, con la normale verso la pancia */
 function fgSpina(P, s){
@@ -194,23 +236,38 @@ function fgBustoFronte(P){
            fgSom(P.braccia.f.s, P.perp, -3.2), fgSom(w, P.perp, -P.tw), fgSom(P.gambe.f.h, P.perp, -4.5)];
   return 'M'+pts.map(fgPt).join('L')+'Z';
 }
-function fgTesta(P, p, cl){
-  var r=FL.hd*(p.hs||1), d=fgDir(P.t+(p.nk||0)), o='';
+function fgTesta(P, p, cl, ghost){
+  var r=FL.hd*(p.hs||1), d=fgDir(P.t+(p.nk||0)), o='', c=P.hc;
   o+=fgPath(fgCaps(P.sh, fgSom(P.hc, d, -r*0.55), 2.7, 2.5), cl);
-  o+='<circle cx="'+fgR(P.hc[0])+'" cy="'+fgR(P.hc[1])+'" r="'+fgR(r)+'" class="'+cl+'"/>';
-  if(!P.front){ var f=[-d[1], d[0]], na=fgSom(fgSom(P.hc, f, r*0.9), d, -r*0.15);
-    o+='<circle cx="'+fgR(na[0])+'" cy="'+fgR(na[1])+'" r="'+fgR(r*0.32)+'" class="'+cl+'"/>'; }
+  o+='<circle cx="'+fgR(c[0])+'" cy="'+fgR(c[1])+'" r="'+fgR(r)+'" class="'+cl+'"/>';
+  var ang=function(v){ return Math.atan2(v[1], v[0])*180/Math.PI; }, su=ang(d), capC=ghost? cl : "fg-hair";
+  if(!P.front){
+    /* di lato: naso, occhio e capelli sulla nuca, cosi' si capisce subito dove guarda */
+    var f=[-d[1], d[0]], na=fgSom(fgSom(c, f, r*0.9), d, -r*0.15), dietro=ang([-f[0], -f[1]]);
+    o+='<circle cx="'+fgR(na[0])+'" cy="'+fgR(na[1])+'" r="'+fgR(r*0.32)+'" class="'+cl+'"/>';
+    var pts=fgArco(c, r+0.15, ang([d[0]*0.82+f[0]*0.57, d[1]*0.82+f[1]*0.57]), ang([-f[0]*0.8-d[0]*0.6, -f[1]*0.8-d[1]*0.6]), dietro);
+    pts.push(fgSom(fgSom(c, f, -r*0.25), d, -r*0.05));
+    o+='<path d="M'+pts.map(fgPt).join("L")+'Z" class="'+capC+'"/>';
+    if(!ghost){ var oc=fgSom(fgSom(c, f, r*0.5), d, r*0.12); o+='<circle cx="'+fgR(oc[0])+'" cy="'+fgR(oc[1])+'" r="0.8" class="fg-eye"/>'; }
+  } else {
+    /* di fronte: capelli sopra la fronte */
+    var pts2=fgArco(c, r+0.15, su-62, su+62, su);
+    pts2.push(fgSom(c, d, r*0.45));
+    o+='<path d="M'+pts2.map(fgPt).join("L")+'Z" class="'+capC+'"/>';
+    if(!ghost){ var lat=[-d[1], d[0]];
+      [-1,1].forEach(function(s){ var e=fgSom(fgSom(c, lat, s*r*0.36), d, r*0.12); o+='<circle cx="'+fgR(e[0])+'" cy="'+fgR(e[1])+'" r="0.75" class="fg-eye"/>'; }); }
+  }
   return o;
 }
 /* il corpo intero, nell'ordine giusto: lontano, busto, testa, vicino */
 function fgCorpo(P, p, def, ghost){
   var fr=P.front, o='', db=(def&&def.db)||"", cn=(ghost && typeof ghost==='object')? ghost : (ghost? PAL_OK : PAL_N), cf=ghost? cn : (fr? PAL_N : PAL_F);
   if(!ghost && !fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
-  o+=fgGamba(P.gambe.f, cf)+fgBraccio(P.braccia.f, cf);
+  o+=fgGamba(P.gambe.f, cf, fr)+fgBraccio(P.braccia.f, cf);
   o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="'+cn.sh+' fg-tf"/>' : fgPath(fgBusto(P), cn.sh);
-  o+=fgTesta(P, p, cn.sk);
+  o+=fgTesta(P, p, cn.sk, ghost);
   if(!ghost && fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
-  o+=fgGamba(P.gambe.n, cn);
+  o+=fgGamba(P.gambe.n, cn, fr);
   if(!ghost && db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
   o+=fgBraccio(P.braccia.n, cn);
   if(!ghost && db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);

@@ -16,7 +16,7 @@ var CFG_GRUPPI={
   patches:   function(){ return S.patches||[]; },
   impostazioni:function(){ return {freeze:S.freeze||null, cibOff:S.cibOff||0, cibOffTs:S.cibOffTs||"", passo1:!!S.passo1,
     picco:S.picco||{}, profilo:S.profilo||{}, orari:S.orari||{}, suoni:S.suoni!==false, suoniSilenzioso:S.suoniSilenzioso!==false,
-    volume:S.volume||"normale", target:S.target||{}, propFatta:S.propFatta||"", vistaTutte:!!S.vistaTutte}; },
+    volume:S.volume||"normale", target:S.target||{}, propFatta:S.propFatta||"", vistaTutte:!!S.vistaTutte, schermoAcceso:S.schermoAcceso!==false}; },
   chiusure:  function(){ return S.chiusure||{}; },
   coach:     function(){ return S.cdone||{}; },
   prodotti:  function(){ return S.prodotti||{}; },
@@ -29,7 +29,7 @@ cfgTocca=function(k){ var g=CFG_ALIAS[k]||k; S.cfgTs=S.cfgTs||{}; S.cfgTs[g]=Dat
 function cfgApplica(g, v){
   if(g==="patches" && Array.isArray(v)){ S.patches=v; PLAN=buildPlan(); }
   else if(g==="impostazioni" && v && typeof v==="object"){
-    ["freeze","cibOff","cibOffTs","passo1","picco","profilo","orari","suoni","suoniSilenzioso","volume","target","propFatta","vistaTutte"]
+    ["freeze","cibOff","cibOffTs","passo1","picco","profilo","orari","suoni","suoniSilenzioso","volume","target","propFatta","vistaTutte","schermoAcceso"]
       .forEach(function(k){ if(k in v) S[k]=v[k]; });
   }
   else if(g==="chiusure" && v && typeof v==="object") S.chiusure=v;
