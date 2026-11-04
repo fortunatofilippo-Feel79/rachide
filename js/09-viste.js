@@ -685,10 +685,13 @@ function viewCoach(){
        (SYNC.last?'<div class="xs mut" style="margin-top:4px">Ultima sincronizzazione: '+SYNC.last.toLocaleTimeString("it")+'</div>':"")+
        '<div class="xs" style="margin-top:6px;color:'+((SYNC.ver||1)>=2?"var(--ok)":"var(--amb)")+'">'+
        ((SYNC.ver||1)>=3? "Script v3: storico, piano e impostazioni sul foglio. Partono solo le modifiche."
-        : (SYNC.ver||1)>=2? "Script v2: lo storico è sul foglio, piano e impostazioni solo qui. Lo script v3 (cartella apps-script del progetto) dà all\'app la memoria completa."
+        : (SYNC.ver||1)>=2? "Script v2: lo storico è sul foglio, piano e impostazioni solo qui. Lo script v3 (cartella apps-script del progetto) dà all\'app la memoria completa. Se l\'hai appena incollato e qui leggi ancora v2, manca la ridistribuzione: Esegui il deployment → Gestisci deployment → Modifica → Nuova versione."
         : "Script v1: puoi solo aggiungere. Installa lo script v3 (cartella apps-script del progetto).")+'</div>'+
        ((SYNC.ver||1)>=3 && SYNC.state==="ok"? (function(){ var q=inAttesaV3(); return '<div class="xs mut" style="margin-top:4px">In attesa di invio: '+q.righe+' righe'+(q.cfg?' e '+q.cfg+' gruppi di impostazioni':'')+'.</div>'; })() : '')+
-       (SYNC.err?'<div class="flag stop" style="margin-top:8px">•<div>'+esc(SYNC.err)+'</div></div>':"")+
+       (SYNC.err?'<div class="flag stop" style="margin-top:8px">•<div>'+esc(SYNC.err)+
+         (/segreto non valido/.test(SYNC.err)? '<br><b>Cosa fare:</b> la frase dell\'app non è quella dello script. In Apps Script esegui la funzione <b>installa</b>: nel registro trovi la frase giusta. Incollala qui in <b>Modifica</b>, secondo campo, poi Salva e prova.' : '')+
+         (/script function not found|doGet|non trovata/i.test(SYNC.err)? '<br><b>Cosa fare:</b> lo script del foglio non ha la funzione doGet: il codice incollato è incompleto o non è stato salvato. Incollalo di nuovo per intero, salva e fai il deployment di una nuova versione.' : '')+
+         '</div></div>':"")+
        '<div class="grid2" style="margin-top:10px"><button class="btn sm" data-a="spull">Rileggi dal foglio</button>'+
        '<button class="btn sm" data-a="spush">Invia tutto</button></div>'+
        '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" data-a="scfg">Modifica</button>'+

@@ -87,7 +87,7 @@ L'app ha una memoria sua: il tuo foglio Google, con lo script v3 ([`apps-script/
 2. Sul nuovo: apri l'indirizzo dell'app in Safari (o Chrome) e aggiungila alla schermata Home.
 3. Apri l'app **dalla Home**, tocca *Collega il foglio*, incolla il codice nel primo campo, *Salva e prova*. Su iPhone l'app sulla Home ha una memoria separata da Safari: il codice va incollato lì.
 
-**Telefono perso**: indirizzo e frase sono nello script. Apri il foglio da un computer → Estensioni → Apps Script: l'indirizzo è in *Distribuisci → Gestisci distribuzioni* (URL che finisce con `/exec`), la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Sul telefono nuovo incollali nei due campi di *Collega il foglio*.
+**Telefono perso**: indirizzo e frase sono nello script. Apri il foglio da un computer → Estensioni → Apps Script: l'indirizzo è in *Esegui il deployment → Gestisci deployment* (URL che finisce con `/exec`), la frase in *Impostazioni progetto → Proprietà dello script → SEGRETO*. Sul telefono nuovo incollali nei due campi di *Collega il foglio*.
 
 Il backup `.json` (Coach → Backup) resta la copia di riserva.
 
