@@ -248,10 +248,12 @@ function agendaVoci(){
     fatto:false, dovuto: now>=hm(pe.ora||"07:30")-60, a:"seduta", m:pe.d});
   v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, dolori",
     fatto:mattinaFatta(b), dovuto: now>=hm(o.mattina)-90, a:"benm"});
-  var g=cibDay(oggi), attesi=[["col",600],["sm",720],["pra",900],["sp",1080],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });
-  var regi=MEALS.filter(function(m){ return m.k!=="ex" && (g[m.k]||[]).length; }).length;
-  var manca=attesi.filter(function(k){ return !(g[k]||[]).length; });
-  v.push({k:"cibo", t:"Pasti", q:"dopo ogni pasto · 20 secondi", d: regi+" su 5"+(manca.length? " · manca "+manca.map(function(k){ return meal(k).n.toLowerCase(); }).join(", ") : ""),
+  /* dovuti solo i tre pasti principali; gli spuntini sono facoltativi */
+  var g=cibDay(oggi), attesi=[["col",600],["pra",900],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });
+  var regi=MEALS.filter(function(m){ return m.k!=="ex" && !m.fac && ((g[m.k]||[]).length || pastoSaltato(g, m.k)); }).length;
+  var spu=MEALS.filter(function(m){ return m.fac && (g[m.k]||[]).length; }).length;
+  var manca=attesi.filter(function(k){ return !(g[k]||[]).length && !pastoSaltato(g, k); });
+  v.push({k:"cibo", t:"Pasti", q:"dopo ogni pasto · 20 secondi", d: regi+" pasti principali su 3"+(spu? " + "+spu+(spu>1?" spuntini":" spuntino") : "")+(manca.length? " · manca "+manca.map(function(k){ return meal(k).n.toLowerCase(); }).join(", ") : ""),
     fatto: !manca.length && regi>0, dovuto: attesi.length>0, a:"cibo", m: manca[0]||"col"});
   v.push({k:"sera", t:"Benessere della sera", q:"prima di dormire · 30 secondi", d:"Reflusso, camminate, stress, testa",
     fatto:seraFatta(b), dovuto: now>=hm(o.sera)-90, a:"bens"});

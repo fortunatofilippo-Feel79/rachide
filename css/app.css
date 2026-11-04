@@ -663,3 +663,5 @@ details.altro[open]>summary::after{content:" ⌄"}
 .ptabs button i.g{background:var(--alert)}
 .libf .pill{padding:7px 12px;font-size:13px}
 html{color-scheme:dark}
+.meal.salt .mname,.meal.salt .mmac{color:var(--dim);text-decoration:line-through}
+.meal.salt .mmac{text-decoration:none}

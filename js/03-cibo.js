@@ -12,12 +12,14 @@
 var BLK     = {p:26, c:58, g:11};
 var BLK_TGT = {p:5,  c:6,  g:6};
 
-/* i pasti del Piano_Alimentare, con il loro atteso in grammi */
+/* i pasti del Piano_Alimentare, con il loro atteso in grammi.
+   Gli spuntini sono facoltativi (fac): conta il totale del giorno, non il numero di pasti
+   (Schoenfeld, Aragon, Krieger 2015). Un pasto si puo' segnare come saltato (g.salta). */
 var MEALS=[
   {k:"col", n:"Colazione",           p:26, c:70,  g:14},
-  {k:"sm",  n:"Spuntino mattina",    p:13, c:35,  g:7},
+  {k:"sm",  n:"Spuntino mattina",    p:13, c:35,  g:7, fac:true},
   {k:"pra", n:"Pranzo",              p:39, c:105, g:21},
-  {k:"sp",  n:"Spuntino pomeriggio", p:13, c:35,  g:7},
+  {k:"sp",  n:"Spuntino pomeriggio", p:13, c:35,  g:7, fac:true},
   {k:"cen", n:"Cena",                p:39, c:105, g:21},
   {k:"ex",  n:"Fuori pasto",         p:0,  c:0,   g:0}
 ];
@@ -103,7 +105,14 @@ function cibDate(){
 }
 
 /* ---------- lettura e scrittura della giornata ---------- */
-function cibVuoto(){ return {col:[],sm:[],pra:[],sp:[],cen:[],ex:[]}; }
+function cibVuoto(){ return {col:[],sm:[],pra:[],sp:[],cen:[],ex:[],salta:[]}; }
+function pastoSaltato(g, k){ return (g.salta||[]).indexOf(k)>=0; }
+/* segna o toglie "saltato oggi" su un pasto vuoto */
+async function cibSalta(k){
+  var g=cibDay(); g.salta=g.salta||[];
+  var i=g.salta.indexOf(k); if(i>=0) g.salta.splice(i,1); else if(!(g[k]||[]).length) g.salta.push(k);
+  return cibSave(g);
+}
 function cibDay(date){
   var b=benOn(date||cibDate());
   if(!b) return cibVuoto();
@@ -353,7 +362,8 @@ function cibHint(r, g){
   if(r.g>=0.3) resto.push(b1(r.g)+"G"); else if(r.g<=-0.5) oltre.push("G +"+b1(-r.g));
 
   var main = resto.length ? "Restano "+resto.join(" \u00b7 ") : "Giornata chiusa.";
-  var vuoti = MEALS.filter(function(m){ return m.k!=="ex" && m.p && !(g[m.k]||[]).length; });
+  var vuoti = MEALS.filter(function(m){ return m.k!=="ex" && m.p && !m.fac && !(g[m.k]||[]).length && !pastoSaltato(g, m.k); });
+  var senzaSpuntini = MEALS.filter(function(m){ return m.fac && !(g[m.k]||[]).length; }).length===2;
   var sub = "";
   if(resto.length && vuoti.length){
     var nomi = vuoti.map(function(m){ return m.n.toLowerCase(); });
@@ -361,8 +371,10 @@ function cibHint(r, g){
       ? nomi.slice(0,-1).join(", ")+" e "+nomi[nomi.length-1]
       : nomi[0]) + ".";
   } else if(resto.length){
-    sub = "Tutti i pasti sono registrati: quello che manca va aggiunto a un pasto o come fuori pasto.";
+    sub = "I pasti principali sono registrati: quello che manca va aggiunto a un pasto o come fuori pasto.";
   }
+  if(r.p>=0.5 && senzaSpuntini && !(g.cen||[]).length)
+    sub = (sub?sub+" ":"") + "Se oggi salti gli spuntini, non spostare tutto a cena: una cena più grande peggiora il reflusso. Basta anche uno spuntino proteico piccolo (yogurt greco, latte proteico).";
   if(oltre.length){
     sub = (sub?sub+" ":"") + "Sopra il target: " + oltre.join(", ") +
       (r.g<=-1.5 ? ". Grassi alti, occhio al reflusso stanotte." : ".");
@@ -413,12 +425,13 @@ function cardCibo(){
   MEALS.forEach(function(m){
     var it=g[m.k]||[], t=cibSomma(it), pieno=!!it.length;
     var att=m.p+m.c+m.g, fat=t.p+t.c+t.g;
-    var stato = !pieno ? "" : (att && fat>att*1.25 ? " over" : " done");
+    var salt=!pieno && pastoSaltato(g, m.k);
+    var stato = !pieno ? (salt? " salt" : "") : (att && fat>att*1.25 ? " over" : " done");
     var attesa = it.some(function(v){ return v.w; });
     h+='<button class="meal'+stato+'" data-a="pasto" data-m="'+m.k+'">'+
        '<span class="mdot"></span>'+
        '<span class="mname">'+m.n+(attesa?' <b class="pend">?</b>':'')+'</span>'+
-       '<span class="mmac">'+(pieno? b1(t.p/BLK.p)+'P \u00b7 '+b1(t.c/BLK.c)+'C \u00b7 '+b1(t.g/BLK.g)+'G' : (m.k==="ex"?'\u2013':'da fare'))+'</span>'+
+       '<span class="mmac">'+(pieno? b1(t.p/BLK.p)+'P \u00b7 '+b1(t.c/BLK.c)+'C \u00b7 '+b1(t.g/BLK.g)+'G' : (m.k==="ex"?'\u2013': salt? 'saltato' : m.fac? 'facoltativo' : 'da fare'))+'</span>'+
        '</button>';
   });
   h+='</div>';
@@ -470,7 +483,10 @@ function formPasto(mk, cat){
     });
     h+='</div>';
   } else {
-    h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:16px"><div class="sm mut">Niente registrato per questo pasto.</div></div>';
+    var sal=pastoSaltato(g, mk);
+    h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:16px"><div class="sm mut">'+(sal? 'Segnato come saltato oggi.' : 'Niente registrato per questo pasto.')+'</div>'+
+      (mk!=="ex"? '<button class="btn sm ghost" style="margin-top:10px" data-a="cibsalta" data-m="'+mk+'">'+(sal? 'Togli «saltato»' : (m.fac? 'Oggi non lo faccio' : 'Oggi l\'ho saltato'))+'</button>' : '')+
+      (m.fac && !sal? '<div class="xs mut" style="margin-top:6px">Gli spuntini sono facoltativi: conta il totale della giornata.</div>' : '')+'</div>';
     var ieri=cibDay(cibIeri())[mk]||[];
     if(ieri.length) h+='<button class="btn" style="margin-bottom:8px" data-a="cibrip" data-m="'+mk+'">Come ieri: '+
       esc(ieri.map(function(v){ return v.n; }).join(", ").slice(0,60))+'</button>';

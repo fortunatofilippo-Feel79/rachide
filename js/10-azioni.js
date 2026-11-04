@@ -126,6 +126,7 @@ document.addEventListener("click", function(ev){
   if(a==="chiusw"){ formChiusura(); return; }
   if(a==="savechiusw"){ saveChiusura(); return; }
   if(a==="pasto"){ formPasto(el.dataset.m, el.dataset.c); return; }
+  if(a==="cibsalta"){ cibSalta(el.dataset.m).then(function(){ closeSheet(); render(); }); return; }
   if(a==="cibday"){ CIB_DAY=+el.dataset.v||0; render(); formPasto(el.dataset.m, el.dataset.c); return; }
   if(a==="cibadd"){ cibAdd(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m, el.dataset.c); }); return; }
   if(a==="cibric"){ cibAddRic(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m); }); return; }
