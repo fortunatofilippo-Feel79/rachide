@@ -216,3 +216,33 @@ function libFiltra(q){
 
 /* orologio fine per guida e timer: 4 volte al secondo, solo quando servono */
 setInterval(function(){ if(WG) warmTick(); if(hold) holdTick(); }, 250);
+
+/* ---------- schermo acceso mentre guardi un esercizio o ti alleni ----------
+   Screen Wake Lock API: Safari su iPhone da iOS 16.4, nelle app aggiunte alla Home da iOS 18.4;
+   Chrome e Android da tempo. Lo schermo resta acceso con la scheda Come si fa aperta, durante la
+   seduta, il riscaldamento guidato e i timer; torna normale appena chiudi. Si spegne in Coach. */
+var WAKE={lock:null, chiede:false, ok:!!(typeof navigator!=="undefined" && navigator.wakeLock && navigator.wakeLock.request), err:""};
+function wakeServe(){
+  if(S.schermoAcceso===false) return false;
+  if(S.draft && V==="oggi") return true;
+  if((typeof WG!=="undefined" && WG) || (typeof hold!=="undefined" && hold)) return true;
+  return !!document.querySelector("#sheet.on #posblock, #sheet.on .figbox");
+}
+function wakeAggiorna(){
+  if(!WAKE.ok) return;
+  var serve=wakeServe() && document.visibilityState==="visible";
+  if(serve && !WAKE.lock && !WAKE.chiede){
+    WAKE.chiede=true;
+    navigator.wakeLock.request("screen").then(function(l){
+      WAKE.lock=l; WAKE.err="";
+      l.addEventListener("release", function(){ WAKE.lock=null; });
+    }).catch(function(e){ WAKE.err=(e && e.message)||"rifiutato"; }).then(function(){ WAKE.chiede=false; });
+  } else if(!serve && WAKE.lock){
+    var l=WAKE.lock; WAKE.lock=null; l.release().catch(function(){});
+  }
+}
+/* dopo ogni tocco (il permesso di tenere acceso lo schermo si chiede durante un gesto),
+   al ritorno nell'app e ogni secondo e mezzo per accorgersi di quando chiudi */
+document.addEventListener("click", function(){ wakeAggiorna(); });
+document.addEventListener("visibilitychange", wakeAggiorna);
+setInterval(wakeAggiorna, 1500);

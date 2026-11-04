@@ -665,3 +665,7 @@ details.altro[open]>summary::after{content:" ⌄"}
 html{color-scheme:dark}
 .meal.salt .mname,.meal.salt .mmac{color:var(--dim);text-decoration:line-through}
 .meal.salt .mmac{text-decoration:none}
+
+/* v4.5: figure */
+.fg .fg-hair{fill:#3A3029;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
+.fg .fg-eye{fill:#1B1F24}

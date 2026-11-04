@@ -62,6 +62,7 @@ document.addEventListener("click", function(ev){
   if(a==="sgen"){ var k=document.getElementById("syK"); if(k){ k.value=segretoCasuale(); copy(k.value, "Frase copiata: incollala nello script"); } return; }
   if(a==="ics"){ download("rachide-promemoria.ics", icsPromemoria(), "text/calendar"); toast("Apri il file: il Calendario ti chiede dove aggiungerlo"); return; }
   if(a==="suoni"){ S.suoni=!suoniOn(); cfgTocca("suoni"); save(); render(); if(S.suoni) setTimeout(function(){ suono("serie"); }, 50); return; }
+  if(a==="schermo"){ S.schermoAcceso=(S.schermoAcceso===false); cfgTocca("suoni"); save(); render(); toast(S.schermoAcceso? "Lo schermo resta acceso mentre guardi gli esercizi e ti alleni" : "Lo schermo si spegne come sempre"); return; }
   if(a==="silenz"){ S.suoniSilenzioso=(S.suoniSilenzioso===false); cfgTocca("suoni"); save(); render(); return; }
   if(a==="vol"){ S.volume=v; cfgTocca("suoni"); save(); render(); suono("fine"); return; }
   if(a==="suonoprova"){ provaSuoni(); return; }

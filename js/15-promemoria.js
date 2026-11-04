@@ -52,6 +52,10 @@ function cardPromemoria(){
     '<div class="xs mut" style="margin-top:6px">Scarica un file .ics: il telefono lo apre nel Calendario e ti avvisa a quegli orari anche ad app chiusa. '+
     'Cambi gli orari? Rimuovi il calendario «Rachide» e riaggiungilo. Dall\'icona sulla Home il file a volte non si apre: in quel caso apri l\'app in Safari e ripeti.</div>'+
     '<hr class="hair">'+
+    '<div class="between"><div><div class="sm" style="font-weight:600">Schermo acceso</div><div class="xs mut">'+
+      ((typeof WAKE!=="undefined" && WAKE.ok)? 'Mentre guardi come si fa un esercizio, durante la seduta e i timer' : 'Non disponibile qui: sull\'iPhone serve iOS 18.4 o successivo')+'</div></div>'+
+      '<button class="btn sm '+(S.schermoAcceso!==false?"":"ghost")+'" data-a="schermo" aria-pressed="'+(S.schermoAcceso!==false)+'">'+(S.schermoAcceso!==false?"Attivo":"Spento")+'</button></div>'+
+    '<hr class="hair">'+
     '<div class="between"><div><div class="sm" style="font-weight:600">Suoni</div><div class="xs mut">Serie salvata, recupero, conto alla rovescia, timer, record</div></div>'+
       '<button class="btn sm '+(son?"":"ghost")+'" data-a="suoni" aria-pressed="'+son+'">'+(son?"Attivi":"Spenti")+'</button></div>'+
     (son? '<div class="between" style="margin-top:10px"><div><div class="sm" style="font-weight:600">Anche col silenzioso</div><div class="xs mut">iPhone con iOS 17 o successivo</div></div>'+

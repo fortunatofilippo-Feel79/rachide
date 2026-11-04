@@ -4,7 +4,7 @@ Registro personale di allenamento, cibo e salute. È una web app statica (HTML, 
 
 ## Cosa fa
 
-- **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro.
+- **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro. Lo schermo resta acceso durante la seduta e mentre guardi come si fa un esercizio (si spegne in Coach).
 - **Come si fa**: per ogni esercizio e per il riscaldamento, partenza e arrivo con numeri sul corpo (piedi, ginocchia, bacino, schiena, gomiti, testa), angoli, linee guida e l'errore tipico disegnato in rosso sulla posizione giusta; poi l'animazione con il muscolo che lavora, cosa devi sentire, dove NON devi sentire fastidio e le alternative fuori casa (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
 - **Piano flessibile**: Casa, Bande o Corpo libero sulla prossima seduta; versione da 45′ e da 15′; settimana di picco con due sedute essenziali.
 - **Piano della settimana**: il coach lo scrive la domenica sera sui giorni e i tempi che gli dai nella chiusura. In settimana, in *Adatta la settimana*, per ogni giorno scegli dove sei (casa; fuori con le bande; fuori senza niente; occupato) e quanto tempo hai (30, 60, 90 minuti): l'app sceglie quali sedute fare e quando, con quale attrezzo, e adatta gli esercizi (toglie le serie che valgono meno se il tempo non basta, aggiunge serie o esercizi ai gruppi che restano indietro). La seduta guidata usa la versione adattata; le sedute vanno nel calendario.
