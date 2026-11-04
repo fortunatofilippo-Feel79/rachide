@@ -21,7 +21,7 @@ function ptq(P){ return P; }
 var POS={
  "Cat-cow":{a:0, b:1, co:[["hn","Mani sotto le spalle"],["kn","Ginocchia sotto le anche"],["back","Si muove la colonna, vertebra dopo vertebra"],["head","La testa segue la colonna"]],
    err:{k:1, f:function(p){ return fgM(p,{sp:0, nk:-75}); }, t:"Si muove solo il collo: la schiena resta ferma"}, no:["collo","lombare"]},
- "Rotazioni toraciche":{a:0, b:1, co:[["hf","Una mano a terra sotto la spalla"],["hn","Il braccio apre e lo sguardo lo segue"],["hip","Bacino fermo, seduto sui talloni"]],
+ "Rotazioni toraciche":{a:0, b:1, co:[["hn","Una mano a terra sotto la spalla"],["hf","L'altra mano passa sotto il petto, poi sale al soffitto"],["head","Lo sguardo segue la mano"],["hip","Bacino fermo, seduto sui talloni"]],
    no:["lombare","spalla_sx"]},
  "Bird-dog con pausa 3s":{a:0, b:1, co:[["hn","Braccio disteso, in linea con il busto"],["tf","Gamba opposta distesa: il piede non sale sopra l'anca"],["hip","Bacino fermo e orizzontale"],["head","Sguardo a terra, collo lungo"]],
    gl:[{k:"h", at:"hip"}], err:{k:1, f:function(p){ return fgM(p,{ff:[p.ff[0]-2, p.ff[1]-26], sp:-6}); }, t:"Gamba troppo in alto: la lombare si inarca e il bacino ruota"}, no:["lombare","polso_sx","polso_dx"]},

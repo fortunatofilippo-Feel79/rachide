@@ -183,9 +183,9 @@ var PAL_N={sh:"fg-shirt", sk:"fg-skin", pt:"fg-pants", so:"fg-shoe"};
 var PAL_F={sh:"fg-shirt fg-far", sk:"fg-skin fg-far", pt:"fg-pants fg-far", so:"fg-shoe fg-far"};
 var PAL_OK={sh:"fg-okg", sk:"fg-okg", pt:"fg-okg", so:"fg-okg"};
 function fgBraccio(A, c){
-  var cl=c.sk, o=fgPath(fgCaps(A.s, A.e, 3.7, 2.9), (c.sh===PAL_OK.sh)? cl : c.sh.replace("fg-shirt","fg-shirt")+" fg-sleeve");
-  if(A.av) return o+'<ellipse cx="'+fgR(A.e[0])+'" cy="'+fgR(A.e[1]+0.8)+'" rx="7" ry="2.9" class="'+cl+'"/>';
-  return o+fgPath(fgCaps(A.e, A.h, 2.9, 2.2), cl)+'<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="3.1" class="'+cl+'"/>';
+  var cl=c.sk, o=fgPath(fgCaps(A.s, A.e, 3.2, 2.5), (c.sh===PAL_OK.sh)? cl : c.sh.replace("fg-shirt","fg-shirt")+" fg-sleeve");
+  if(A.av) return o+'<ellipse cx="'+fgR(A.e[0])+'" cy="'+fgR(A.e[1]+0.8)+'" rx="6.4" ry="2.6" class="'+cl+'"/>';
+  return o+fgPath(fgCaps(A.e, A.h, 2.5, 1.9), cl)+'<circle cx="'+fgR(A.h[0])+'" cy="'+fgR(A.h[1])+'" r="2.6" class="'+cl+'"/>';
 }
 /* la scarpa: tallone dietro la caviglia, suola piatta, punta arrotondata. Il verso della suola
    e' quello che guarda il pavimento (o, sulle punte, il lato del tallone). */
@@ -197,14 +197,15 @@ function fgPiede(G, cl){
   return '<path d="M'+q(-1.5,-2.4)+'L'+q(1.6,-2.0)+'Q'+q(tl-3,-0.8)+' '+q(tl-1.2,0.5)+'Q'+q(tl+0.4,1.6)+' '+q(tl-0.6,so)+
     'L'+q(-hb+1.3,so)+'Q'+q(-hb-0.2,so)+' '+q(-hb,1.2)+'Q'+q(-hb+0.2,-1.5)+' '+q(-1.5,-2.4)+'Z" class="'+cl+'"/>';
 }
-/* di fronte la scarpa si vede dalla punta: corta e larga, appoggiata a terra, appena girata in fuori */
+/* di fronte la scarpa si vede dalla punta: corta e larga, sotto la tibia, appena girata in fuori */
 function fgPiedeFronte(G, cl){
-  var a=G.a, d=[G.toe[0]-a[0], G.toe[1]-a[1]], L=Math.sqrt(d[0]*d[0]+d[1]*d[1])||1, ox=d[0]/L*1.3, x=a[0]+ox, y=a[1];
-  var p=function(dx,dy){ return fgPt([x+dx, y+dy]); };
-  return '<path d="M'+p(-3.3,3)+'L'+p(3.3,3)+'Q'+p(4,0.6)+' '+p(1.6,-1.6)+'L'+p(-1.6,-1.6)+'Q'+p(-4,0.6)+' '+p(-3.3,3)+'Z" class="'+cl+'"/>';
+  var a=G.a, up=[G.k[0]-a[0], G.k[1]-a[1]], L=Math.sqrt(up[0]*up[0]+up[1]*up[1])||1; up=[up[0]/L, up[1]/L];
+  var side=[-up[1], up[0]], d=[G.toe[0]-a[0], G.toe[1]-a[1]], ox=(d[0]*side[0]+d[1]*side[1])/(FL.ft||9)*1.3;
+  var p=function(dx,dy){ dx+=ox; return fgPt([a[0]+side[0]*dx-up[0]*dy, a[1]+side[1]*dx-up[1]*dy]); };
+  return '<path d="M'+p(-3.2,3)+'L'+p(3.2,3)+'Q'+p(3.9,0.6)+' '+p(1.6,-1.6)+'L'+p(-1.6,-1.6)+'Q'+p(-3.9,0.6)+' '+p(-3.2,3)+'Z" class="'+cl+'"/>';
 }
 function fgGamba(G, c, fronte){
-  return fgPath(fgCaps(G.h, G.k, 5.4, 3.8), c.pt)+fgPath(fgCaps(G.k, G.a, 3.8, 2.6), c.pt)+(fronte? fgPiedeFronte(G, c.so) : fgPiede(G, c.so));
+  return fgPath(fgCaps(G.h, G.k, 5.0, 3.6), c.pt)+fgPath(fgCaps(G.k, G.a, 3.6, 2.4), c.pt)+(fronte? fgPiedeFronte(G, c.so) : fgPiede(G, c.so));
 }
 /* arco di cerchio come poligono, da un angolo all'altro passando per l'angolo "via" */
 function fgArco(c, r, a0, a1, via){
@@ -230,11 +231,24 @@ function fgBusto(P){
   for(i=die.length-2;i>=0;i--) d+='L'+fgPt(die[i]);
   return d+'A'+rB+' '+rB+' 0 0 0 '+fgPt(dav[0])+'Z';
 }
+/* di fronte: spalle arrotondate, vita, fianchi. Coordinate lungo il busto (u) e di traverso (perp). */
 function fgBustoFronte(P){
-  var w=fgSpina(P, 0.45).q;
-  var pts=[fgSom(P.gambe.n.h, P.perp, 4.5), fgSom(w, P.perp, P.tw), fgSom(P.braccia.n.s, P.perp, 3.2),
-           fgSom(P.braccia.f.s, P.perp, -3.2), fgSom(w, P.perp, -P.tw), fgSom(P.gambe.f.h, P.perp, -4.5)];
-  return 'M'+pts.map(fgPt).join('L')+'Z';
+  var u=P.u, pp=P.perp, H=P.hip, w=fgSpina(P, 0.45).q, sh=P.sh, Sn=P.braccia.n.s, Sf=P.braccia.f.s;
+  var q=function(base, a, b){ return fgPt([base[0]+pp[0]*a+u[0]*b, base[1]+pp[1]*a+u[1]*b]); };
+  var hw=Math.abs((P.gambe.n.h[0]-P.hip[0])*pp[0]+(P.gambe.n.h[1]-P.hip[1])*pp[1])+4.6;
+  return 'M'+q(H, hw, -1)+'L'+q(w, P.tw, 0)+'Q'+q(Sn, 2.2, -5)+' '+q(Sn, 2.6, 0)+'Q'+q(Sn, 2.2, 3.4)+' '+q(sh, 3.4, 2.2)+
+    'Q'+q(sh, 0, 0.8)+' '+q(sh, -3.4, 2.2)+'Q'+q(Sf, -2.2, 3.4)+' '+q(Sf, -2.6, 0)+'Q'+q(Sf, -2.2, -5)+' '+q(w, -P.tw, 0)+
+    'L'+q(H, -hw, -1)+'Q'+q(H, 0, -2.6)+' '+q(H, hw, -1)+'Z';
+}
+function fgPantFronte(P){
+  var u=P.u, pp=P.perp, H=P.hip, hw=Math.abs((P.gambe.n.h[0]-H[0])*pp[0]+(P.gambe.n.h[1]-H[1])*pp[1]);
+  var q=function(a, b){ return fgPt([H[0]+pp[0]*a+u[0]*b, H[1]+pp[1]*a+u[1]*b]); };
+  return 'M'+q(hw+4.6, 2)+'L'+q(hw+4.2, -8)+'L'+q(1, -9)+'L'+q(0, -5)+'L'+q(-1, -9)+'L'+q(-hw-4.2, -8)+'L'+q(-hw-4.6, 2)+'Z';
+}
+/* di lato: bacino e glutei, cosi' si legge la cerniera dell'anca */
+function fgBacino(P, cl){
+  var c=fgSom(fgSom(P.hip, P.back, 1.4), P.u, 0.6), ang=Math.atan2(P.u[1], P.u[0])*180/Math.PI;
+  return '<ellipse cx="'+fgR(c[0])+'" cy="'+fgR(c[1])+'" rx="6.2" ry="6.6" transform="rotate('+fgR(ang)+' '+fgR(c[0])+' '+fgR(c[1])+')" class="'+cl+'"/>';
 }
 function fgTesta(P, p, cl, ghost){
   var r=FL.hd*(p.hs||1), d=fgDir(P.t+(p.nk||0)), o='', c=P.hc;
@@ -243,34 +257,51 @@ function fgTesta(P, p, cl, ghost){
   var ang=function(v){ return Math.atan2(v[1], v[0])*180/Math.PI; }, su=ang(d), capC=ghost? cl : "fg-hair";
   if(!P.front){
     /* di lato: naso, occhio e capelli sulla nuca, cosi' si capisce subito dove guarda */
-    var f=[-d[1], d[0]], na=fgSom(fgSom(c, f, r*0.9), d, -r*0.15), dietro=ang([-f[0], -f[1]]);
-    o+='<circle cx="'+fgR(na[0])+'" cy="'+fgR(na[1])+'" r="'+fgR(r*0.32)+'" class="'+cl+'"/>';
+    var f=[-d[1], d[0]], na=fgSom(fgSom(c, f, r*0.93), d, -r*0.08), dietro=ang([-f[0], -f[1]]);
+    o+='<circle cx="'+fgR(na[0])+'" cy="'+fgR(na[1])+'" r="'+fgR(r*0.17)+'" class="'+cl+'"/>';
     var pts=fgArco(c, r+0.15, ang([d[0]*0.82+f[0]*0.57, d[1]*0.82+f[1]*0.57]), ang([-f[0]*0.8-d[0]*0.6, -f[1]*0.8-d[1]*0.6]), dietro);
     pts.push(fgSom(fgSom(c, f, -r*0.25), d, -r*0.05));
     o+='<path d="M'+pts.map(fgPt).join("L")+'Z" class="'+capC+'"/>';
-    if(!ghost){ var oc=fgSom(fgSom(c, f, r*0.5), d, r*0.12); o+='<circle cx="'+fgR(oc[0])+'" cy="'+fgR(oc[1])+'" r="0.8" class="fg-eye"/>'; }
+    if(!ghost){ var oc=fgSom(fgSom(c, f, r*0.52), d, r*0.14); o+='<circle cx="'+fgR(oc[0])+'" cy="'+fgR(oc[1])+'" r="0.75" class="fg-eye"/>'; }
   } else {
     /* di fronte: capelli sopra la fronte */
-    var pts2=fgArco(c, r+0.15, su-62, su+62, su);
-    pts2.push(fgSom(c, d, r*0.45));
+    /* di fronte: capelli sopra la fronte; con la testa china (hg) si vede soprattutto la testa dall'alto */
+    var giu=!!p.hg, ap=giu? 118 : 62;
+    var pts2=fgArco(c, r+0.15, su-ap, su+ap, su);
+    pts2.push(fgSom(c, d, giu? -r*0.25 : r*0.45));
     o+='<path d="M'+pts2.map(fgPt).join("L")+'Z" class="'+capC+'"/>';
     if(!ghost){ var lat=[-d[1], d[0]];
-      [-1,1].forEach(function(s){ var e=fgSom(fgSom(c, lat, s*r*0.36), d, r*0.12); o+='<circle cx="'+fgR(e[0])+'" cy="'+fgR(e[1])+'" r="0.75" class="fg-eye"/>'; }); }
+      [-1,1].forEach(function(s){ var e=fgSom(fgSom(c, lat, s*r*0.36), d, giu? -r*0.5 : r*0.12); o+='<circle cx="'+fgR(e[0])+'" cy="'+fgR(e[1])+'" r="0.75" class="fg-eye"/>'; }); }
   }
   return o;
 }
-/* il corpo intero, nell'ordine giusto: lontano, busto, testa, vicino */
+/* il corpo intero, nell'ordine giusto.
+   Di lato: lontano, bacino, busto, testa, vicino. Il lato lontano e' piu' scuro.
+   Di fronte: tutto simmetrico. Gambe e pantaloncini dietro la maglia, poi testa e le due braccia
+   davanti, con lo stesso colore: nessuna gamba o braccio sembra avanti o dietro. */
 function fgCorpo(P, p, def, ghost){
   var fr=P.front, o='', db=(def&&def.db)||"", cn=(ghost && typeof ghost==='object')? ghost : (ghost? PAL_OK : PAL_N), cf=ghost? cn : (fr? PAL_N : PAL_F);
-  if(!ghost && !fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
-  o+=fgGamba(P.gambe.f, cf, fr)+fgBraccio(P.braccia.f, cf);
-  o+= fr ? '<path d="'+fgBustoFronte(P)+'" class="'+cn.sh+' fg-tf"/>' : fgPath(fgBusto(P), cn.sh);
+  var cfB=(def && def.chiaro==="bf" && !ghost)? cn : cf;
+  if(fr){
+    o+=fgGamba(P.gambe.f, cn, true)+fgGamba(P.gambe.n, cn, true);
+    o+='<path d="'+fgPantFronte(P)+'" class="'+cn.pt+'"/>';
+    o+='<path d="'+fgBustoFronte(P)+'" class="'+cn.sh+'"/>';
+    o+=fgTesta(P, p, cn.sk, ghost);
+    o+=fgBraccio(P.braccia.f, cn)+fgBraccio(P.braccia.n, cn);
+    if(!ghost && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
+    if(!ghost && db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, true);
+    if(!ghost && db==="2"){ var m0=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m0, true); }
+    return o;
+  }
+  if(!ghost && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h);
+  o+=fgGamba(P.gambe.f, cf, false)+fgBraccio(P.braccia.f, cfB);
+  o+=fgBacino(P, cn.pt);
+  o+=fgPath(fgBusto(P), cn.sh);
   o+=fgTesta(P, p, cn.sk, ghost);
-  if(!ghost && fr && db.indexOf("f")>=0) o+=fgManubrio(P.braccia.f.h, true);
-  o+=fgGamba(P.gambe.n, cn, fr);
-  if(!ghost && db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, fr); }
+  o+=fgGamba(P.gambe.n, cn, false);
+  if(!ghost && db==="2"){ var m2=[(P.braccia.n.h[0]+P.braccia.f.h[0])/2, (P.braccia.n.h[1]+P.braccia.f.h[1])/2]; o+=fgManubrio(m2, false); }
   o+=fgBraccio(P.braccia.n, cn);
-  if(!ghost && db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, fr);
+  if(!ghost && db.indexOf("n")>=0) o+=fgManubrio(P.braccia.n.h, false);
   return o;
 }
 
@@ -405,7 +436,7 @@ function pQuattro(o){ return fgM({hip:[82,108], t:109, abs:"nf", hn:[117,FG_ANK]
 function pPiegato(o){ return fgM({hip:[96,87], t:128, hn:[2,35], hf:[-1,35], fn:[112,FG_ANK], ff:[106,FG_ANK]}, o); }
 function pFronte(o){ return fgM({hip:[110,85], t:180, sw:10, hw:6, hn:[4,35], hf:[-4,35], fn:[117,FG_ANK], ff:[103,FG_ANK], tn:60, tf:120, eb:{n:1,f:-1}, kb:{n:-1,f:1}}, o); }
 function pChino(o){ /* di fronte, busto inclinato: il busto appare accorciato */
-  return pFronte(fgM({hip:[110,86], tl:0.56, hs:0.95, hk:0.3, fn:[116,FG_ANK], ff:[104,FG_ANK]}, o));
+  return pFronte(fgM({hip:[110,86], tl:0.56, hs:0.95, hk:0.3, hg:1, fn:[116,FG_ANK], ff:[104,FG_ANK]}, o));
 }
 function pPlank(ank, shY, o){ var L=fgLinea(ank, shY); return fgM({hip:L.hip, t:L.t, fn:ank, ff:[ank[0]-3, ank[1]], tn:35, tf:35}, o); }
 
@@ -417,9 +448,11 @@ var FIG={
  "Cat-cow":{fx:"trunk", k:[
    {p:pQuattro({sp:-7, nk:30}), h:0.4, d:3, c:"Inspira: lo sterno va avanti, la schiena si inarca"},
    {p:pQuattro({sp:9, nk:-45}), h:0.4, d:3, c:"Espira: arrotonda vertebra dopo vertebra, mento al petto"}]},
- "Rotazioni toraciche":{fx:"arm", props:[{k:"tappetino", x:40, w:110}], k:[
-   {p:pQuattro({hip:[80,119], t:112, abs:"f", hn:[-10,30], hf:[126,FG_ANK], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:-20}), h:0.3, d:2.2, c:"Seduto sui talloni, il braccio passa sotto il corpo"},
-   {p:pQuattro({hip:[80,119], t:112, abs:"f", hn:[2,-36], hf:[126,FG_ANK], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:60}), h:1.2, d:2.2, c:"Apri verso il soffitto e segui la mano con lo sguardo"}]},
+ /* il braccio che lavora e' quello lontano: passa SOTTO il busto (si vede tra petto e tappetino) e poi
+    si apre verso il soffitto dietro la schiena; l'altro resta a terra davanti. Stesso colore, si legge bene. */
+ "Rotazioni toraciche":{fx:"arm", chiaro:"bf", tr:"hf", props:[{k:"tappetino", x:40, w:110}], k:[
+   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[126,FG_ANK], hf:[-20,27], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:-25}), h:0.3, d:2.2, c:"Seduto sui talloni: la mano passa sotto il petto, verso l'altro lato"},
+   {p:pQuattro({hip:[80,119], t:112, abs:"n", hn:[126,FG_ANK], hf:[4,-36], fn:[80,FG_ANK], ff:[77,FG_ANK], nk:65}), h:1.2, d:2.2, c:"Apri il braccio verso il soffitto e segui la mano con lo sguardo"}]},
  "Bird-dog con pausa 3s":{fx:"core", tr:"hn", k:[
    {p:pQuattro(), h:0.5, d:1.5, c:"A quattro zampe, schiena neutra"},
    {p:pQuattro({abs:"f", hn:[36,-3], ff:[36,104]}), h:3, d:1.5, c:"Braccio e gamba opposti in linea: fermo 3 secondi, bacino che non ruota"}]},
@@ -458,8 +491,8 @@ var FIG={
    {p:pIn({hip:[102,88], t:176, fn:[118,FG_ANK], ff:[57,103], tf:-100}), h:0.3, d:2, c:"Piede dietro sul rialzo, piede davanti avanzato"},
    {p:pIn({hip:[94,108], t:172, fn:[118,FG_ANK], ff:[57,103], tf:-100}), h:0.2, d:1, c:"Scendi a 90°, ginocchio sopra la caviglia. Spingi col piede davanti"}]},
  "Calf raise monopodalico":{fx:"leg", props:[{k:"box", x:124, y:120, w:40}, {k:"muro", x:178}], k:[
-   {p:pIn({hip:[118,76], abs:"n", hn:[176,46], hf:[-2,34], rf:"f", fn:[120,124], ff:[-12,34], tn:120, kb:{n:-1,f:1}}), h:0.2, d:1, c:"Sali sulla punta: una mano al muro solo per l'equilibrio"},
-   {p:pIn({hip:[120,66], abs:"n", hn:[176,40], hf:[-2,34], rf:"f", fn:[121,114], ff:[-12,34], tn:50, kb:{n:-1,f:1}}), h:1, d:2, c:"Pausa di 1 secondo in alto, poi scendi lento sotto il bordo"}]},
+   {p:pIn({hip:[118,76], abs:"n", hn:[176,46], hf:[-2,34], rf:"f", fn:[120,124], ff:[-12,34], tn:120, kb:{n:-1,f:-1}}), h:0.2, d:1, c:"Sali sulla punta: una mano al muro solo per l'equilibrio"},
+   {p:pIn({hip:[120,66], abs:"n", hn:[176,40], hf:[-2,34], rf:"f", fn:[121,114], ff:[-12,34], tn:50, kb:{n:-1,f:-1}}), h:1, d:2, c:"Pausa di 1 secondo in alto, poi scendi lento sotto il bordo"}]},
  "Band tricep extension":{fx:"arm", band:[{c:"rossa", p:["an","bkh","hn"]}], k:[
    {p:pIn({an:[172,326], af:[170,326]}), h:0.3, d:1, c:"Banda sotto il piede, mani dietro la testa, gomiti in alto"},
    {p:pIn({an:[172,176], af:[170,176]}), h:0.2, d:2, c:"Distendi le braccia senza aprire i gomiti, ritorno in 2 secondi"}]},
