@@ -8,7 +8,7 @@
    Quando cambi un file dell'app, aumenta VERSIONE (e VERSIONE_APP
    in js/01-dati.js: un test controlla che coincidano).
    ============================================================ */
-var VERSIONE = "rachide-4.4.0";
+var VERSIONE = "rachide-4.4.1";
 var GUSCIO = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
   "js/01-dati.js", "js/02-motore.js", "js/03-cibo.js", "js/04-extra-coach.js", "js/05-analisi.js",

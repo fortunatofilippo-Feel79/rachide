@@ -38,6 +38,12 @@ function pianoDelGiorno(data){
   var e=seduteDelPiano(weekOf(data)).filter(function(x){ return x.data===data && (x.stato==="oggi"||x.stato==="futura"||x.stato==="saltata"); })[0];
   return e||null;
 }
+/* la seduta da mostrare in Oggi: quella del piano per oggi, altrimenti la prossima in calendario.
+   Senza piano (o con il piano finito) resta la prima seduta che manca, in ordine A B C D. */
+function prossimaDelPiano(w){
+  return seduteDelPiano(w).filter(function(e){ return e.stato==="oggi"||e.stato==="futura"; })
+    .sort(function(a,b){ return s2d(a.data)-s2d(b.data); })[0] || null;
+}
 function saltate(w){ return seduteDelPiano(w).filter(function(e){ return e.stato==="saltata"; }); }
 /* disponibilita' di un giorno: casa, fuori (con le bande), fuori0 (senza niente), no.
    Parte da quanto scritto nella chiusura della settimana prima. */
@@ -227,6 +233,7 @@ function pianoSheet(){
     var tolti=(e.cambi||[]).filter(function(c){ return c.tipo==="via"||c.tipo==="meno"; }), motivi={};
     tolti.forEach(function(c){ motivi[c.perche]=1; });
     if(tolti.length) h+='<div class="xs mut" style="margin-top:4px">Serie tolte: '+esc(Object.keys(motivi).join("; "))+'.</div>';
+    if(!(e.cambi||[]).length) h+='<div class="xs" style="margin-top:4px;color:var(--ok)">Nessuna modifica: entra nei '+e.t+'′ e il bilancio della settimana è già a posto.</div>';
     h+='</div>';
   });
   var bil=bilancioDa(PS.g);

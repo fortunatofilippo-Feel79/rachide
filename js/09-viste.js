@@ -48,8 +48,8 @@ function viewOggi(){
   /* un giorno è "coperto" se allenato o segnato come riposo */
   var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
   /* se il piano prevede una seduta per oggi, e' quella */
-  var peOggi=pianoDelGiorno(today());
-  if(peOggi && peOggi.stato!=="saltata" && giorni.indexOf(peOggi.d)>=0 && !sedutaCoperta(w, peOggi.d)) next=peOggi.d;
+  var pNext=prossimaDelPiano(w);
+  if(pNext && giorni.indexOf(pNext.d)>=0 && !sedutaCoperta(w, pNext.d)) next=pNext.d;
   var completa=!next, stw=statoSettimana(w);
   var h=topbar("Settimana "+w+(pk?" · picco":""), dayName(today())+" "+today());
   h+='<div class="wrap">';
@@ -97,21 +97,25 @@ function viewOggi(){
          '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
          esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
     }
-    var p=PLAN[next], lu=luogoOggi(), lista=listaPerOggi(next, lu), vp=voceDelPiano(next), adattata=!!(vp && (vp.agg||vp.ser||vp.via)), minN=Math.round(minutiSeduta(lista));
+    var vp=voceDelPiano(next), futura=!!(vp && vp.data!==today() && vp.stato==="futura");
+    var p=PLAN[next], lu=futura? ((S.luogo && S.luogo.date===today())? S.luogo.v : vp.l) : luogoOggi();
+    var lista=(vp && vp.l===lu)? listaSeduta(vp) : listaPerOggi(next, lu), adattata=!!vp, minN=Math.round(minutiSeduta(lista));
     var cambiOggi=[]; if(adattata){ var bOggi=eserciziPer(next, lu);
       lista.forEach(function(x){ var b=bOggi.filter(function(y){ return y.n===x.n; })[0]; if(!b) cambiOggi.push("+ "+x.n); else if(x.s!==b.s) cambiOggi.push(x.n+" "+(x.s>b.s?"+":"−")+Math.abs(x.s-b.s)); });
       bOggi.forEach(function(b){ if(!lista.some(function(x){ return x.n===b.n; })) cambiOggi.push("senza "+b.n); }); }
     h+='<div class="card hero-next">'+
-       '<div class="between"><div class="eyebrow glow">Prossima · giorno '+next+'</div><div class="xs mut">'+lista.length+' esercizi · circa '+minN+'′</div></div>'+
+       '<div class="between"><div class="eyebrow glow">'+(futura? 'Prossima · '+GG_NOME[ggDi(vp.data)]+' '+(+vp.data.slice(0,2))+' · giorno '+next : (vp? 'Oggi · giorno '+next : 'Prossima · giorno '+next))+'</div><div class="xs mut">'+lista.length+' esercizi · circa '+minN+'′</div></div>'+
+       (futura? '<div class="xs mut" style="margin-top:4px">Oggi il piano non prevede sedute. Se vuoi, puoi anticipare questa a oggi.</div>' : '')+
        '<h2 style="margin:5px 0 10px;font-size:19px">'+esc(p.name)+'</h2>'+
        segLuogo(lu, next)+
        stripEsercizi(lista)+
-       (cambiOggi.length? '<div class="xs" style="color:var(--glow);margin-top:8px"><b>Adattata alla settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> '+esc(cambiOggi.join(" · "))+'</div>' : '')+
+       (cambiOggi.length? '<div class="xs" style="color:var(--glow);margin-top:8px"><b>Adattata alla settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> '+esc(cambiOggi.join(" · "))+'</div>'
+         : (vp? '<div class="xs" style="color:var(--ok);margin-top:8px"><b>Dal piano della settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> nessuna modifica serve, entra nel tempo e i gruppi sono già coperti.</div>' : ''))+
        ((lu==="casa" && p.dischi!=="solo bande")? '<div class="xs" style="color:var(--amb);margin-top:8px">Dischi '+esc(p.dischi)+'</div>':"")+
        (lu!=="casa"? '<div class="xs mut" style="margin-top:8px">'+(lu==="bande"?"Con le bande":"Senza attrezzi")+': stesso schema di movimento, stesse serie. I carichi di casa restano dove sono.</div>':"")+
        ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
           ' · HRV '+(recB.hrv||"–")+' · sonno '+(recB.sonno||"–")+' h</div>' : "")+
-       '<button class="btn pri" style="margin-top:12px" data-a="open" data-d="'+next+'">Inizia</button>'+
+       '<button class="btn pri" style="margin-top:12px" data-a="open" data-d="'+next+'" data-l="'+lu+'">'+(futura? 'Anticipala a oggi' : 'Inizia')+'</button>'+
        (p.ess? '' : '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" style="width:100%" data-a="ridotta" data-d="'+next+'">Poco tempo · 45′</button>'+
        '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>')+
        '</div>';

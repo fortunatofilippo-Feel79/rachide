@@ -8,7 +8,7 @@ document.addEventListener("click", function(ev){
   window._sy = window.scrollY;
 
   if(a==="nav"){ V=v; window._sy=0; render(); return; }
-  if(a==="open"){ startSession(el.dataset.d); return; }
+  if(a==="open"){ startSession(el.dataset.d, false, false, el.dataset.l||undefined); return; }
   if(a==="warm"){ d.warm[i]=!d.warm[i]; render(); return; }
   if(a==="wall"){ var all=d.warm.every(Boolean); d.warm=d.warm.map(()=>!all); render(); return; }
   if(a==="tip"){ guideSheet(def.n, def.tip); return; }
