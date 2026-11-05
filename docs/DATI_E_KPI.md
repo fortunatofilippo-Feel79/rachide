@@ -1,6 +1,6 @@
 # Dati e KPI di Rachide
 
-> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.6.0). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
+> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.6.1). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
 
 Riferimento per il coach: che cosa misura l'app, quando, con quale formula e quale bersaglio, da dove viene ogni bersaglio, come sono fatte le schede del foglio e quali regole applica il motore da solo.
 
@@ -309,7 +309,8 @@ Una patch è un JSON `{"nota":"…","ops":[…]}` che si incolla in Coach (o arr
 | Operazione | Esempio | Effetto |
 | --- | --- | --- |
 | `set` | `{"op":"set","d":"A","n":"Plank","lo":45,"hi":75}` | cambia serie (s), range (lo, hi), carico di partenza (L), banda (b), nota (tip), attesa (hold) |
-| `add` | `{"op":"add","d":"B","after":"Box Squat","ex":{"n":"Glute bridge","s":2,"lo":12,"hi":15}}` | aggiunge un esercizio a un giorno |
+| `add` | `{"op":"add","d":"B","after":"Box Squat","ex":{"n":"Glute bridge","s":2,"lo":12,"hi":15}}` | aggiunge un esercizio a un giorno. Se l'esercizio è nuovo, prima definiscilo con `esercizio` |
+| `esercizio` | `{"op":"esercizio","n":"Push-up con pausa in basso","come":"Push-up","g":"Petto","t":"compl","p":"Come il push-up, fermo 2 secondi a 3 cm da terra","f":"Petto e tricipiti","e":"Il bacino cede nella pausa","c":"Stringi i glutei prima di scendere"}` | definisce un esercizio nuovo o una variante: `come` = esercizio che ha già la figura giusta da mostrare (stesso movimento); `g` gruppo (Petto, Dorso, Spalle, Tricipiti, Core, Gambe, Bicipiti); `t` tipo (comp, compl, iso, core; facoltativi `uni`, `band`, `sec`); `p` posizione e movimento, `f` devi sentire, `e` stai sbagliando se, `c` correzione (quelli che mancano si prendono da `come`). Se nessuna figura va bene, ometti `come`: l'app mostra il testo e l'esercizio compare nel briefing tra quelli senza figura propria. Con lo stesso nome di un esercizio esistente ne aggiorna la scheda; la figura propria resta |
 | `del` | `{"op":"del","d":"C","n":"Pullover manubrio"}` | toglie un esercizio da un giorno |
 | `dischi` | `{"op":"dischi","d":"A","v":"20 › 20 › 14"}` | sequenza dei dischi da preparare |
 | `nota` | `{"op":"nota","d":"A","t":"Aggiungi 2 serie di Box Squat","n":"Box Squat"}` | promemoria che ricompare a ogni seduta finché non è fatto |

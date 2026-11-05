@@ -61,6 +61,15 @@ function recSettimana(w){
   });
   return out.length? out.join(" · ") : "";
 }
+/* esercizi in uso (piano o definiti dal coach) che non hanno una figura disegnata per loro */
+function figureDaFare(){
+  var visti={}, out=[];
+  var guarda=function(n){ if(visti[n]) return; visti[n]=1; var f=figuraDi(n);
+    if(f.tipo==="nessuna") out.push({n:n}); else if(f.tipo==="simile" && ES_COACH[n]) out.push({n:n, da:f.da}); };
+  Object.keys(PLAN||{}).forEach(function(d){ PLAN[d].ex.forEach(function(e){ guarda(e.n); }); });
+  Object.keys(ES_COACH).forEach(guarda);
+  return out;
+}
 function briefing(){
   var ws=weeks().slice(-4), L=[];
   L.push("BRIEFING ALLENAMENTO — "+today()+" (settimana "+weekOf(today())+")");
@@ -97,6 +106,9 @@ function briefing(){
   if(hl.length){ L.push(""); L.push("In attesa (decisione presa: non proporre aumenti)"); hl.forEach(function(x){ L.push(x); }); }
   L.push("");
   L.push(briefingPiano());
+  var fig=figureDaFare();
+  if(fig.length){ L.push(""); L.push("Esercizi senza figura propria (l'app mostra quella indicata o solo il testo)");
+    fig.forEach(function(x){ L.push("- "+x.n+(x.da? ": usa la figura di "+x.da : ": nessuna figura")); }); }
   L.push("");
   L.push("Cruscotto KPI (definizioni e fonti nella scheda App_KPI)");
   var kv=kpiValori();
@@ -182,8 +194,35 @@ function download(name, txt, type){
    ============================================================ */
 var PLAN = null;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
+/* Esercizi nuovi o varianti definiti dal coach ({"op":"esercizio"} o "meta" in un add): catalogo, scheda
+   tecnica e figura di riferimento. Si tolgono e si rimettono a ogni ricostruzione del piano, cosi'
+   annullare la patch li toglie davvero e un nome gia' esistente torna com'era. */
+var ES_COACH={};
+function esCoachReset(){
+  Object.keys(ES_COACH).forEach(function(n){ var o=ES_COACH[n];
+    if(o.ex===undefined) delete EX[n]; else EX[n]=o.ex;
+    if(o.g===undefined) delete G[n]; else G[n]=o.g;
+    if(o.al===undefined) delete FIG_ALIAS[n]; else FIG_ALIAS[n]=o.al; });
+  ES_COACH={};
+}
+function esCoachSegna(n){ if(!ES_COACH[n]) ES_COACH[n]={ex:EX[n], g:G[n], al:FIG_ALIAS[n]}; }
+function esCoachApplica(op){
+  var n=op.n; if(!n) return;
+  esCoachSegna(n);
+  var m={}; ["g","t","uni","band","sec","cap"].forEach(function(k){ if(op[k]!==undefined) m[k]=op[k]; });
+  EX[n]=Object.assign({g:"—", t:"compl"}, EX[n]||{}, m);
+  /* la figura: quella propria se c'e', altrimenti quella dell'esercizio indicato in "come" */
+  var base=op.come && figHas(op.come) ? fgNome(op.come) : null;
+  if(base && !FIG[n] && base!==n) FIG_ALIAS[n]=base;
+  /* la scheda: i campi del coach, e quelli che mancano dall'esercizio di riferimento */
+  if(op.p||op.f||op.e||op.c){ var gb=(base && G[base]) || G[n] || {}; G[n]={p:op.p||gb.p||"", f:op.f||gb.f||"", e:op.e||gb.e||"", c:op.c||gb.c||""}; }
+}
+/* la figura di un esercizio: sua, presa in prestito da uno simile, o nessuna */
+function figuraDi(n){ return FIG[n]? {tipo:"sua"} : figHas(n)? {tipo:"simile", da:fgNome(n)} : {tipo:"nessuna"}; }
+
 function buildPlan(){
   var P = clone(BASEPLAN);
+  esCoachReset();
   CIBX=[]; CIBR=[]; COACH=[];
   COACH=[];
   (S.patches||[]).forEach(function(pt,pi){ (pt.ops||[]).forEach(function(op,oi){
@@ -201,8 +240,9 @@ function applyOp(P, op){
   if(op.op==="kcal") return;
   if(op.op==="target") return;   /* corridoio del peso: si applica una volta, in patchApply */
   if(op.op==="settimana") return;   /* piano della settimana: si applica una volta, in patchApply */
+  if(op.op==="esercizio"){ esCoachApplica(op); return; }
   var day = P[op.d]; if(!day) return;
-  if(op.meta && op.ex && op.ex.n) EX[op.ex.n] = Object.assign({g:"—",t:"compl"}, op.meta);
+  if(op.meta && op.ex && op.ex.n) esCoachApplica(Object.assign({n:op.ex.n}, op.meta));
   if(op.op==="del"){ day.ex = day.ex.filter(e=>e.n!==op.n); return; }
   if(op.op==="add"){
     if(day.ex.some(e=>e.n===op.ex.n)) return;
@@ -222,6 +262,8 @@ function applyOp(P, op){
 function previewPatch(pt){
   return (pt.ops||[]).map(function(o){
     if(o.op==="cibo") return "Nuovo alimento: "+o.n+" ("+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G)";
+    if(o.op==="esercizio") return (EX[o.n]||G[o.n]? "Esercizio aggiornato: " : "Esercizio nuovo: ")+o.n+(o.g? " ("+o.g+")" : "")+
+      (o.come? " · figura di riferimento: "+o.come : FIG[o.n]? "" : " · senza figura")+((o.p||o.f||o.e||o.c)? " · con scheda tecnica" : "");
     if(o.op==="ricetta") return "Nuova ricetta: "+o.n;
     if(o.op==="nota") return "Promemoria"+(o.d?" per il giorno "+o.d:"")+": "+o.t;
     if(o.op==="stima") return "Converti \u00ab"+o.n+"\u00bb \u2192 "+(o.p||0)+"P "+(o.c||0)+"C "+(o.g||0)+"G";
@@ -232,7 +274,8 @@ function previewPatch(pt){
     if(o.op==="target") return "Corridoio del peso: "+(o.peso? o.peso[0]+"-"+o.peso[1]+" g a settimana" : "invariato");
     if(o.op==="kcal") return "Calorie: target "+(2550+(+o.off||0))+" kcal al giorno ("+((+o.off||0)>0?"+":"")+(+o.off||0)+" sulla base, tutto sui carboidrati)";
     if(o.op==="del") return "Togli "+o.n+" dal giorno "+o.d;
-    if(o.op==="add") return "Aggiungi "+o.ex.n+" al giorno "+o.d+(o.after?" dopo "+o.after:"");
+    if(o.op==="add"){ var n=o.ex&&o.ex.n, haFig=figHas(n) || (pt.ops||[]).some(function(q){ return q.op==="esercizio" && q.n===n && q.come; });
+      return "Aggiungi "+n+" al giorno "+o.d+(o.after?" dopo "+o.after:"")+(haFig? "" : " · senza figura: si vedrà solo il testo"); }
     if(o.op==="dischi") return "Sequenza dischi giorno "+o.d+" → "+o.v;
     var ch=[];
     if(o.s!==undefined) ch.push(o.s+" serie");

@@ -1,6 +1,6 @@
 # Revisione delle posizioni degli esercizi
 
-Versione 4.6.0, 04/11/2026. Ogni figura è stata rivista una per una: misurati gli angoli di ogni posa, confrontati con criteri di tecnica presi da fonti esterne e ridisegnati dove non tornavano.
+Versione 4.6.0, 04/11/2026, aggiornata alla 4.6.1. Ogni figura è stata rivista una per una: misurati gli angoli di ogni posa, confrontati con criteri di tecnica presi da fonti esterne e ridisegnati dove non tornavano.
 
 ## Come è fatta la revisione
 
@@ -9,7 +9,21 @@ Versione 4.6.0, 04/11/2026. Ogni figura è stata rivista una per una: misurati g
 3. **Correzione.** La posa si ridisegna finché il valore misurato sta nell'intervallo.
 4. **Test.** I criteri sono in `tests/tecnica-criteri.js` e il test `tests/tecnica.test.js` li controlla a ogni modifica, così una figura non può tornare fuori misura senza che il test fallisca.
 
-**Risultato.** Ci sono **98 criteri su 37 esercizi** (le varianti seguono l'esercizio base). Prima della revisione **57 criteri erano fuori misura in 30 esercizi**. Adesso **sono tutti dentro**.
+**Risultato.** Ci sono **116 criteri su 40 esercizi** (le varianti seguono l'esercizio base). Nella versione 4.5.1 **58 criteri erano fuori misura in 30 esercizi**, e 3 esercizi del catalogo non avevano proprio la figura. Adesso **sono tutti dentro**.
+
+## Aggiornamento 4.6.1
+
+- **Pike push-up rifatto.** Nella 4.6.0, scendendo il gomito si piegava *in avanti*, verso la testa. Ora:
+  - in alto: bacino alto e spalle sopra le mani;
+  - scendendo: i gomiti restano sopra le mani, le spalle scendono quasi in verticale e la testa arriva vicino al pavimento davanti alle mani ([Liftosaur](https://www.liftosaur.com/exercises/bodyweight-pike-pushup), [Caliverse](https://www.caliverse.app/exercises/pike-push-up-17));
+  - le gambe restano distese per tutto il movimento.
+- **Figure nuove per tre esercizi storici** che si possono ancora aggiungere a una seduta: *Kick back tricipiti* ([ExRx](https://exrx.net/WeightExercises/Triceps/DBKickback)), *Incline Press manubri*, con la panca inclinata ([ExRx](https://exrx.net/WeightExercises/PectoralClavicular/DBInclineBenchPress)), e *RDL (Romanian Deadlift)* ([ExRx](https://exrx.net/WeightExercises/OlympicLifts/RomanianDeadlift)). Ognuno ha figura, scheda Posizione e scheda tecnica.
+- **Varianti con il nome storico.** Esercizi come *Face pull con banda* e *Calf raise* mostrano la figura e la scheda dell'esercizio base, con l'indicazione da quale vengono.
+- **Esercizi nuovi dal coach.** Il coach può definire un esercizio nuovo o una variante con l'operazione esercizio, descritta in DATI_E_KPI.md:
+  - deve dare nome, gruppo e scheda tecnica, e indicare l'esercizio con la figura giusta da mostrare (come);
+  - l'app usa quella figura con la sua scheda Posizione, e annullando la patch tutto torna com'era;
+  - se nessuna figura va bene, l'app mostra il testo e il briefing elenca l'esercizio tra quelli senza figura propria;
+  - in quel caso la figura dedicata si disegna con lo stesso metodo di questo documento: criteri da una fonte, misura e test.
 
 ## Che cosa è cambiato, in breve
 
@@ -281,9 +295,42 @@ La figura è in 2D. Un arto che va verso chi guarda si vede più corto: per ques
 
 | Fase | Criterio | Intervallo | Prima | Dopo | Fonte |
 |---|---|---|---|---|---|
-| partenza | in alto braccia distese in linea col busto | 165–180 | 112 ✗ | 180 ✓ | [24] |
-| partenza | V rovesciata: anca chiusa, gambe distese | 45–95 | 92 | 62 ✓ | [24] |
-| arrivo | in basso gomito tra 80° e 105° | 80–105 | 77 ✗ | 98 ✓ | [24] |
+| partenza | in alto braccia distese in linea col busto | 165–180 | 112 ✗ | 175 ✓ | [24] |
+| partenza | V rovesciata: anca chiusa, gambe distese | 45–95 | 92 | 64 ✓ | [24] |
+| partenza | in alto spalle sopra le mani | 0–6 | 6 | 4 ✓ | [25] |
+| arrivo | in basso gomiti sopra le mani, non indietro | 0–8 | 17 ✗ | 5 ✓ | [26] |
+| arrivo | in basso avambraccio quasi verticale | 0–20 | 76 ✗ | 17 ✓ | [26] |
+| arrivo | in basso la testa arriva vicino al pavimento | 0–6 | 6 | 2 ✓ | [25] |
+| arrivo | bacino ancora alto: sopra le mani, non sceso | 75–95 | 88 | 87 ✓ | [25] |
+
+### Kick back tricipiti — figura nuova (4.6.1)
+
+| Fase | Criterio | Intervallo | Prima | Dopo | Fonte |
+|---|---|---|---|---|---|
+| partenza | omero parallelo al pavimento | 0–12 | — | 3 ✓ | [27] |
+| partenza | partenza con il gomito piegato a circa 90° | 80–100 | — | 87 ✓ | [27] |
+| arrivo | braccio disteso | 170–180 | — | 180 ✓ | [27] |
+| arrivo | il gomito non scende: omero ancora parallelo | 0–12 | — | 3 ✓ | [28] |
+| partenza | busto quasi orizzontale | 65–95 | — | 80 ✓ | [27] |
+
+### Incline Press manubri — figura nuova (4.6.1)
+
+| Fase | Criterio | Intervallo | Prima | Dopo | Fonte |
+|---|---|---|---|---|---|
+| partenza | in basso avambraccio verticale, manubrio sopra il gomito | 0–12 | — | 0 ✓ | [29] |
+| partenza | in basso manubri ai lati della parte alta del petto | 4–16 | — | 9 ✓ | [29] |
+| arrivo | in alto braccia distese sopra le spalle | 165–180 | — | 177 ✓ | [29] |
+| arrivo | in alto mani sopra le spalle (spinta verticale) | 0–6 | — | 1 ✓ | [29] |
+| partenza | panca inclinata: busto 40°-60° dalla verticale | 40–60 | — | 50 ✓ | [29] |
+
+### RDL (Romanian Deadlift) — figura nuova (4.6.1)
+
+| Fase | Criterio | Intervallo | Prima | Dopo | Fonte |
+|---|---|---|---|---|---|
+| partenza | in piedi ginocchia appena piegate | 150–170 | — | 162 ✓ | [19] |
+| arrivo | ginocchia appena piegate e ferme | 145–170 | — | 155 ✓ | [19] |
+| arrivo | cerniera d'anca: busto 45°-80° in avanti | 45–80 | — | 72 ✓ | [19] |
+| arrivo | braccia distese, manubri vicino alle gambe | 165–180 | — | 177 ✓ | [19] |
 
 ### Plank — già conforme
 
@@ -348,3 +395,8 @@ La figura è in 2D. Un arto che va verso chi guarda si vede più corto: per ques
 22. [ExRx: Barbell Hip Thrust](https://exrx.net/WeightExercises/GluteusMaximus/BBHipThrust)
 23. [The Barbell Physio: varianti di hip thrust (tibie verticali e ginocchia a 90° in alto)](https://thebarbellphysio.com/the-best-hip-thrust-variations-for-stronger-glutes/)
 24. [ExRx: Pike Push-up](https://exrx.net/WeightExercises/PectoralClavicular/BWPikePushup)
+25. [Liftosaur: Bodyweight Pike Push Up (bacino alto sopra le mani, la testa scende fino a sfiorare il pavimento)](https://www.liftosaur.com/exercises/bodyweight-pike-pushup)
+26. [Caliverse: Pike Push Up (gomiti sopra le mani, non indietro)](https://www.caliverse.app/exercises/pike-push-up-17)
+27. [ExRx: Dumbbell Kickback](https://exrx.net/WeightExercises/Triceps/DBKickback)
+28. [ExRx: errori comuni (nel kickback il gomito che scende riduce il movimento utile)](https://exrx.net/Kinesiology/Errors)
+29. [ExRx: Dumbbell Incline Bench Press](https://exrx.net/WeightExercises/PectoralClavicular/DBInclineBenchPress)

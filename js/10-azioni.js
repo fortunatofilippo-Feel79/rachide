@@ -867,6 +867,10 @@ function patchControllo(pt){
       else if((o.op==="set"||o.op==="del") && !day.ex.some(function(e){ return e.n===o.n; })) msg="«"+o.n+"» non c'è nel giorno "+o.d;
       else if(o.op==="add" && (!o.ex || day.ex.some(function(e){ return e.n===o.ex.n; }))) msg=o.ex ? "«"+o.ex.n+"» c'è già nel giorno "+o.d : "esercizio mancante";
     }
+    if(o.op==="esercizio"){
+      if(!o.n) msg="manca il nome (n)";
+      else if(o.come && !figHas(o.come)) msg="«"+o.come+"» non ha una figura da prestare: scegli un esercizio che ce l'ha";
+    }
     if(!msg && day){
       if(o.op==="del") day.ex=day.ex.filter(function(e){ return e.n!==o.n; });
       if(o.op==="add") day.ex.push(o.ex);
@@ -880,7 +884,7 @@ function patchPreview(raw, pid){
   try{
     var p=JSON.parse(raw);
     if(!p.ops || !p.ops.length) throw 0;
-    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target","settimana"].indexOf(o.op)<0 && !PLAN[o.d]);
+    var bad=p.ops.filter(o=>["cibo","ricetta","stima","nota","kcal","target","settimana","esercizio"].indexOf(o.op)<0 && !PLAN[o.d]);
     if(bad.length) throw 0;
     _pend=p; _pendId=pid||null;
     var ctl=patchControllo(p), nko=ctl.filter(Boolean).length;

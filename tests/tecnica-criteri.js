@@ -28,6 +28,11 @@ const FONTI = {
   bridge: { t: 'ExRx: Single Leg Hip Bridge', u: 'https://exrx.net/WeightExercises/GluteusMaximus/BWLyingHipExtension' },
   seatedrow: { t: 'ExRx: Cable Straight Back Seated Row', u: 'https://exrx.net/WeightExercises/BackGeneral/CBStraightBackSeatedRow' },
   pikepu: { t: 'ExRx: Pike Push-up', u: 'https://exrx.net/WeightExercises/PectoralClavicular/BWPikePushup' },
+  pikepu2: { t: 'Liftosaur: Bodyweight Pike Push Up (bacino alto sopra le mani, la testa scende fino a sfiorare il pavimento)', u: 'https://www.liftosaur.com/exercises/bodyweight-pike-pushup' },
+  pikepu3: { t: 'Caliverse: Pike Push Up (gomiti sopra le mani, non indietro)', u: 'https://www.caliverse.app/exercises/pike-push-up-17' },
+  kickback: { t: 'ExRx: Dumbbell Kickback', u: 'https://exrx.net/WeightExercises/Triceps/DBKickback' },
+  kickback2: { t: 'ExRx: errori comuni (nel kickback il gomito che scende riduce il movimento utile)', u: 'https://exrx.net/Kinesiology/Errors' },
+  incline: { t: 'ExRx: Dumbbell Incline Bench Press', u: 'https://exrx.net/WeightExercises/PectoralClavicular/DBInclineBenchPress' },
   pullapart: { t: 'StrengthLog: Band Pull-Apart', u: 'https://www.strengthlog.com/?p=2637' },
   facepull: { t: 'StrengthLog: Face Pull', u: 'https://www.strengthlog.com/face-pull/' },
   facepull2: { t: 'Major Fitness: come fare il face pull (gomito tra 45° e 90°, gomiti alti)', u: 'https://www.majorfitness.com/blogs/training-tips/how-to-do-the-face-pull' },
@@ -35,6 +40,7 @@ const FONTI = {
   coach: { t: 'Scheda tecnica del coach nell\'app (js/01-dati.js)', u: '' }
 };
 
+const FG_PAV_T = 136;   /* il pavimento delle figure (FG_PAV) */
 const M = {
   ang(A, B, C) { const u = [A[0] - B[0], A[1] - B[1]], v = [C[0] - B[0], C[1] - B[1]]; return Math.acos(Math.max(-1, Math.min(1, (u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v) || 1)))) * 180 / Math.PI; },
   /* direzione di a->b rispetto alla verticale: 0 = dritto in giu', in valore assoluto */
@@ -144,7 +150,26 @@ const CRITERI = [
   /* corpo libero e core */
   C('Pike push-up', 0, 'in alto braccia distese in linea col busto', P => M.gom(P), 165, 180, 'pikepu'),
   C('Pike push-up', 0, 'V rovesciata: anca chiusa, gambe distese', P => M.anca(P), 45, 95, 'pikepu'),
-  C('Pike push-up', 1, 'in basso gomito tra 80° e 105°', P => M.gom(P), 80, 105, 'pikepu'),
+  C('Pike push-up', 0, 'in alto spalle sopra le mani', P => Math.abs(P.braccia.n.h[0] - P.sh[0]), 0, 6, 'pikepu2'),
+  C('Pike push-up', 1, 'in basso gomiti sopra le mani, non indietro', P => Math.abs(P.braccia.n.e[0] - P.braccia.n.h[0]), 0, 8, 'pikepu3'),
+  C('Pike push-up', 1, 'in basso avambraccio quasi verticale', P => M.avambraccio(P), 0, 20, 'pikepu3'),
+  C('Pike push-up', 1, 'in basso la testa arriva vicino al pavimento', P => FG_PAV_T - (P.hc[1] + 7.5), 0, 6, 'pikepu2'),
+  C('Pike push-up', 1, 'bacino ancora alto: sopra le mani, non sceso', P => P.hip[1], 75, 95, 'pikepu2'),
+  /* esercizi storici ancora aggiungibili */
+  C('Kick back tricipiti', 0, 'omero parallelo al pavimento', P => Math.abs(M.dalSu(P.braccia.n.s, P.braccia.n.e) - 90), 0, 12, 'kickback'),
+  C('Kick back tricipiti', 0, 'partenza con il gomito piegato a circa 90°', P => M.gom(P), 80, 100, 'kickback'),
+  C('Kick back tricipiti', 1, 'braccio disteso', P => M.gom(P), 170, 180, 'kickback'),
+  C('Kick back tricipiti', 1, 'il gomito non scende: omero ancora parallelo', P => Math.abs(M.dalSu(P.braccia.n.s, P.braccia.n.e) - 90), 0, 12, 'kickback2'),
+  C('Kick back tricipiti', 0, 'busto quasi orizzontale', P => M.busto(P), 65, 95, 'kickback'),
+  C('Incline Press manubri', 0, 'in basso avambraccio verticale, manubrio sopra il gomito', P => M.avambraccio(P), 0, 12, 'incline'),
+  C('Incline Press manubri', 0, 'in basso manubri ai lati della parte alta del petto', P => Math.hypot(P.braccia.n.h[0] - P.sh[0], P.braccia.n.h[1] - P.sh[1]), 4, 16, 'incline'),
+  C('Incline Press manubri', 1, 'in alto braccia distese sopra le spalle', P => M.gom(P), 165, 180, 'incline'),
+  C('Incline Press manubri', 1, 'in alto mani sopra le spalle (spinta verticale)', P => Math.abs(P.braccia.n.h[0] - P.sh[0]), 0, 6, 'incline'),
+  C('Incline Press manubri', 0, 'panca inclinata: busto 40°-60° dalla verticale', P => M.busto(P), 40, 60, 'incline'),
+  C('RDL (Romanian Deadlift)', 0, 'in piedi ginocchia appena piegate', P => M.gin(P), 150, 170, 'rdl'),
+  C('RDL (Romanian Deadlift)', 1, 'ginocchia appena piegate e ferme', P => M.gin(P), 145, 170, 'rdl'),
+  C('RDL (Romanian Deadlift)', 1, 'cerniera d\'anca: busto 45°-80° in avanti', P => M.busto(P), 45, 80, 'rdl'),
+  C('RDL (Romanian Deadlift)', 1, 'braccia distese, manubri vicino alle gambe', P => M.gom(P), 165, 180, 'rdl'),
   C('Plank', 0, 'gomiti sotto le spalle', P => Math.abs(P.braccia.n.e[0] - P.sh[0]), 0, 4, 'coach'),
   C('Plank', 0, 'corpo in linea', P => M.linea(P), 172, 180, 'coach'),
   C('Bird-dog con pausa 3s', 1, 'gamba distesa', P => M.gin(P, 'f'), 170, 180, 'coach'),
