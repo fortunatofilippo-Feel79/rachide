@@ -502,6 +502,7 @@ function formBen(date, isAdd, momento){
   if(ser){
     h+='<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato'+hi(ie.refl)+'</span><div class="pills" id="bRefl">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.refl===v?"on":"")+'" data-r="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<div class="scala"><b>0</b> niente · <b>1</b> lieve: un episodio breve, non ti disturba · <b>2</b> bruciore o rigurgito più volte, o che ti disturba · <b>3</b> forte: ti sveglia, ti fa cambiare posizione o prendere qualcosa. Conta il giorno e la notte scorsa.</div>'+
     '<label class="fld"><span class="eyebrow">Camminate dopo i pasti · bersaglio 2'+hi(ie.camm)+'</span><div class="pills" id="bCam">'+
       [0,1,2].map(v=>'<button class="pill '+(b.camm===v?"on":"")+'" data-c="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<label class="fld"><span class="eyebrow">Respirazione 4-7</span><div class="pills" id="bResp">'+
