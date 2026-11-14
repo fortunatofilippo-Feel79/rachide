@@ -706,3 +706,5 @@ html{color-scheme:dark}
 .tecl{display:flex;gap:8px;margin-top:6px;font-size:13px;line-height:1.4}
 .tecl b{flex:none;width:52px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding-top:1px}
 .tecl span{flex:1;min-width:0}
+.scala{font-size:12px;line-height:1.5;color:var(--mut);margin-top:5px}
+.scala b{color:var(--bone)}
