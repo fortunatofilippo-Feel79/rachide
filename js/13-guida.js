@@ -44,7 +44,7 @@ function chipsEsercizio(n){
   if(m.g && m.g!=="—") c.push(m.g);
   c.push(m.band?"con banda":m.sec?"a tempo":({comp:"multiarticolare",compl:"complementare",iso:"isolamento",core:"core"}[m.t]||""));
   if(m.uni) c.push("un lato alla volta");
-  if(m.cap) c.push("tetto "+m.cap+" kg");
+  if(m.cap) c.push("tetto consigliato "+m.cap+" kg");
   return '<div class="chips">'+c.filter(Boolean).map(function(x){ return '<span>'+esc(x)+'</span>'; }).join("")+'</div>';
 }
 function guideSheet(n, tip, giorno){
@@ -52,11 +52,20 @@ function guideSheet(n, tip, giorno){
   var fi=figuraDi(n), gDa=(!G[n] && fi.tipo==="simile" && G[fi.da])? fi.da : null, g=G[n] || (gDa? G[gDa] : null);
   var h='<div class="eyebrow amb">Come si fa</div><h2 style="margin:3px 0 6px;font-size:19px">'+esc(n)+'</h2>';
   if(EX[n]) h+=chipsEsercizio(n);
-  if(figHas(n)) h+=posBlock(n);
-  if(fi.tipo==="simile") h+='<div class="xs mut" style="margin:6px 0 2px">Figura di «'+esc(fi.da)+'»: il movimento è lo stesso'+(gDa? ', e anche la scheda qui sotto è la sua.' : '.')+'</div>';
+  /* scheda sul corpo: come ti metti, come ti muovi, cosa senti, quando sbagli. La figura passa in fondo, chiusa. */
+  var tec=(typeof tecHas==="function") && tecHas(n);
+  if(tec){
+    if(tip) h+='<div class="flag info"><b>Oggi</b><div>'+esc(tip)+'</div></div>';
+    h+=tecScheda(n);
+    if(figHas(n)) h+='<details class="altro" style="margin-top:10px"><summary>Figura: partenza, arrivo e animazione</summary><div style="margin-top:8px">'+posBlock(n)+'</div>'+
+      (fi.tipo==="simile"? '<div class="xs mut" style="margin-top:4px">Figura di «'+esc(fi.da)+'»: il movimento è lo stesso.</div>' : '')+'</details>';
+  }
+  if(!tec && figHas(n)) h+=posBlock(n);
+  if(tec){ /* il resto della scheda vecchia non serve */ }
+  else if(fi.tipo==="simile") h+='<div class="xs mut" style="margin:6px 0 2px">Figura di «'+esc(fi.da)+'»: il movimento è lo stesso'+(gDa? ', e anche la scheda qui sotto è la sua.' : '.')+'</div>';
   else if(fi.tipo==="nessuna" && (g||tip)) h+='<div class="xs mut" style="margin:6px 0 2px">Questo esercizio non ha ancora una figura: segui il testo. Il coach lo vede nel briefing.</div>';
-  if(tip) h+='<div class="flag info"><b>Oggi</b><div>'+esc(tip)+'</div></div>';
-  if(g){
+  if(tip && !tec) h+='<div class="flag info"><b>Oggi</b><div>'+esc(tip)+'</div></div>';
+  if(g && !tec){
     h+='<div class="gsez"><div class="eyebrow glow">Posizione e movimento</div><div class="sm">'+esc(g.p)+'</div></div>';
     h+='<div class="gsez"><div class="eyebrow" style="color:var(--ok)">Devi sentire</div><div class="sm">'+esc(g.f)+'</div></div>';
     var pd=posDef(n);
@@ -65,7 +74,7 @@ function guideSheet(n, tip, giorno){
       '<div class="xs mut" style="margin-top:4px">Se lo senti: ferma la serie e tocca ⚠ Dolore, segnando zona e intensità.</div></div>';
     h+='<div class="gsez"><div class="eyebrow" style="color:var(--alert)">Stai sbagliando se</div><div class="sm">'+esc(g.e)+'</div></div>';
     h+='<div class="gsez"><div class="eyebrow amb">Correzione</div><div class="sm">'+esc(g.c)+'</div></div>';
-  } else if(!tip && !figHas(n)){ h+='<div class="sm mut">Nessuna scheda tecnica per questo esercizio.</div>'; }
+  } else if(!tec && !tip && !figHas(n)){ h+='<div class="sm mut">Nessuna scheda tecnica per questo esercizio.</div>'; }
   var al=ALT[n], so=sostituisce(n);
   if(al && (al.bande||al.corpo)){
     h+='<div class="gsez"><div class="eyebrow">Fuori casa</div><div class="altrow">'+

@@ -263,7 +263,9 @@ function exCard(e,i,def){
      (def.da? '<div class="xs" style="margin-top:2px;color:var(--glow)">Al posto di: '+esc(def.da)+'</div>' : '')+'</div>';
   if(G[e.n]||def.tip||figHas(e.n)) h+='<button class="btn sm ghost" data-a="tip" data-i="'+i+'" aria-label="Come si fa">Come si fa</button>';
   h+='</div>';
-  if(figHas(e.n) && !full){
+  if(typeof tecHas==="function" && tecHas(e.n) && !full){
+    if(!S.vistaTutte) h+=tecBreve(e.n, i);
+  } else if(figHas(e.n) && !full){
     h+= S.vistaTutte ? '<div class="exfig mini" data-a="tip" data-i="'+i+'">'+figMini(e.n)+'</div>'
                      : '<div class="exfig" data-a="tip" data-i="'+i+'">'+figBox(e.n, {cls:"compatta"})+'</div>';
   }
