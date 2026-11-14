@@ -69,7 +69,7 @@ function segnaliOggi(){
   var fila=0; for(var i=1;i<=3;i++){ if(S.sess.some(function(s){ return s.date===stoGiorno(i) && !isRest(s); })) fila++; else break; }
   if(fila>=2) out.push({k:"fila", n:"Giorni di fila", lvl:1, t:"ti sei allenato negli ultimi "+fila+" giorni"});
   /* 6 · energia: quanto hai mangiato ieri */
-  var ieri=stoGiorno(1), ci=cibOn(ieri), kc=4*ci.p+4*ci.c+9*ci.g, tg=cibTarget();
+  var ieri=stoGiorno(1), ci=cibOn(ieri), kc=Math.round(kcalDi(ci)), tg=cibTarget();
   if(kc>0 && !(typeof cibStimato==="function" && cibStimato(ieri))){
     var gi=cibDay(ieri), princ=["col","pra","cen"].filter(function(k){ return (gi[k]||[]).length; }).length;
     if(princ>=2) out.push({k:"cibo", n:"Cibo di ieri", lvl: kc<tg.kcal*STO_KCAL ? 1 : 0, t:kfmt(kc)+" kcal su "+kfmt(tg.kcal)+" · proteine "+Math.round(ci.p)+" g"});
@@ -294,9 +294,12 @@ document.addEventListener("click", function(ev){
   var a=el.dataset.a;
   if(a==="stook"||a==="stono"||a==="stox"){
     window._sy=window.scrollY;
-    stoDecidi(el.dataset.id, a==="stook"? "ok" : a==="stono"? "no" : null);
+    var id=el.dataset.id, sulTarget=/^(kcal|prot)\|/.test(id), fatto="";
+    stoDecidi(id, a==="stook"? "ok" : a==="stono"? "no" : null);
+    /* le proposte sul target del cibo si applicano subito; quelle sulla seduta quando la apri */
+    if(a==="stook" && sulTarget && typeof fabApplica==="function") fatto=fabApplica(id);
     save(); render(); if(SYNC.on()) doPush(false);
-    toast(a==="stook"? "Autorizzata: vale dalla prossima seduta che apri" : a==="stono"? "Rifiutata: resta il piano" : "Proposta riaperta");
+    toast(a==="stook"? (fatto || "Autorizzata: vale dalla prossima seduta che apri") : a==="stono"? (sulTarget? "Rifiutata: il target resta com'è" : "Rifiutata: resta il piano") : "Proposta riaperta");
     return;
   }
   if(a==="stoinfo"){ stoInfo(); return; }

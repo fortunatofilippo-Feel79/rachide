@@ -482,8 +482,9 @@ function viewProg(){
 }
 /* ---------- CORPO ---------- */
 function viewCorpo(){
-  var h=topbar("Corpo","Misure · benessere · simmetria");
+  var h=topbar("Corpo","Benessere · fabbisogno · misure");
   h+='<div class="wrap">';
+  h+=cardBenessere();
   var lastM=ultimoValido(S.mis), gap=lastM?Math.round((new Date().setHours(0,0,0,0)-s2d(lastM.date))/86400000):99;
   h+='<div class="card"><div class="between"><div class="eyebrow">Misure · ogni 14 giorni</div>'+
      '<button class="btn sm '+(gap>=14?"amb":"ghost")+'" data-a="mis">'+(gap>=14?"Da fare":"Aggiungi")+'</button></div>';
@@ -519,6 +520,8 @@ function viewCorpo(){
        '<div class="xs mut" style="margin-top:5px">Servono '+PESO_MINPT+' pesate valide. Pesati quando sei a casa e salta i giorni di trasferta senza recuperi.</div>';
   }
   h+='</div>';
+
+  h+=cardFabbisogno();
 
   var td=today(), b=S.ben.filter(x=>x.date===td)[0];
   h+='<div class="card"><div class="eyebrow">Benessere di oggi</div>'+

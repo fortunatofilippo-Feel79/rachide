@@ -144,9 +144,10 @@ function kpiValori(){
   put("pendenza", sl.ok? sl.g : null, sl.ok? (sl.g>0?"+":"")+sl.g+" g/sett · corridoio "+cor[0]+"-"+cor[1]+(lett?" · letteratura "+lett:"") : (sl.why||"dati insufficienti"),
       !sl.ok? "na" : (sl.g>=cor[0] && sl.g<=cor[1]) ? "ok" : "att");
   var cw=cibWeek(), tg=cibTarget();
+  if(cw && !cw.n) cw=null;   /* solo giornate con voci ancora stimate: non bastano */
   var prot = (cw && pe) ? r1(cw.p*BLK.p/pe) : null;
   put("proteine", prot, prot==null? "–" : dec(prot)+" g/kg ("+Math.round(cw.p*BLK.p)+" g)");
-  var kc = cw ? Math.round((4*cw.p*BLK.p + 4*cw.c*BLK.c + 9*cw.g*BLK.g)) : null;
+  var kc = cw ? cw.kcal : null;
   var sc = (kc && cw.n>=4) ? Math.round((kc/tg.kcal-1)*100) : null;
   put("kcal", sc, kc? kc+" kcal su "+tg.kcal+(cw.n<4? " · solo "+cw.n+" giornate" : " ("+(sc>0?"+":"")+sc+"%)") : "–");
   var gc=S.ben.filter(function(b){ return (b.cibP||b.cibC||b.cibG) && dataOk(b.date) && giorniDa(b.date)>=0 && giorniDa(b.date)<7; }).length;
