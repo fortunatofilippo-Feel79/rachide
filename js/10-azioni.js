@@ -508,8 +508,10 @@ function formBen(date, isAdd, momento){
       '<button class="pill '+(b.resp?"":"on")+'" data-p="0">No</button><button class="pill '+(b.resp?"on":"")+'" data-p="1">Sì</button></div></label>'+
     '<label class="fld"><span class="eyebrow">Stress · 0 nessuno · 3 marcato'+hi(ie.stress)+'</span><div class="pills" id="bStr">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.stress===v?"on":"")+'" data-st="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<div class="scala"><b>0</b> tranquilla, stacchi senza sforzo · <b>1</b> normale: impegni gestiti · <b>2</b> pesante: tensione nel corpo o fatichi a staccare · <b>3</b> ti senti sopraffatto. Valuta la giornata intera, non il momento.</div>'+
     '<label class="fld"><span class="eyebrow">Testa · 1 vuoto · 5 lucido'+hi(ie.mente)+'</span><div class="pills" id="bMen">'+
       [1,2,3,4,5].map(v=>'<button class="pill '+(b.mente===v?"on":"")+'" data-me="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<div class="scala"><b>1</b> annebbiato tutto il giorno · <b>2</b> appannato, ti distrai spesso · <b>3</b> il tuo solito · <b>4</b> sveglio, ti concentri con facilità · <b>5</b> giornata limpida. Pensa alle ore centrali, non a stasera.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>';
   }
   h+=((!isAdd && dt!==today())?verWarn():"")+
