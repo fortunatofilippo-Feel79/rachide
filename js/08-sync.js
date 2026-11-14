@@ -135,7 +135,8 @@ var SYNC = {
         rirs: (r.rirs===undefined||r.rirs===null||r.rirs==="") ? (loc&&loc.rirs? loc.rirs : null) : String(r.rirs).split("|").map(function(x){ return x===""? null : +x; }),
         rec:(r.rec===undefined||r.rec===null||r.rec==="") ? (loc&&loc.rec!=null?loc.rec:null) : num(r.rec),
         duro:(r.duro===undefined||r.duro===null||r.duro==="") ? (loc&&loc.duro?loc.duro:"") : String(r.duro),
-        dolz:(r.dolz===undefined||r.dolz===null||r.dolz==="") ? (loc&&loc.dolz?loc.dolz:"") : String(r.dolz)};
+        dolz:(r.dolz===undefined||r.dolz===null||r.dolz==="") ? (loc&&loc.dolz?loc.dolz:"") : String(r.dolz),
+        tec:(r.tec===undefined||r.tec===null||r.tec==="") ? (loc&&loc.tec!=null?loc.tec:null) : num(r.tec)};
     }), S.log, byId, "App_Log");
     var locSess={}; S.sess.forEach(function(r){ if(r.id) locSess[r.id]=r; });
     if(d.sess) S.sess = this.fuse(d.sess.map(function(r){
@@ -196,7 +197,7 @@ var SYNC = {
     return {
       log: S.log.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,ex:r.ex,gruppo:meta(r.ex).g,side:r.side,band:r.band,
         load:r.load,reps:r.reps.join("|"),serie:r.reps.length,tot:r.reps.reduce((a,b)=>a+b,0),
-        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,rirs:(r.rirs||[]).map(function(x){ return x==null?"":x; }).join("|"),top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||"",dolz:r.dolz||""})),
+        vol:r.load*r.reps.reduce((a,b)=>a+b,0),rir:r.rir,rirs:(r.rirs||[]).map(function(x){ return x==null?"":x; }).join("|"),top:r.top?"Sì":"No",note:r.note,rec:(r.rec==null?"":r.rec),duro:r.duro||"",dolz:r.dolz||"",tec:(r.tec==null?"":r.tec)})),
       sess: S.sess.map(r=>({id:r.id,w:r.w,date:r.date,day:r.day,sede:r.sede,mod:r.mod,min:r.min,en:r.en,
         warm:r.warm?"Sì":"No",sig:r.sig?"Sì":"No",dol:(r.dol==null?"":r.dol),dolz:r.dolz||"",note:r.note})),
       mis: S.mis.map(r=>({w:r.w,date:r.date,peso:r.peso,torace:r.torace,bic:r.bic,coscia:r.coscia,vita:r.vita,note:r.note})),

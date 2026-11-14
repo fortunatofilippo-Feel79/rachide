@@ -523,8 +523,10 @@ function progressioni(){
     cand.push({n:e.n, day:d, why:why, next:r.next, ord:ord, ultima:h[h.length-1].date, come:comeSi(e, r)});
   }); });
   cand.sort(function(a,b){ return a.ord-b.ord || s2d(a.ultima)-s2d(b.ultima) || (a.n<b.n?-1:1); });
-  var fz=frozen(), rbasso=recoveryOggi(), ferma=fz||!!rbasso;
-  _PGC={scelta: ferma? null : (cand[0]||null), coda: ferma? cand : cand.slice(1), frozen:fz, recupero:rbasso};
+  /* recupero basso: i carichi si fermano solo se hai autorizzato la proposta dello stato di oggi */
+  var fz=frozen(), rb0=recoveryOggi(), dec0=(rb0 && typeof stoDecisa==="function")? stoDecisa("fermi|"+today()) : null;
+  var rbasso=(rb0 && dec0==="ok")? rb0 : null, ferma=fz||!!rbasso;
+  _PGC={scelta: ferma? null : (cand[0]||null), coda: ferma? cand : cand.slice(1), frozen:fz, recupero:rbasso, recuperoProposto:(rb0 && !dec0)? rb0 : null};
   return _PGC;
 }
 function cardProg(){
@@ -541,7 +543,7 @@ function cardProg(){
   if(pg.recupero){
     h+='<div class="card" style="border-color:var(--amb)">'+
        '<div class="eyebrow amb">Carichi fermi · oggi</div>'+
-       '<div class="sm" style="margin-top:6px"><b>Recupero basso: '+esc(pg.recupero.parts.join(" · "))+'.</b> Oggi non salire di carico: la progressione riparte quando il recupero torna nella norma.</div>'+
+       '<div class="sm" style="margin-top:6px"><b>Recupero basso: '+esc(pg.recupero.parts.join(" · "))+'.</b> Hai scelto di non salire di carico oggi: la progressione riparte dalla prossima seduta. Puoi cambiare idea nello Stato di oggi.</div>'+
        (pg.coda.length?'<div class="xs mut" style="margin-top:8px">Pronte, in attesa: '+esc(pg.coda.map(function(u){ return u.n; }).join(", "))+'.</div>':'')+'</div>';
     return h;
   }
@@ -599,7 +601,8 @@ function statoRows(){
       rhr: vuotoSe(mediana(bb.filter(function(b){ return b.rhr; }).map(function(b){ return b.rhr; }))),
       sonno: son.length? r1(media(son)) : "", sonno_fuori: sonF.length? r1(media(sonF)) : "",
       rec_bassi: bb.filter(function(b){ return recovery(b.date).lvl>=1; }).length,
-      prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso" : "",
+      prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso, proposta autorizzata" : "",
+      stato_oggi: (cur && typeof stoTestoCoach==="function")? stoTestoCoach().join(" | ").slice(0,900) : "",
       diagnosi: cur? dg.map(function(x){ return x.t; }).join(" | ").slice(0,900) : "",
       prot_gkg: (function(){ if(!cib.length) return ""; var pe=pes.length? media(pes) : ultimoPeso(); return pe? r1(media(cib.map(function(b){ return b.cibP||0; }))/pe) : ""; })(),
       vita_altezza: (function(){ var mm=S.mis.filter(function(x){ return x.w===w && x.vita; })[0], al=S.profilo&&S.profilo.altezza; return (mm&&al)? Math.round(mm.vita/al*1000)/1000 : ""; })(),

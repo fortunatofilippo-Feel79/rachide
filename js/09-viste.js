@@ -80,6 +80,7 @@ function viewOggi(){
   if(recOk) rc=recovery(recB.date);
 
   /* 1 · la prossima seduta, in testa */
+  if(completa || (stw.ok && !stw.aperte)) h+=cardStato([], false);
   if(completa){
     h+='<div class="card" style="border-color:var(--ok)"><div class="eyebrow" style="color:var(--ok)">Settimana completa</div>'+
        '<h2 style="margin:5px 0 6px">'+(pk?"Due su due":"Quattro su quattro")+'</h2>'+
@@ -87,22 +88,17 @@ function viewOggi(){
   } else if(stw.ok && !stw.aperte){
     h+=cardSettimanaFatta(w, stw, next);
   } else {
-    if(rc && rc.lvl>=1){
-      var oggi=recB.date===today(), bc = rc.lvl>=2 ? "var(--alert)" : "var(--amb)";
-      h+='<div class="card" style="border-color:'+bc+'">'+
-         '<div class="between"><div class="eyebrow amb">Recupero'+(oggi?" · oggi":" · "+recB.date.slice(0,5))+'</div>'+
-         '<div class="xs" style="font-weight:700;color:'+bc+'">'+(rc.lvl>=2?(oggi?"CARICHI FERMI":"RECUPERO BASSO"):"SOTTO LA NORMA")+'</div></div>'+
-         '<div class="sm" style="margin-top:8px">HRV '+(recB.hrv||"–")+' · FC '+(recB.rhr||"–")+' · readiness '+(recB.read||"–")+' · sonno '+(recB.sonno||"–")+'h'+
-         ((recB.stress!=null)?' · stress '+recB.stress:'')+' · alcol '+(recB.alc?"sì":"no")+'</div>'+
-         '<div class="flag '+(rc.lvl>=2?"stop":"disc")+'" style="margin-top:10px">⚠<div><b>'+esc(rc.parts.join(" · "))+'</b><br>'+
-         esc(rc.hint||"Se ti alleni, tieni i carichi fermi e non spingere i massimali. Logga i numeri come sono: sono recupero, non un problema di carico.")+'</div></div></div>';
-    }
     var vp=voceDelPiano(next), futura=!!(vp && vp.data!==today() && vp.stato==="futura");
     var p=PLAN[next], lu=futura? ((S.luogo && S.luogo.date===today())? S.luogo.v : vp.l) : luogoOggi();
     var lista=(vp && vp.l===lu)? listaSeduta(vp) : listaPerOggi(next, lu), adattata=!!vp, minN=Math.round(minutiSeduta(lista));
-    var cambiOggi=[]; if(adattata){ var bOggi=eserciziPer(next, lu);
+    /* stato di oggi: i segnali insieme e le proposte da autorizzare; la seduta mostrata e' gia' quella autorizzata */
+    h+=cardStato(lista, !futura);
+    var listaPiano=lista; if(!futura){ lista=stoApplicaLista(lista); minN=Math.round(minutiSeduta(lista)); }
+    var cambiStato=[]; lista.forEach(function(x,k){ var y=listaPiano[k]; if(!y) return; if(x.n!==y.n) cambiStato.push(y.n+" → "+x.n); else if(x.s!==y.s) cambiStato.push(x.n+" −"+(y.s-x.s)); });
+    var cambiOggi=[]; if(adattata){ var bOggi=eserciziPer(next, lu); lista=listaPiano;
       lista.forEach(function(x){ var b=bOggi.filter(function(y){ return y.n===x.n; })[0]; if(!b) cambiOggi.push("+ "+x.n); else if(x.s!==b.s) cambiOggi.push(x.n+" "+(x.s>b.s?"+":"−")+Math.abs(x.s-b.s)); });
       bOggi.forEach(function(b){ if(!lista.some(function(x){ return x.n===b.n; })) cambiOggi.push("senza "+b.n); }); }
+    if(!futura) lista=stoApplicaLista(listaPiano);
     h+='<div class="card hero-next">'+
        '<div class="between"><div class="eyebrow glow">'+(futura? 'Prossima · '+GG_NOME[ggDi(vp.data)]+' '+(+vp.data.slice(0,2))+' · giorno '+next : (vp? 'Oggi · giorno '+next : 'Prossima · giorno '+next))+'</div><div class="xs mut">'+lista.length+' esercizi · circa '+minN+'′</div></div>'+
        (futura? '<div class="xs mut" style="margin-top:4px">Oggi il piano non prevede sedute. Se vuoi, puoi anticipare questa a oggi.</div>' : '')+
@@ -113,8 +109,7 @@ function viewOggi(){
          : (vp? '<div class="xs" style="color:var(--ok);margin-top:8px"><b>Dal piano della settimana'+(vp.t?' · '+vp.t+'′':'')+':</b> nessuna modifica serve, entra nel tempo e i gruppi sono già coperti.</div>' : ''))+
        ((lu==="casa" && p.dischi!=="solo bande")? '<div class="xs" style="color:var(--amb);margin-top:8px">Dischi '+esc(p.dischi)+'</div>':"")+
        (lu!=="casa"? '<div class="xs mut" style="margin-top:8px">'+(lu==="bande"?"Con le bande":"Senza attrezzi")+': stesso schema di movimento, stesse serie. I carichi di casa restano dove sono.</div>':"")+
-       ((rc && rc.lvl===0)? '<div class="xs" style="color:var(--ok);margin-top:6px">Recupero ok'+(recB.date===today()?"":" ("+recB.date.slice(0,5)+")")+
-          ' · HRV '+(recB.hrv||"–")+' · sonno '+(recB.sonno||"–")+' h</div>' : "")+
+       (cambiStato.length? '<div class="xs" style="color:var(--ok);margin-top:6px"><b>Proposte autorizzate:</b> '+esc(cambiStato.join(" · "))+'</div>' : "")+
        '<button class="btn pri" style="margin-top:12px" data-a="open" data-d="'+next+'" data-l="'+lu+'">'+(futura? 'Anticipala a oggi' : 'Inizia')+'</button>'+
        (p.ess? '' : '<div class="grid2" style="margin-top:8px"><button class="btn sm ghost" style="width:100%" data-a="ridotta" data-d="'+next+'">Poco tempo · 45′</button>'+
        '<button class="btn sm ghost" style="width:100%" data-a="mini" data-d="'+next+'">Giornata storta · 15′</button></div>')+
@@ -278,9 +273,10 @@ function exCard(e,i,def){
 
   var r=readiness(def), pg=progressioni(), scelta=!!(pg.scelta && pg.scelta.n===e.n);
   if(r.ready && !full){
-    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>Tetto</b><div>'+esc(r.why)+'</div></div>';
+    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>Tetto</b><div>'+esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+'.'+
+      (r.oltre? ' <span class="mut">È una proposta: se decidi di salire a '+r.oltre+' kg usa il +, resta scritto per il coach.</span>' : '')+'</div></div>';
     else if(scelta) h+='<div class="flag up" style="margin-top:9px"><b>↑</b><div><b>'+esc(pg.scelta.why)+'</b><br>'+esc(pg.scelta.come)+'</div></div>';
-    else if(pg.recupero) h+='<div class="xs mut" style="margin-top:8px">Pronto per salire, ma oggi il recupero è basso: carichi fermi.</div>';
+    else if(pg.recupero) h+='<div class="xs mut" style="margin-top:8px">Pronto per salire, ma oggi hai scelto di tenere i carichi: il recupero è basso.</div>';
     else h+='<div class="xs mut" style="margin-top:8px">Pronto anche questo, ma resta in coda: una progressione alla volta.</div>';
   }
   if(r.cedimento && !full) h+='<div class="flag info" style="margin-top:9px"><b>RIR</b><div>Top raggiunto a cedimento: per contare deve arrivare a RIR 1-2.</div></div>';
@@ -288,6 +284,8 @@ function exCard(e,i,def){
   if(e.rientro && !sets.length) h+='<div class="flag info" style="margin-top:9px"><b>↺</b><div><b>Rientro dopo '+e.rientro.gg+' giorni.</b> '+
     (e.rientro.taglio ? 'Oltre tre settimane: oggi un gradino sotto ('+e.load+' kg). La prossima seduta torni al carico di prima.'
                       : 'Stesso carico di prima: la prima serie fa da prova. Se chiudi a RIR 2 o più, resta qui.')+'</div></div>';
+  if(sopraTetto(e.n, e.load) && !full) h+='<div class="flag disc" style="margin-top:9px"><b>Tetto</b><div>'+e.load+' kg è sopra il tetto consigliato di '+m.cap+' kg. Fermati al primo fastidio alla spalla o se la tecnica cambia.</div></div>';
+  if(typeof propNotaEsercizio==="function" && !full) h+=propNotaEsercizio(e, def);
   if(def.swap) h+='<div class="flag disc" style="margin-top:9px"><b>⟳</b><div>'+esc(def.swap)+' mentre fai questo.</div></div>';
 
   /* carico o banda */
@@ -344,6 +342,9 @@ function exCard(e,i,def){
     if(isComp && e.rir===0) h+='<div class="flag disc" style="margin-top:8px"><b>RIR</b><div>Cedimento su un composto. La prossima volta fermati quando la ripetizione rallenta: il top di oggi non vale per salire.</div></div>';
     if(def.u && !m.sec) h+='<div style="margin-top:12px"><div class="eyebrow">Lato più duro</div><div class="pills" style="margin-top:6px;padding:0">'+
       [["S","Sinistra"],["U","Uguali"],["D","Destra"]].map(function(x){ return '<button class="pill '+(e.duro===x[0]?"on":"")+'" data-a="duro" data-i="'+i+'" data-v="'+x[0]+'">'+x[1]+'</button>'; }).join("")+'</div></div>';
+    if(!m.sec) h+='<div style="margin-top:12px"><div class="eyebrow">Com\'era l\'esecuzione?</div><div class="pills" style="margin-top:6px;padding:0">'+
+      TEC_NOMI.map(function(t,k){ return '<button class="pill '+(e.tec===k?"on":"")+'" data-a="tec" data-i="'+i+'" data-v="'+k+'">'+t+'</button>'; }).join("")+'</div>'+
+      '<div class="xs mut" style="margin-top:3px">Pulita: tutte uguali alla prima. Sbavature: le ultime cambiano forma. Sporca: slancio, ampiezza ridotta o una posizione persa.</div></div>';
     h+='<input type="text" placeholder="Nota (sensazioni, tecnica, dolore…)" value="'+esc(e.note)+'" data-note="'+i+'" style="margin-top:9px">';
   }
   return h+'</div>';

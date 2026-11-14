@@ -33,10 +33,13 @@ test('se la seduta al carico nuovo crolla sotto il range si torna al precedente'
   assert.equal(ctx.suggestLoad(defDi(ctx, 'A', 'French Press')), 16);
 });
 
-test('il tetto per la spalla vale anche sullo storico precedente al tetto', () => {
+test('il tetto per la spalla e\' una proposta: vale sullo storico, ma non se hai autorizzato a salire', () => {
   const ctx = carica();
   ctx.S.log = [riga(ctx, 'a', -3, 'Reverse Fly', 8, [15, 15, 15], { day: 'D' })];
-  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 6);
+  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 6, 'senza autorizzazione propone il tetto');
+  ctx.S.tettoOltre = { 'Reverse Fly': '01/11/2026' };
+  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 8, 'autorizzato: l\'ultimo carico usato');
+  assert.equal(ctx.sopraTetto('Reverse Fly', 8), true);
 });
 
 test('pronto a salire solo con due top consecutivi allo stesso carico', () => {

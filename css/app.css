@@ -669,3 +669,10 @@ html{color-scheme:dark}
 /* v4.5: figure */
 .fg .fg-hair{fill:#3A3029;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
 .fg .fg-eye{fill:#1B1F24}
+
+/* ---------- stato di oggi ---------- */
+.strow{display:flex;align-items:flex-start;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)}
+.strow:last-of-type{border-bottom:0}
+.strow i{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px}
+.strow .sn{flex:none;width:38%;font-size:13px;font-weight:600;line-height:1.35}
+.strow .sv{flex:1;font-size:12.5px;color:var(--mut);line-height:1.4;min-width:0}

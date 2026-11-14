@@ -82,8 +82,15 @@ document.addEventListener("click", function(ev){
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
     var m=meta(e.n), st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
-    if(m.cap && nv>m.cap){ toast("Tetto "+m.cap+" kg. Progredisci con il tempo."); return; }
-    e.load=Math.max(0,nv); save(); render(); return;
+    var eraSotto=!(m.cap && e.load>m.cap);
+    e.load=Math.max(0,nv);
+    /* il tetto e' una proposta: salire oltre e' la tua autorizzazione, tornare sotto la toglie */
+    if(m.cap){ S.tettoOltre=S.tettoOltre||{};
+      if(e.load>m.cap){ if(!S.tettoOltre[e.n]){ S.tettoOltre[e.n]=today(); cfgTocca("impostazioni"); } }
+      else if(S.tettoOltre[e.n]){ delete S.tettoOltre[e.n]; cfgTocca("impostazioni"); } }
+    save(); render();
+    if(m.cap && nv>m.cap && eraSotto) toast("Sopra il tetto consigliato di "+m.cap+" kg: è una tua scelta, resta scritto per il coach");
+    return;
   }
   if(a==="v+"||a==="v-"){ e.cur.v=Math.max(0,e.cur.v+(a==="v+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
   if(a==="l+"||a==="l-"){ e.cur.S=Math.max(0,e.cur.S+(a==="l+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
@@ -348,12 +355,16 @@ function startSession(day, mini, rid, luogo, lista0){
   var p=PLAN[day];
   luogo = (p.sede!=="Casa") ? "bande" : (luogo || luogoOggi());
   var lista = lista0 || ((!mini && !rid && typeof listaPerOggi==="function") ? listaPerOggi(day, luogo) : eserciziPer(day, luogo, rid));
+  /* le proposte dello stato di oggi che hai autorizzato: esercizi cambiati, serie in meno, carico sceso */
+  if(!mini && typeof stoApplicaLista==="function") lista=stoApplicaLista(lista);
   S.draft={day:day, date:today(), t0:Date.now(), mini:!!mini, rid:!!rid, luogo:luogo, warm:WARM.map(()=>false),
     ex:lista.map(function(x){
       var m=meta(x.n), load=x.b?0:suggestLoad(x);
       var rt=(!x.b && !m.sec && load>0)? rientro(x.n) : null;
       if(rt && rt.taglio) load=Math.max(0, load-stepOf(x.n));
-      return {n:x.n, def:Object.assign({}, x), load: load, band: x.b?lastBand(x.n,x.b):"", rientro:rt,
+      var scesoDa=null;
+      if(typeof stoCarico==="function"){ var giu=stoCarico(x, load); if(giu<load){ scesoDa=load; load=giu; } }
+      return {n:x.n, def:Object.assign({}, x, scesoDa? {scesoDa:scesoDa} : {}), load: load, tec:null, band: x.b?lastBand(x.n,x.b):"", rientro:rt,
         sets:[], rir:null, note:"", duro:null,
         cur: x.u ? (m.sec ? {S:x.hi, D:x.lo} : {S:Math.min(lastSideRep(x.n,"S",x.lo),x.hi), D:Math.min(lastSideRep(x.n,"D",x.lo),x.hi)}) : {v:(m.sec?x.hi:x.lo)}};
     }), cur:0};
@@ -398,12 +409,12 @@ async function commitSession(){
       ["S","D"].forEach(function(sd){
         var reps=e.sets.map(s=>s[sd]);
         S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:sd, band:e.band, load:e.load,
-          reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{})});
+          reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), duro:e.duro||"", dolz:dolStr(e.dol||{}), tec:(e.tec==null? null : e.tec)});
       });
     } else {
       var reps=e.sets.map(s=>s.v);
       S.log.push({id:uid("l"), w:w, date:d.date, day:d.day, ex:e.n, side:"", band:e.band, load:e.load,
-        reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{})});
+        reps:reps, rir:e.rir, rirs:e.sets.map(function(s){ return s.rir==null? null : s.rir; }), top:isTop(reps, def.hi, def.sPiano||def.s), note:e.note, rec:recMedio(e.sets), dolz:dolStr(e.dol||{}), tec:(e.tec==null? null : e.tec)});
     }
   });
   var lu=d.luogo||"casa";
