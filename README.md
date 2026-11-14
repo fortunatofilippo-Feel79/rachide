@@ -4,14 +4,17 @@ Registro personale di allenamento, cibo e salute. È una web app statica (HTML, 
 
 ## Cosa fa
 
-- **Seduta guidata**: un esercizio per schermata con figura animata, carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro. Lo schermo resta acceso durante la seduta e mentre guardi come si fa un esercizio (si spegne in Coach).
-- **Come si fa**: per ogni esercizio e per il riscaldamento, partenza e arrivo con numeri sul corpo (piedi, ginocchia, bacino, schiena, gomiti, testa), angoli, linee guida e l'errore tipico disegnato in rosso sulla posizione giusta; poi l'animazione con il muscolo che lavora, cosa devi sentire, dove NON devi sentire fastidio e le alternative fuori casa (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
+- **Stato di oggi**: recupero, sonno, stress, dolore, carico recente e cibo letti insieme, con un giudizio in tre livelli e il perché. Da lì nascono le **proposte** sulla seduta (tenere i carichi, accorciare, cambiare gli esercizi che caricano una zona dolente, scendere di un gradino quando sei salito e l'esecuzione non tiene): niente cambia finché non le autorizzi. Anche i tetti per la spalla sono proposte.
+- **Seduta guidata**: un esercizio per schermata con il promemoria della tecnica (posizione, tempo, cosa sentire, a cosa fare attenzione), carico suggerito, recupero a tempo con suoni, timer per le tenute, RIR a ogni serie e lato più duro. Lo schermo resta acceso durante la seduta e mentre guardi come si fa un esercizio (si spegne in Coach).
+- **Come si fa**: per ogni esercizio e per il riscaldamento una scheda in quattro parti: come ti metti (ogni parte del corpo, dai piedi alla testa), come ti muovi (fasi, durata, respiro), cosa devi sentire (i muscoli disegnati sul corpo e le zone dove NON deve dare fastidio), come ti accorgi che stai sbagliando e cosa fare subito. In fondo le note del coach, la figura con partenza, arrivo, errore tipico e animazione, e le alternative fuori casa (scheda *Esercizi*, sempre disponibile). Il riscaldamento si può fare guidato, a tempo.
 - **Piano flessibile**: Casa, Bande o Corpo libero sulla prossima seduta; versione da 45′ e da 15′; settimana di picco con due sedute essenziali.
 - **Piano della settimana**: il coach lo scrive la domenica sera sui giorni e i tempi che gli dai nella chiusura. In settimana, in *Adatta la settimana*, per ogni giorno scegli dove sei (casa; fuori con le bande; fuori senza niente; occupato) e quanto tempo hai (30, 60, 90 minuti): l'app sceglie quali sedute fare e quando, con quale attrezzo, e adatta gli esercizi (toglie le serie che valgono meno se il tempo non basta, aggiunge serie o esercizi ai gruppi che restano indietro). La seduta guidata usa la versione adattata; le sedute vanno nel calendario.
 - **Catena delle settimane**: una settimana è *piena* se fai tutte le sedute o chiudi tutti i gruppi muscolari, *tenuta* se fai almeno 2 sedute e tutto il piano adattato ai tuoi giorni; entrambe allungano la catena. Se la settimana rischia di rompersi l'app propone 30 minuti a corpo libero; dopo 3 settimane tenute di fila avvisa.
 - **Serie dure**: l'unità di volume è lo sforzo (RIR 0-3 vale 1, RIR 4+ vale mezza), uguale per pesi, bande e corpo libero; il carico sollevato è diviso per tipo, con le stime segnate.
 - **Progressione automatica**: doppia progressione con RIR, una salita alla volta, tetti per la spalla, carichi fermi quando il recupero è basso, rientro dopo una pausa.
-- **Cibo**: codice a barre (Open Food Facts, oppure valori dall'etichetta), catalogo, ricette, «come ieri» o a parole; target ricalibrato sulla pendenza del peso.
+- **Cibo**: scrivi il pasto in una riga («pollo 200 g, riso 80, un cucchiaio d'olio») e l'app riconosce gli alimenti e mostra cosa ha capito; oppure codice a barre (Open Food Facts, o valori dall'etichetta), tabella degli alimenti a grammi, porzioni del coach, ricette, «come ieri». Si legge in calorie e grammi oppure in blocchi.
+- **Fabbisogno**: stima dalla formula (Mifflin-St Jeor per l'attività) e, quando le giornate registrate bastano, dai tuoi dati (calorie mangiate meno l'energia finita nel peso). Se il target è lontano, l'app propone di spostarlo e tu autorizzi.
+- **Benessere**: un indice da 0 a 100 su sei aree (recupero, testa, corpo, movimento, nutrizione, digestione e respiro), al massimo tre cose da fare nella settimana e le letture incrociate dei tuoi dati (per esempio notti corte e HRV, stress e reflusso).
 - **Salute**: HRV e FC a riposo con fascia personale, sonno, stress, reflusso, dolore 0-10 in qualsiasi zona (mattino, seduta, singolo esercizio), misure, mobilità, simmetria.
 - **Cruscotto KPI** con definizione, bersaglio, fonte e andamento a 12 settimane di ogni indicatore; serie per gruppo sul corpo; forza stimata; HRV, costanza e dolore nel tempo; agenda di cosa registrare oggi; promemoria nel calendario del telefono.
 
@@ -44,6 +47,11 @@ js/20-posizione.js      scheda Posizione: partenza, arrivo, numeri, angoli, erro
 js/21-grafici.js        grafici SVG e serie storiche dei KPI
 js/22-progressi.js      serie per gruppo sul corpo, forza stimata, recupero
 js/23-generatore.js     sceglie e adatta le sedute della settimana a giorni, tempi e attrezzi
+js/24-tecnica.js        scheda tecnica sul corpo: posizione, movimento, sensazioni, errori
+js/25-stato.js          stato di oggi e proposte da autorizzare
+js/26-alimenti.js       tabella degli alimenti, ricerca e lettura del pasto scritto a parole
+js/27-fabbisogno.js     fabbisogno dalla formula e dai dati, proposte sul target, profilo
+js/28-benessere.js      indice di benessere, letture incrociate, suggerimenti
 js/vendor/              ZXing 0.23.0 (lettura dei codici a barre, Apache 2.0)
 js/99-avvio.js          avvio, service worker
 sw.js                   funzionamento offline
@@ -73,7 +81,7 @@ Quando cambi un file dell'app, aumenta la versione in due punti uguali: `VERSION
 1. **Unisci il ramo nel `main`** su GitHub (pull request → *Merge*). GitHub Pages ripubblica in un paio di minuti; i test girano da soli (tab *Actions*).
 2. **Sul telefono**, la prima volta dopo la 4.0 (poi arriva da solo): apri l'app e vai su Coach → *Aggiorna app*. Dalla 4.0 in poi l'aggiornamento arriva da solo: compare «Nuova versione pronta» in Oggi, tocchi *Aggiorna ora*. I dati restano dove sono.
 3. **Script del foglio v3**, una volta sola: [`apps-script/LEGGIMI.md`](apps-script/LEGGIMI.md). Poi Coach → *Invia tutto*.
-4. **Una volta sola nell'app**: altezza (la lista di Oggi la chiede), promemoria nel calendario (Coach → Promemoria), prova dei suoni.
+4. **Una volta sola nell'app**: profilo (Corpo → Fabbisogno → *Profilo*: altezza, anno di nascita, sesso, giornata tipo), promemoria nel calendario (Coach → Promemoria), prova dei suoni.
 5. **Al coach**: carica [`docs/DATI_E_KPI.md`](docs/DATI_E_KPI.md) nelle conoscenze del progetto (sostituisci la versione precedente quando cambia).
 
 Per pubblicare una modifica: cambia il codice, aumenta `VERSIONE_APP` in `js/01-dati.js` e `VERSIONE` in `sw.js`, esegui `npm run controlla`, unisci nel `main`.

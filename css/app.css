@@ -353,7 +353,7 @@ details.more[open]>summary::after{transform:rotate(-90deg)}
 .fg line,.fg path,.fg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .fg .fg-floor{stroke:var(--line);stroke-width:1.5}
 .fg .fg-body{stroke:var(--fig)}
-.fg .fg-far{opacity:.36}
+.fg .fg-far{opacity:.85}
 .fg .fg-hot{stroke:var(--glow)}
 .fg .fg-head,.fg .fg-hand{fill:var(--fig)}
 .fg .fg-hotf{fill:var(--glow)}
@@ -669,3 +669,40 @@ html{color-scheme:dark}
 /* v4.5: figure */
 .fg .fg-hair{fill:#3A3029;stroke:#0A0F14;stroke-width:.55;stroke-linejoin:round}
 .fg .fg-eye{fill:#1B1F24}
+
+/* ---------- stato di oggi ---------- */
+.strow{display:flex;align-items:flex-start;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)}
+.strow:last-of-type{border-bottom:0}
+.strow i{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px}
+.strow .sn{flex:none;width:38%;font-size:13px;font-weight:600;line-height:1.35}
+.strow .sv{flex:1;font-size:12.5px;color:var(--mut);line-height:1.4;min-width:0}
+
+/* ---------- benessere ---------- */
+.bnrow{display:flex;align-items:center;gap:10px;width:100%;padding:7px 0;text-align:left}
+.bnrow .bnn{flex:none;width:42%;font-size:13px;font-weight:600}
+.bnrow .bnbar{flex:1;height:7px;border-radius:4px;background:var(--surf2);overflow:hidden}
+.bnrow .bnbar i{display:block;height:100%;border-radius:4px}
+.bnrow .bnv{flex:none;width:28px;text-align:right;font-size:12.5px;font-weight:700}
+
+/* ---------- scheda tecnica sul corpo ---------- */
+.tectab{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:6px}
+.tecr{display:flex;gap:10px;padding:9px 11px;border-bottom:1px solid var(--line)}
+.tecr:last-child{border-bottom:0}
+.tecr b{flex:none;width:31%;font-size:13px;color:var(--bone);line-height:1.35}
+.tecr span{flex:1;font-size:13.5px;line-height:1.4;min-width:0}
+.tecf{display:flex;gap:10px;margin-top:9px;align-items:flex-start}
+.tecf i{flex:none;width:22px;height:22px;border-radius:50%;background:var(--surf2);color:var(--glow);font-style:normal;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.tecf b{font-size:14px}
+.tect{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:9px;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--amb)}
+.tect.resp{color:var(--glow)}
+.tecmap{max-width:260px;display:block;margin:6px auto 2px}
+.tecdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.tece{margin-top:9px;padding:9px 11px;border-left:3px solid var(--alert);background:rgba(212,93,93,.06);border-radius:0 9px 9px 0}
+.tecfix{margin-top:3px;color:var(--bone)}
+.tecfix b{color:var(--ok)}
+.tecbr{display:block;width:100%;text-align:left;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surf2)}
+.tecbr ul{margin:5px 0 0;padding-left:17px}
+.tecbr li{font-size:13.5px;line-height:1.45}
+.tecl{display:flex;gap:8px;margin-top:6px;font-size:13px;line-height:1.4}
+.tecl b{flex:none;width:52px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding-top:1px}
+.tecl span{flex:1;min-width:0}

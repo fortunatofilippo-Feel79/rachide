@@ -89,12 +89,30 @@ function briefing(){
   var m=ultimoValido(S.mis);
   if(m) L.push("Misure "+m.date+": peso "+(m.peso||"-")+" · torace "+(m.torace||"-")+" · vita "+(m.vita||"-")+
     ((m.vita&&m.torace)?" · V/T "+(m.vita/m.torace).toFixed(3):""));
+  /* stato, proposte e decisioni, esecuzione, fabbisogno, benessere: quello che l'app ha letto mettendo i dati insieme */
+  if(typeof stoTestoCoach==="function"){
+    L.push("");
+    L.push("Stato e proposte dell'app (l'app propone, l'utente autorizza)");
+    stoTestoCoach().forEach(function(x){ L.push("- "+x); });
+    var sporche={}; S.log.forEach(function(r){ if(r.tec>=1 && dataOk(r.date) && giorniDa(r.date)<=14){ var o=sporche[r.ex]||(sporche[r.ex]={n:0, max:0, load:r.load}); if(r.side!=="D") o.n++; if(r.tec>o.max) o.max=r.tec; o.load=r.load; } });
+    var ks=Object.keys(sporche);
+    L.push("- Esecuzione segnata non pulita, ultimi 14 giorni: "+(ks.length? ks.map(function(n){ return n+" ("+(sporche[n].max>=2?"sporca":"sbavature")+", "+sporche[n].n+" volt"+(sporche[n].n===1?"a":"e")+(sporche[n].load? ", "+sporche[n].load+" kg" : "")+")"; }).join("; ") : "nessuna"));
+    var oltre=Object.keys(S.tettoOltre||{});
+    if(oltre.length) L.push("- Sopra il tetto consigliato per scelta dell'utente: "+oltre.map(function(n){ return n+" (dal "+S.tettoOltre[n].slice(0,5)+", ora "+lastLoad(n,0)+" kg)"; }).join("; "));
+    var fq=fabQuadro();
+    L.push("- Fabbisogno: "+(fq.formula.ok? "formula "+fq.formula.tdee+" kcal (riposo "+fq.formula.bmr+" × "+dec(fq.formula.pal)+")" : "formula non calcolabile (manca "+fq.formula.manca.join(", ")+")")+
+      " · "+(fq.reale.ok? "dai dati "+fq.reale.tdee+" kcal ± "+fq.reale.margine+" ("+fq.reale.n+" giornate complete, "+fq.reale.mangiato+" kcal mangiate, peso "+(fq.reale.pendenza>0?"+":"")+fq.reale.pendenza+" g/sett)" : "dai dati non ancora: "+fq.reale.why)+
+      " · target "+fq.target.kcal+" kcal ("+fq.target.p+"P "+fq.target.c+"C "+fq.target.g+"G)"+(fq.proposte.length? " · proposta aperta: "+fq.proposte.map(function(x){ return x.t; }).join("; ") : ""));
+    var bx=beneIndice();
+    L.push("- Benessere: "+(bx.indice==null? "dati insufficienti" : bx.indice+"/100")+" · "+bx.aree.map(function(a){ return a.n+" "+(a.punti==null?"-":a.punti); }).join(" · "));
+    beneLetture().slice(0,4).forEach(function(l){ L.push("  · "+l.t+": "+l.m+" ("+l.n+")"); });
+  }
   L.push("");
   L.push(frozen()? "Pronti per salire (CARICHI CONGELATI fino a settimana "+S.freeze.until+(S.freeze.note?" — "+S.freeze.note:"")+")" : "Pronti per salire");
   var seen={}, any=false;
   Object.keys(PLAN).forEach(function(d){ PLAN[d].ex.forEach(function(e){
     if(seen[e.n]) return; seen[e.n]=1;
-    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":(recoveryOggi()&&!r.cap?" [fermo: recupero basso oggi]":""))); }
+    var r=readiness(e); if(r.ready){ any=true; L.push("- "+e.n+": "+r.why + (frozen()&&!r.cap?" [congelato]":(progressioni().recupero&&!r.cap?" [fermo oggi: recupero basso, proposta autorizzata]":""))); }
   });});
   if(!any) L.push("- nessuno");
   var pgb=progressioni();

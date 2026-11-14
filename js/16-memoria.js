@@ -16,11 +16,12 @@ var CFG_GRUPPI={
   patches:   function(){ return S.patches||[]; },
   impostazioni:function(){ return {freeze:S.freeze||null, cibOff:S.cibOff||0, cibOffTs:S.cibOffTs||"", passo1:!!S.passo1,
     picco:S.picco||{}, profilo:S.profilo||{}, orari:S.orari||{}, suoni:S.suoni!==false, suoniSilenzioso:S.suoniSilenzioso!==false,
-    volume:S.volume||"normale", target:S.target||{}, propFatta:S.propFatta||"", vistaTutte:!!S.vistaTutte, schermoAcceso:S.schermoAcceso!==false}; },
+    volume:S.volume||"normale", target:S.target||{}, propFatta:S.propFatta||"", vistaTutte:!!S.vistaTutte, schermoAcceso:S.schermoAcceso!==false, tettoOltre:S.tettoOltre||{}, cibUnita:S.cibUnita||"kcal", cibProt:S.cibProt||0, beneSett:S.beneSett||{}}; },
   chiusure:  function(){ return S.chiusure||{}; },
   coach:     function(){ return S.cdone||{}; },
   prodotti:  function(){ return S.prodotti||{}; },
-  settimane: function(){ return {piano:S.pianoSett||{}, dispo:S.dispo||{}, tempo:S.tempo||{}}; }
+  settimane: function(){ return {piano:S.pianoSett||{}, dispo:S.dispo||{}, tempo:S.tempo||{}}; },
+  proposte:  function(){ return S.proposte||{}; }
 };
 var CFG_ALIAS={picco:"impostazioni", profilo:"impostazioni", orari:"impostazioni", suoni:"impostazioni",
   freeze:"impostazioni", cibo:"impostazioni", passo1:"impostazioni", target:"impostazioni", proposta:"impostazioni"};
@@ -29,12 +30,13 @@ cfgTocca=function(k){ var g=CFG_ALIAS[k]||k; S.cfgTs=S.cfgTs||{}; S.cfgTs[g]=Dat
 function cfgApplica(g, v){
   if(g==="patches" && Array.isArray(v)){ S.patches=v; PLAN=buildPlan(); }
   else if(g==="impostazioni" && v && typeof v==="object"){
-    ["freeze","cibOff","cibOffTs","passo1","picco","profilo","orari","suoni","suoniSilenzioso","volume","target","propFatta","vistaTutte","schermoAcceso"]
+    ["freeze","cibOff","cibOffTs","passo1","picco","profilo","orari","suoni","suoniSilenzioso","volume","target","propFatta","vistaTutte","schermoAcceso","tettoOltre","cibUnita","cibProt","beneSett"]
       .forEach(function(k){ if(k in v) S[k]=v[k]; });
   }
   else if(g==="chiusure" && v && typeof v==="object") S.chiusure=v;
   else if(g==="coach" && v && typeof v==="object") S.cdone=v;
   else if(g==="settimane" && v && typeof v==="object"){ S.pianoSett=v.piano||{}; S.dispo=v.dispo||{}; S.tempo=v.tempo||{}; }
+  else if(g==="proposte" && v && typeof v==="object") S.proposte=v;
   else if(g==="prodotti" && v && typeof v==="object") S.prodotti=Object.assign({}, S.prodotti||{}, v);   /* unione: un prodotto letto non si perde */
 }
 /* righe per App_Config: una per gruppo, spezzata se supera la cella di Sheets (50.000 caratteri) */

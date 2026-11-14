@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.6.1";
+var VERSIONE_APP = "4.7.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
@@ -121,7 +121,7 @@ var BASEPLAN = {
    {n:"French Press", s:3, lo:10, hi:10, L:16},
    {n:"Curl bicipiti manubri", s:3, lo:10, hi:10, L:8, swap:"Manubri a 8 kg"},
    {n:"Hammer Curl", s:3, lo:10, hi:10, L:8, tip:"Presa neutra rinforza la presa, che è stata il limite sul RDL."},
-   {n:"Reverse Fly", s:3, lo:15, hi:15, L:6, tip:"6 kg è tetto assoluto. A 8 kg la spalla sn ha ceduto due volte."}
+   {n:"Reverse Fly", s:3, lo:15, hi:15, L:6, tip:"6 kg è il tetto consigliato: a 8 kg la spalla sn ha ceduto due volte."}
  ]},
  T1:{name:"Trasferta · spinta e gambe", sede:"Trasferta", dischi:"solo bande", min:40, ex:[
    {n:"Push-up piedi rialzati con banda", s:4, lo:10, hi:12, b:"gialla", tip:"In hotel il rialzo è il bordo del letto o la valigia rigida."},
@@ -349,7 +349,7 @@ var G = {
 "Reverse Fly":{p:"Busto a 45°, schiena dritta, manubri che pendono, gomiti leggermente piegati e fissi. Apri le braccia lateralmente fino all'altezza delle spalle stringendo le scapole.",
  f:"Parte posteriore della spalla e zona interscapolare.",
  e:"Ti raddrizzi per usare slancio. Senti il trapezio alto o il collo. Il braccio sinistro arriva meno in alto o molla a fine serie — è il segnale specifico da monitorare.",
- c:"Se la spalla sinistra dà segnali: FERMA la serie, non finirla, e attiva il flag. Non è un dato da annotare a fine settimana. 6 kg è tetto assoluto: a 8 ha ceduto due volte."},
+ c:"Se la spalla sinistra dà segnali: FERMA la serie, non finirla, e attiva il flag. Non è un dato da annotare a fine settimana. 6 kg è il tetto consigliato: a 8 ha ceduto due volte."},
 
 "Pike push-up":{p:"Da posizione di push-up, cammina coi piedi verso le mani fino a una V rovesciata. Testa fra le braccia, bacino alto. Abbassa la testa verso il pavimento: la traiettoria è verticale.",
  f:"Deltoidi anteriori e tricipiti. È l'equivalente a corpo libero dello Shoulder Press.",

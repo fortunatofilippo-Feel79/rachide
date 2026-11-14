@@ -152,7 +152,11 @@ function histAll(name){
    anche se le ripetizioni calano: e' la doppia progressione, si risale nel range.
    Si torna al carico precedente solo se la seduta al carico nuovo e' crollata
    (una serie sotto il 75% del minimo del range: il peso era troppo).
-   Il tetto per la spalla vale sempre, anche sullo storico di prima del tetto.
+   Il tetto per la spalla e' una proposta, non un blocco (decisione del 14/11/2026):
+   l'app propone di restare entro il tetto, anche sullo storico di prima del tetto;
+   se in seduta sali oltre con il +, quella e' la tua autorizzazione (S.tettoOltre)
+   e da li' il carico di lavoro torna a essere l'ultimo usato. Scendendo di nuovo
+   entro il tetto l'autorizzazione si toglie.
    (Prima: ogni seduta non chiusa al top sopra il carico di piano riportava
    al carico di piano, e la progressione tornava indietro.) */
 function suggestLoad(def){
@@ -169,9 +173,11 @@ function suggestLoad(def){
       if(minimo!==Infinity && minimo<soglia) out=prev;
     }
   }
-  if(m.cap && out>m.cap) out=m.cap;
+  if(m.cap && out>m.cap && !(S.tettoOltre||{})[def.n]) out=m.cap;
   return out;
 }
+/* sopra il tetto consigliato: non blocca niente, serve a dirlo */
+function sopraTetto(n, load){ var m=meta(n); return !!(m.cap && load>m.cap); }
 /* Rientro dopo una pausa (trasferte, settimane piene). La forza regge per circa
    tre settimane senza allenamento, poi cala (McMaster 2013, Sports Med 43:367).
    8-21 giorni: stesso carico, la prima serie fa da prova.
@@ -249,12 +255,14 @@ function readiness(exDef){
     return {ready:true, why:"banda "+cur+" → "+BANDS[i+1], next:BANDS[i+1]};
   }
   if(m.cap && cur>=m.cap){
-    var alt = n.indexOf("Reverse Fly")===0 ? "6 kg è tetto assoluto finché non hai una valutazione. Non salire."
-            : n.indexOf("Floor Press")===0 ? "tetto manubri: sali di ripetizioni fino a 12, poi 1 s di pausa a terra"
-            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto 8 kg: si progredisce di ripetizioni, fino a 12"
-            : n.indexOf("Face pull")===0 ? "tetto 6 kg: si progredisce con 2 s di tenuta a gomiti alti"
-            : "tetto raggiunto: progredisci con tempo o ripetizioni";
-    return {ready:true, cap:true, why:alt};
+    /* il tetto e' una proposta: l'app consiglia come progredire senza salire di carico,
+       ma il + resta libero. Se sali lo stesso resta scritto per il coach. */
+    var alt = n.indexOf("Reverse Fly")===0 ? "tetto consigliato 6 kg finché non hai una valutazione della spalla: la proposta è non salire"
+            : n.indexOf("Floor Press")===0 ? "tetto consigliato dei manubri: sali di ripetizioni fino a 12, poi 1 s di pausa a terra"
+            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto consigliato 8 kg: progredisci di ripetizioni, fino a 12"
+            : n.indexOf("Face pull")===0 ? "tetto consigliato 6 kg: progredisci con 2 s di tenuta a gomiti alti"
+            : "tetto consigliato raggiunto: progredisci con tempo o ripetizioni";
+    return {ready:true, cap:true, why:alt, tetto:m.cap, oltre:cur+stepOf(n)};
   }
   if(!cur) return {ready:true, why:"passa alla variante successiva della scala"};
   var step = stepOf(n);
