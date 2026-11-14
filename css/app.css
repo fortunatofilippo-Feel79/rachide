@@ -353,7 +353,7 @@ details.more[open]>summary::after{transform:rotate(-90deg)}
 .fg line,.fg path,.fg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .fg .fg-floor{stroke:var(--line);stroke-width:1.5}
 .fg .fg-body{stroke:var(--fig)}
-.fg .fg-far{opacity:.36}
+.fg .fg-far{opacity:.85}
 .fg .fg-hot{stroke:var(--glow)}
 .fg .fg-head,.fg .fg-hand{fill:var(--fig)}
 .fg .fg-hotf{fill:var(--glow)}

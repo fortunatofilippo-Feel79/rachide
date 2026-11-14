@@ -285,7 +285,7 @@ function stoTestoCoach(){
   L.push("Stato di oggi: "+st.titolo.toLowerCase()+" · "+st.segnali.map(function(x){ return x.n+": "+x.t+(x.lvl>=1? " ["+(x.lvl>=2?"rosso":"giallo")+"]" : ""); }).join(" · "));
   var dec_=Object.keys(S.proposte||{}).filter(function(k){ return giorniDa(S.proposte[k].d)<=14; }).sort(function(a,b){ return s2d(S.proposte[b].d)-s2d(S.proposte[a].d); });
   if(dec_.length) L.push("Proposte dell'app, ultimi 14 giorni: "+dec_.map(function(k){ var p=S.proposte[k], a=k.split("|");
-    return p.d.slice(0,5)+" "+a[0]+(a[0]==="scendi"? " "+a[1]+" da "+a[2]+" kg" : a[0]==="zona"? " "+a[1] : "")+" → "+(p.r==="ok"?"autorizzata":"rifiutata"); }).join("; "));
+    return p.d.slice(0,5)+" "+a[0]+(a[0]==="scendi"? " "+a[1]+" da "+a[2]+" kg" : a[0]==="zona"? " "+a[1] : a[0]==="kcal"? " target a "+a[1] : a[0]==="prot"? " proteine a "+a[1]+" g" : "")+" → "+(p.r==="ok"?"autorizzata":"rifiutata"); }).join("; "));
   return L;
 }
 
