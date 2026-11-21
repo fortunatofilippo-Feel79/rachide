@@ -57,6 +57,8 @@ function segnaliOggi(){
     var lv=(mst!=null && mst>=STRESS_ALTO) || (mme!=null && mme<=2) ? 1 : 0;
     out.push({k:"testa", n:"Stress e testa", lvl:lv, t:(mst!=null? "stress "+dec(r1(mst))+" su 3" : "")+(mst!=null&&mme!=null? " · " : "")+(mme!=null? "testa "+dec(r1(mme))+" su 5" : "")});
   }
+  /* 4a · dolore notturno: medico, non coach (regola 19) */
+  if(dolNotteRecente()) out.push({k:"notte", n:"Dolore di notte", lvl:2, t:"medico, non coach (regola 19): progressioni ferme finché non ne parli col medico"});
   /* 4 · dolore: stamattina, l'ultima seduta se non e' rientrato, le zone che tornano */
   var zone=stoZone(), zk=Object.keys(zone);
   if(zk.length){ var mx=Math.max.apply(null, zk.map(function(z){ return zone[z].v; }));

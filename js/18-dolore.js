@@ -48,6 +48,16 @@ function dolMigra(){
 
 /* ---------- editor: zone + intensita', con la mappa del corpo ---------- */
 var DOLED={};
+/* ore: d'inizio dal cronometro, ultimo pasto (regola 52), dolore notturno (regola 19) */
+function oraDa(ts){ if(!ts) return ""; var d=new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function oraTesto(v){ var s=String(v==null?"":v).trim(), f=parseFloat(s);
+  if(typeof v==="number" && v>0 && v<1 || /^0?\.\d{3,}$/.test(s)){ var t=Math.round(f*1440); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }   /* frazione di giorno dal foglio */
+  var m=s.match(/^(\d{1,2})[:.](\d{2})/); if(m && +m[1]<24 && +m[2]<60) return m[1].padStart(2,"0")+":"+m[2];
+  return ""; }
+function valOra(id){ var el=document.getElementById(id); return el? oraTesto(el.value) : ""; }
+function minDi(o){ var m=String(o||"").match(/^(\d{2}):(\d{2})$/); return m? (+m[1])*60+(+m[2]) : null; }
+function orePasto(s){ var a=minDi(s && s.ora), p=minDi(s && s.pasto); if(a==null || p==null) return null; var d=a-p; if(d<0) d+=1440; return Math.round(d/6)/10; }
+function dolNotteRecente(){ var oggi=today(); return [0,1,2].some(function(i){ var d=new Date(s2d(oggi).getTime()-i*86400000), b=benOn(d2s(d)); return !!(b && b.dolnotte); }); }
 var DOL_CAMBIA=3, DOL_STOP=6;   /* regola 15: da 3 si cambia esercizio, sopra 5 si ferma la serie */
 function dolColore(v){ return v>=DOL_STOP ? "var(--alert)" : v>=DOL_CAMBIA ? "var(--amb)" : "var(--ok)"; }
 function dolMappaSVG(pref, m){

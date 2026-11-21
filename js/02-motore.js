@@ -238,6 +238,9 @@ function stepOf(n){
 function readiness(exDef){
   var n=exDef.n, m=meta(n), h=histAll(n), out={ready:false, why:"", cap:false};
   if(exDef.hold){ out.hold=exDef.hold; return out; }
+  /* scala a livelli: conta solo lo storico dal giorno in cui sei passato al livello in corso */
+  var dalLiv=(typeof livelloDal==="function")? livelloDal(n) : null;
+  if(dalLiv){ var t0=s2d(dalLiv).getTime(); h=h.filter(function(r){ return s2d(r.date).getTime()>=t0; }); }
   if(!h.length) return out;
   var dates=[...new Set(h.map(r=>r.date))].slice(-2);
   if(dates.length<2) return out;
@@ -264,6 +267,11 @@ function readiness(exDef){
     /* oltre la rossa si sommano due bande; finite anche quelle serve una banda piu' dura */
     if(i>=BANDS.length-1){ return {ready:true, cap:true, attrezzo:true, why:"servono bande piu' dure: oltre "+cur+" non ne hai. Intanto ritorno in 3 s e 2 s di tenuta"}; }
     return {ready:true, why:"banda "+cur+" → "+BANDS[i+1], next:BANDS[i+1]};
+  }
+  if(!cur && typeof SCALE!=="undefined" && SCALE[n]){
+    var lv=livelloDi(n), sc=SCALE[n];
+    if(lv>=sc.length) return {ready:true, cap:true, fine:true, why:"sei all'ultimo livello della scala: aggiungi fino a 3 ripetizioni per serie, poi una serie"};
+    return {ready:true, why:"livello "+(lv+1)+": "+sc[lv].t, livello:lv+1};
   }
   if(!cur) return {ready:true, why:"passa alla variante successiva della scala"};
   var step = stepOf(n), nx = cur+step, disp = caricoDisponibile(n), sp = SPALLA[n]? " · "+CONSIGLIO_SPALLA : "";

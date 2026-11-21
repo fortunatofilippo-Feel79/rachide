@@ -26,7 +26,7 @@ const COLONNE = {
     id: 'identificativo', w: 'settimana del piano', date: 'data', day: 'giorno del piano', sede: 'Casa o Trasferta',
     mod: 'Pesi, Bande, Corpo libero, Ridotta (45′), Minima (15′), Essenziale (picco), Riposo', min: 'durata in minuti', en: 'energia 1-5',
     warm: 'riscaldamento completo Sì/No', sig: 'Sì se un dolore ha superato 5/10', dol: 'dolore massimo durante la seduta 0-10 (qualsiasi zona)',
-    dolz: 'dolore per zona durante la seduta, zona:valore separati da ;', note: 'nota libera'
+    dolz: 'dolore per zona durante la seduta, zona:valore separati da ;', ora: 'ora d\'inizio, dal cronometro (hh:mm)', pasto: 'ora dell\'ultimo pasto pieno (hh:mm, regola 52)', note: 'nota libera'
   },
   mis: { w: 'settimana', date: 'data', peso: 'kg', torace: 'cm, a fine espirazione', bic: 'braccio cm', coscia: 'cm', vita: 'cm', note: 'nota' },
   ben: {
@@ -36,7 +36,7 @@ const COLONNE = {
     passi: 'passi medi della settimana (domenica)', ipo: 'indice di ipopnea eventi/ora (domenica)', dolm: 'dolore massimo al mattino 0-10 (qualsiasi zona)',
     dolmz: 'dolore al mattino per zona, zona:valore separati da ;',
     cibP: 'proteine del giorno g', cibC: 'carboidrati g', cibG: 'grassi g', cibA: 'alcol del giorno g (7 kcal al grammo, contate nelle calorie)', cibJ: 'pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto; salta = pasti segnati come saltati). Gli spuntini sono facoltativi: conta il totale del giorno',
-    sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', note: 'nota libera'
+    sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', dolnotte: 'dolore di notte Sì/No (regola 19: medico, non coach)', note: 'nota libera'
   },
   sim: { date: 'data', w: 'settimana', ex: 'esercizio del check', q: 'domanda', a: 'risposta Sì/No/Non verificato', side: 'lato che limita' },
   mob: {
@@ -148,6 +148,7 @@ function genera() {
   L.push('');
   [
     ['Trasferta', 'T1 copre A o B, T2 copre C o D: una seduta fuori casa vale per la seduta di casa dello stesso tipo che manca ancora (prima A e C), e la settimana si ricalibra sulle sedute che restano. Una trasferta gia\' prevista dal piano vale per se\'.'],
+    ['Scale a livelli', 'Bulgarian split squat 3s, Pike push-up e Hip hinge una gamba hanno tre livelli (Catalogo esercizi, 21/11/2026): con il top del range per 2 sedute l\'app propone il livello dopo, con il pulsante «Passo al livello»; da quel giorno conta solo lo storico del livello nuovo. Il livello 3 del Pike aggiunge una banda invece di alzare i piedi (reflusso). Il livello in corso e\' nel gruppo `impostazioni` di App_Config (`livelli`).'],
     ['Doppia progressione', 'Si sale di carico dopo due sedute consecutive al top del range allo stesso carico; sui composti il top vale solo a RIR 1-2. Una progressione alla volta (prima i composti). Gradino 2 kg per manubrio, 1 kg con i dischi da 0,5 kg.'],
     ['Carico suggerito', 'L\'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. Nessun tetto di carico (decisione del 21/11/2026): quando la salita supera i dischi di casa (impostazione «Dischi di casa», di fabbrica 20 kg per manubrio; Box Squat somma dei due manubri) la progressione scrive «servono dischi» e propone come salire intanto. Oltre la banda rossa si sommano due bande. Sugli esercizi della spalla un consiglio basato sul dolore in seduta.'],
     ['Rientro dopo una pausa', 'Dopo 8-21 giorni senza l\'esercizio: stesso carico, la prima serie fa da prova. Oltre 21 giorni: un gradino sotto per una seduta ([McMaster 2013](' + ctx.FONTI.mcmaster.u + ')).'],

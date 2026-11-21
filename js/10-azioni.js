@@ -196,6 +196,7 @@ document.addEventListener("click", function(ev){
   if(a==="propvedi"){ var pa=propAttiva(); if(pa) patchPreview(pa.testo, pa.id); return; }
   if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; cfgTocca("proposta"); save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
   if(a==="propcheck"){ propCheck(true); return; }
+  if(a==="livello"){ var ln=el.dataset.n, ll=+el.dataset.l; if(SCALE[ln] && ll>=1 && ll<=SCALE[ln].length){ passaLivello(ln, ll); _PGC=null; save(); render(); toast(ln+": livello "+ll+" da oggi"); if(SYNC.on()) doPush(false); } return; }
   if(a==="dischi"){ var dv=Math.max(5, Math.min(60, dischiCasa()+(+el.dataset.v||0))); S.dischi=dv; cfgTocca("impostazioni"); save(); PLAN=buildPlan(); render(); toast("Dischi di casa: "+dec(dv)+" kg per manubrio"); if(SYNC.on()) doPush(false); return; }
   if(a==="passo1"){ S.passo1=!S.passo1; cfgTocca("passo1"); save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
   if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
@@ -387,8 +388,11 @@ function closeSession(){
     '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
     '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
       [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<div class="grid2"><label class="fld"><span class="eyebrow">Iniziata alle</span><input type="time" id="fOra" value="'+oraDa(d.t0)+'"></label>'+
+    '<label class="fld"><span class="eyebrow">Ultimo pasto pieno alle</span><input type="time" id="fPasto" value="'+esc(d.pasto||"")+'"></label></div>'+
+    '<div class="xs mut" style="margin-top:4px">L\'ora d\'inizio viene dal cronometro. Il pasto pieno va finito almeno 2 ore prima (regola 52): serve a leggere il bruciore.</div>'+
     dolEditor("s", dolDaSeduta(d), "Dolore durante la seduta · il massimo per zona")+
-    '<div class="xs mut" style="margin-top:4px">Fino a 5 va bene se domattina è rientrato (pain-monitoring model). Sopra 5 ferma le salite. Le zone segnate sugli esercizi sono già qui.</div>'+
+    '<div class="xs mut" style="margin-top:4px">Da 3, o se sale fra le serie, la prossima volta cambi esercizio su quella zona; sopra 5 si ferma la serie (regola 15). Le zone segnate sugli esercizi sono già qui.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><textarea id="fNote" placeholder="Cosa è successo oggi"></textarea></label>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savesess">Salva</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Torna indietro</button>');
@@ -418,8 +422,11 @@ async function commitSession(){
     mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.ess?"Essenziale":(lu==="corpo"?"Corpo libero":((lu==="bande"||p.sede!=="Casa")?"Bande":"Pesi"))))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
     warm:d.warm.every(Boolean), sig: (dol!=null && dol>=DOL_CAMBIA), dol:dol, dolz:dolStr(dm),
+    ora:valOra("fOra")||oraDa(d.t0), pasto:valOra("fPasto"),
     note:document.getElementById("fNote").value});
   S.draft=null; stopRest(); hold=null; WG=null; var okS=await save(); closeSheet(); V="prog"; window._sy=0; render(); suono("salvata");
+  var sNuova=S.sess[S.sess.length-1], oreP=orePasto(sNuova);
+  if(oreP!=null && oreP<2) setTimeout(function(){ toast("Pasto pieno a "+dec(r1(oreP))+" ore dall'inizio: la regola 52 chiede almeno 2"); }, 5200);
   if(dol!=null && dol>=DOL_CAMBIA) setTimeout(function(){ toast(dolTesto(dm)+": annotato. Alla prossima seduta cambi esercizio su quella zona; domattina segna com'è"); }, 2600);
   if(SYNC.on()){
     var sent=await doPush(false);
@@ -493,7 +500,9 @@ function formBen(date, isAdd, momento){
     '<div id="bCittaW" style="display:'+(sede==="Fuori"?"block":"none")+'"><input type="text" id="bCitta" placeholder="Dove (es. Parma)" value="'+esc(b.citta||(sede==="Fuori"?(ie.citta||""):""))+'"></div>'+
     '<label class="fld"><span class="eyebrow">Alcol ieri sera</span><div class="pills" id="bAlc">'+
       '<button class="pill '+(b.alc?"":"on")+'" data-x="0">No</button><button class="pill '+(b.alc?"on":"")+'" data-x="1">Sì</button></div></label>'+
-    dolEditor("m", dolDi(b,"dolmz","dolm"), "Dolore stamattina · dove e quanto"+(ie.dolm? " (ieri "+dolTesto(dolDi(ie,"dolmz","dolm"))+")" : ""));
+    dolEditor("m", dolDi(b,"dolmz","dolm"), "Dolore stamattina · dove e quanto"+(ie.dolm? " (ieri "+dolTesto(dolDi(ie,"dolmz","dolm"))+")" : ""))+
+    '<label class="fld"><span class="eyebrow">Dolore di notte · ti ha svegliato o non passava da sdraiato</span><div class="pills" id="bNotte">'+
+      '<button class="pill '+(b.dolnotte?"":"on")+'" data-nt="0">No</button><button class="pill '+(b.dolnotte?"on":"")+'" data-nt="1">Sì</button></div></label>';
   }
   if(ser){
     h+='<label class="fld"><span class="eyebrow">Reflusso · 0 nessuno · 3 marcato'+hi(ie.refl)+'</span><div class="pills" id="bRefl">'+
@@ -528,6 +537,7 @@ async function saveBen(origDate){
   var rec=Object.assign({}, prev, {date:dt, w:weekOf(dt),
     refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
     resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
+    dolnotte: c("#bNotte")? pick("#bNotte","nt")===1 : !!prev.dolnotte,
     hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
     sonno:(function(){ var el=document.getElementById("bSonno"); if(!el) return prev.sonno==null?null:prev.sonno; return el.value===""? null : sonnoOre(el.value); })(), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
