@@ -193,7 +193,7 @@ var ALT={
   "Rematore manubri (volume)":     {bande:"Band row un braccio", corpo:"Rematore al telaio della porta"},
   "Shoulder Press manubri":        {bande:"Shoulder press con banda", corpo:"Pike push-up"},
   "Push-up piedi rialzati con banda":{corpo:"Push-up piedi rialzati"},
-  "French Press":                  {bande:"Band tricep extension", corpo:"Push-up stretti"},
+  "French Press":                  {bande:"Band tricep extension", corpo:"Push-up stretti"},   /* tolto dal piano il 04/10 (patch); resta per il piano di base, su cui poggiano le patch */
   "Overhead extension 1 braccio":  {bande:"Band tricep extension", corpo:"Push-up stretti"},
   "Band tricep extension":         {corpo:"Push-up stretti"},
   "Box Squat":                     {bande:"Box squat alla sedia 3s", corpo:"Box squat alla sedia 3s"},

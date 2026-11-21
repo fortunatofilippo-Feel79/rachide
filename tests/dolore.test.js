@@ -22,7 +22,7 @@ test('il vecchio dato della spalla diventa la zona spalla sinistra', () => {
   assert.equal(ctx.dolMigra(), 0, 'una volta sola');
 });
 
-test('diagnosi: sopra 5 in seduta, non rientrato al mattino, zona ricorrente', () => {
+test('diagnosi: da 3 in seduta (regola 15), non rientrato al mattino, zona ricorrente', () => {
   const ctx = carica();
   ctx.S.sess = [
     { id: 'a', day: 'B', date: giorno(ctx, -6), dol: 7, dolz: 'ginocchio_dx:7' },
@@ -34,6 +34,7 @@ test('diagnosi: sopra 5 in seduta, non rientrato al mattino, zona ricorrente', (
   ];
   const t = ctx.dolDiagnosi().map(x => x.t);
   assert.ok(t.some(x => /Dolore ginocchio dx 7\/10/.test(x)), 'sopra 5');
+  assert.ok(t.some(x => /Dolore lombare 4\/10/.test(x)), 'da 3 in seduta: si cambia esercizio');
   assert.ok(t.some(x => /Lombare non rientrata/.test(x)), 'non rientrato');
   assert.ok(t.some(x => /ricorrente: lombare · 3 volte/.test(x)), 'ricorrente');
 });

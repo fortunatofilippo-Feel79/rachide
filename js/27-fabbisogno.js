@@ -18,7 +18,7 @@
    po' piu' alto di quello calcolato: per questo si mostra un
    margine); proteine almeno 1,6 g per kg (Morton 2018).
    ============================================================ */
-var FAB_KCAL_G=7.7, FAB_FINESTRA=28, FAB_MIN_GIORNI=10, FAB_PASSO=50, FAB_SOGLIA=100, FAB_MAX=300;
+var FAB_KCAL_G=7.7, FAB_FINESTRA=28, FAB_MIN_GIORNI=10, FAB_PASSO=50, FAB_SOGLIA=100, FAB_MAX=150;   /* regola 10: al massimo 150 kcal per volta, una modifica ogni 14 giorni (anche quella del Coach: cibOffTs) */
 var FAB_PROT_KG=1.6, FAB_KCAL_PIANO=2550, FAB_PROT_PIANO=130, FAB_GRASSI=70;
 var FAB_LAVORO=[["sed","Seduto","scrivania, auto",1.4],["misto","In piedi a tratti","ti muovi durante il giorno",1.55],["attivo","Fisico","in piedi o in movimento quasi sempre",1.75]];
 

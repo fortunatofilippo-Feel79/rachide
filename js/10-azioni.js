@@ -417,10 +417,10 @@ async function commitSession(){
   S.sess.push({id:uid("s"), w:w, date:d.date, day:d.day, sede:(lu==="casa"? p.sede : "Trasferta"),
     mod:(d.mini?"Minima":(d.rid?"Ridotta":(p.ess?"Essenziale":(lu==="corpo"?"Corpo libero":((lu==="bande"||p.sede!=="Casa")?"Bande":"Pesi"))))),
     min:+document.getElementById("fMin").value||0, en:en?+en.dataset.en:0,
-    warm:d.warm.every(Boolean), sig: (dol!=null && dol>5), dol:dol, dolz:dolStr(dm),
+    warm:d.warm.every(Boolean), sig: (dol!=null && dol>=DOL_CAMBIA), dol:dol, dolz:dolStr(dm),
     note:document.getElementById("fNote").value});
   S.draft=null; stopRest(); hold=null; WG=null; var okS=await save(); closeSheet(); V="prog"; window._sy=0; render(); suono("salvata");
-  if(dol!=null && dol>5) setTimeout(function(){ toast(dolTesto(dm)+": annotato. Domattina segna com'è: se non è rientrato, niente salite"); }, 2600);
+  if(dol!=null && dol>=DOL_CAMBIA) setTimeout(function(){ toast(dolTesto(dm)+": annotato. Alla prossima seduta cambi esercizio su quella zona; domattina segna com'è"); }, 2600);
   if(SYNC.on()){
     var sent=await doPush(false);
     toast(sent? "Sessione salvata sul foglio" : "Foglio non raggiunto: usa Coach → Invia tutto");

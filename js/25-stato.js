@@ -18,7 +18,7 @@
    ============================================================ */
 var STO_TIT=["Via libera","Avanti con giudizio","Giornata da gestire"];
 var STO_COL=["var(--ok)","var(--amb)","var(--alert)"];
-var STO_DOLORE=4;          /* dolore al mattino da cui una zona conta per la seduta */
+var STO_DOLORE=3;          /* dolore al mattino da cui una zona conta per la seduta (regola 15) */
 var STO_CARICO=1.3;        /* serie dure dei 7 giorni rispetto alla media delle 4 settimane prima */
 var STO_KCAL=0.8;          /* ieri sotto questa quota del target: energia bassa */
 var STO_SCENDI_SEDUTE=3;   /* una salita e' "recente" per queste sedute */
@@ -83,12 +83,12 @@ function segnaliOggi(){
 function stoZone(){
   var z={}, b=benOn(today()), m=dolDi(b,"dolmz","dolm");
   Object.keys(m).forEach(function(k){ if(m[k]>=STO_DOLORE) z[k]={v:m[k], da:"stamattina"}; });
-  /* l'ultima seduta: sopra 5, e il mattino dopo non l'hai ancora segnato rientrato */
+  /* l'ultima seduta: da 3 (regola 15), e il mattino dopo non l'hai ancora segnato rientrato */
   var ss=S.sess.filter(function(s){ return !isRest(s) && dataOk(s.date) && giorniDa(s.date)>=0 && giorniDa(s.date)<=3; }).sort(function(a,c){ return s2d(c.date)-s2d(a.date); })[0];
   if(ss){ var ms=dolDi(ss,"dolz","dol"), dopo=d2s(new Date(s2d(ss.date).getTime()+86400000)), bd=benOn(dopo), md=dolDi(bd,"dolmz","dolm");
     var dopoCompilato=!!(bd && ((bd.dolmz!=null && bd.dolmz!=="") || (bd.dolm!=null && bd.dolm!=="")));
     Object.keys(ms).forEach(function(k){
-      if(ms[k]>5 && !(dopoCompilato && (md[k]||0)<3) && !z[k]) z[k]={v:ms[k], da:"seduta del "+ss.date.slice(0,5)}; }); }
+      if(ms[k]>=DOL_CAMBIA && !(dopoCompilato && (md[k]||0)<3) && !z[k]) z[k]={v:ms[k], da:"seduta del "+ss.date.slice(0,5)}; }); }
   /* le zone che tornano: tre volte in 14 giorni */
   dolZoneFrequenti(14, 3).forEach(function(x){ if(x.n>=3 && !z[x.z]) z[x.z]={v:3, da:x.n+" volte in 14 giorni"}; });
   return z;
@@ -174,7 +174,7 @@ function proposteOggi(lista){
       t:zonaNome(z)+" "+zone[z].v+"/10: "+(cambi.length? "cambia "+cambi.length+" esercizi"+(cambi.length===1?"o":"") : "attenzione su "+restano.length+" esercizi"+(restano.length===1?"o":"")),
       perche:"Segnalata "+zone[z].da+". Questi esercizi la caricano: "+toccati.map(function(x){ return x.n; }).join(", ")+".",
       effetto:(cambi.length? "Per oggi: "+cambi.map(function(c){ return c[0]+" → "+c[1]; }).join("; ")+". " : "")+
-        (restano.length? "Restano come sono, con un avviso sulla scheda: "+restano.join(", ")+". " : "")+"Regola: fino a 5/10 si continua, sopra ci si ferma."});
+        (restano.length? "Restano come sono, con un avviso sulla scheda: "+restano.join(", ")+". " : "")+"Regola 15: da 3/10 si cambia esercizio, sopra 5 ci si ferma."});
   });
   /* 4 · scendi di un gradino: salita recente ed esecuzione che non tiene */
   lista.forEach(function(x){
@@ -269,7 +269,7 @@ function stoInfo(){
     '<b>Recupero</b>: HRV sotto la tua fascia e FC a riposo sopra la norma insieme, oppure stress alto con sonno corto. '+
     '<b>Sonno</b>: media delle ultime 3 notti sotto '+dec(SONNO_BASSO)+' ore (rosso sotto 6). '+
     '<b>Stress e testa</b>: stress da '+STRESS_ALTO+' in su o testa a 2 o meno, su 3 giorni. '+
-    '<b>Dolore</b>: una zona da '+STO_DOLORE+'/10 stamattina, sopra 5 nell\'ultima seduta se non è rientrata, o tre volte in 14 giorni. '+
+    '<b>Dolore</b>: una zona da '+STO_DOLORE+'/10 stamattina, da '+DOL_CAMBIA+' nell\'ultima seduta se non è rientrata, o tre volte in 14 giorni. '+
     '<b>Carico</b>: serie dure degli ultimi 7 giorni oltre il '+Math.round(STO_CARICO*100)+'% della tua media. '+
     '<b>Cibo</b>: ieri sotto l\''+Math.round(STO_KCAL*100)+'% delle calorie previste. '+
     '<b>Reflusso</b>: 2 o 3 ieri sera.</div></div>'+

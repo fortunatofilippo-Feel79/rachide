@@ -361,7 +361,7 @@ function diagnose(){
     });
     if(k.dur && k.dur>70) out.push({k:"durata", t:"Durata media "+k.dur+" min · settimana "+lastFull,
       m:"Sopra il tuo tetto di 60-70 minuti. Di solito è tempo morto fra le serie: oltre ~90 secondi non aggiunge ipertrofia (Singer 2024). Usa il timer e cambia i dischi dentro il recupero, non dopo."});
-    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
+    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Il lato debole lavora per primo e decide ripetizioni e carico; il lato forte si ferma lì, mai serie in più sul debole. Oltre il 10% per 3 sedute è una nota per il fisioterapista (regola 14)."});
   }
   /* 3b. grassi e reflusso: la correlazione che giustifica il tracciamento */
   var gr=[], gl=[];
@@ -375,7 +375,7 @@ function diagnose(){
     if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso \u00b7 reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
       m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio \u00e8 pi\u00f9 alto ("+gr.length+" giornate contro "+gl.length+"). Non \u00e8 una prova di causa, ma \u00e8 il primo posto dove guardare."});
   }
-  /* 3a. dolore in qualsiasi zona: sopra 5 in seduta, non rientrato al mattino, ricorrente (Silbernagel 2007) */
+  /* 3a. dolore in qualsiasi zona: da 3 in seduta (regola 15), non rientrato al mattino, ricorrente */
   dolDiagnosi().forEach(function(x){ out.push(x); });
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
@@ -403,8 +403,8 @@ function diagnose(){
     var stalli=out.filter(function(x){ return x.k==="stallo"||x.k==="crollo"; }).length;
     if(sl.stato==="sotto" && !sl.noisy){
       out.unshift({k:"spinta", t:"Spinta "+(sl.g>0?"+":"")+sl.g+" g/sett \u00b7 sotto il corridoio",
-        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico. Regola del Piano alimentare: le calorie si ricalibrano solo se la pendenza resta fuori corridoio per 2 settimane di fila; alla seconda lettura sotto, +200-250 kcal al giorno. Intanto non scendere di peso sui manubri."
-                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Se e' la seconda settimana di fila, +200-250 kcal al giorno; se e' la prima, aspetta la prossima lettura.")
+        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico. Regola del Piano alimentare: le calorie si ricalibrano solo se la pendenza resta fuori corridoio per 2 settimane di fila; alla seconda lettura sotto, +150 kcal al giorno sui carboidrati degli spuntini, al massimo una modifica ogni 14 giorni (regola 10). Intanto non scendere di peso sui manubri."
+                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Se e' la seconda settimana di fila, +150 kcal al giorno sugli spuntini (regola 10); se e' la prima, aspetta la prossima lettura.")
            + " Calcolata su "+sl.n+" pesate in "+sl.days+" giorni."});
     }
     if(sl.stato==="sopra" && !sl.noisy) out.push({k:"spinta", t:"Spinta +"+sl.g+" g/sett \u00b7 sopra il corridoio",
@@ -489,7 +489,7 @@ var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7, "rossa+giall
 var VARIANTI={
   "Plank":{next:"Plank braccia avanzate", come:"Gomiti 10-15 cm più avanti delle spalle, glutei stretti, bacino fermo. Riparti da 3×20 s."},
   "Plank braccia avanzate":{next:"Plank con braccio avanti alternato", come:"Dal plank sui gomiti allunghi un braccio avanti per 2 s e cambi lato; il bacino non deve ruotare. Riparti da 3×6 per lato."},
-  "Push-up":{next:"Push-up piedi rialzati", come:"Piedi su un rialzo di 30-40 cm, corpo in linea, espira mentre spingi. Riparti da 3×8."},
+  "Push-up":{next:"Push-up piedi rialzati", come:"Piedi su un rialzo basso, 20-30 cm: la testa non scende sotto il petto (reflusso). Corpo in linea, espira mentre spingi. Riparti da 3×8."},
   "Push-up stretti":{next:"Push-up stretti piedi rialzati", come:"Mani sotto le spalle, gomiti lungo i fianchi, piedi su un rialzo basso. Riparti da 3×8."},
   "Pike push-up":{next:"Pike push-up piedi rialzati", come:"Piedi sul bordo del letto, anche sopra le spalle, la testa scende fra le mani. Riparti da 3×6."},
   "Bulgarian split squat 3s":{next:"Bulgarian split squat 3s con pausa", come:"Discesa in 3 s più 2 s fermo in basso; il lato che scende meno decide la profondità. Riparti da 3×8 per lato."},

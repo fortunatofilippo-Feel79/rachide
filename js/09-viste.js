@@ -584,7 +584,7 @@ function viewCorpo(){
        'Un \u0394 oltre 2 unit\u00e0 e\' la cosa da portare al fisioterapista, piu\' del valore assoluto.</div>';
   } else {
     h+='<div class="xs mut" style="margin-top:8px">Quattro test, due valori per lato. '+
-       'Accendi questa misura fra qualche settimana, quando peso e stress saranno diventati automatici: due abitudini nuove per volta, non tre.</div>';
+       'Il test si fa ogni 4 settimane: tocca «Da fare» e segna i valori dei due lati. È la base per il fisioterapista: conta la differenza fra i lati più del valore.</div>';
   }
   h+='</div>';
 

@@ -2,9 +2,13 @@
    DOLORE — in qualsiasi zona, con un numero da 0 a 10
    Al mattino (residuo), durante la seduta (il massimo) e sul
    singolo esercizio (il «flag» della guida tecnica).
-   Regola del pain-monitoring model (Silbernagel 2007): fino a 5
-   durante l'attivita' va bene se al mattino dopo e' rientrato e se
-   non sale di settimana in settimana.
+   Regola 15 del Libro (scelta del 21/11/2026): 0-2 che il giorno dopo
+   non peggiora, avanti; da 3, o se sale fra le serie, si cambia
+   esercizio su quella zona e si annota; se si ripete, fisioterapista.
+   Sopra 5 si ferma la serie. Il pain-monitoring model (Silbernagel
+   2007) accetta fino a 5, ma nasce per la riabilitazione dei tendini:
+   qui, senza tetti di carico e con la spalla sinistra che ha gia'
+   ceduto, la soglia piu' prudente e' 3.
    Formato sul foglio: "zona:valore;zona:valore", piu' il massimo.
    ============================================================ */
 var ZONE=[["collo","Collo"],["dorsale","Tra le scapole"],["costole","Costole / gibbo"],["lombare","Lombare"],
@@ -44,7 +48,8 @@ function dolMigra(){
 
 /* ---------- editor: zone + intensita', con la mappa del corpo ---------- */
 var DOLED={};
-function dolColore(v){ return v>5 ? "var(--alert)" : v>=3 ? "var(--amb)" : "var(--ok)"; }
+var DOL_CAMBIA=3, DOL_STOP=6;   /* regola 15: da 3 si cambia esercizio, sopra 5 si ferma la serie */
+function dolColore(v){ return v>=DOL_STOP ? "var(--alert)" : v>=DOL_CAMBIA ? "var(--amb)" : "var(--ok)"; }
 function dolMappaSVG(pref, m){
   var N="var(--surf2)";
   var corpo=function(cx){ return '<circle cx="'+cx+'" cy="16" r="9" fill="'+N+'"/><rect x="'+(cx-17)+'" y="27" width="34" height="50" rx="10" fill="'+N+'"/>'+
@@ -81,7 +86,8 @@ function dolEditorDentro(pref){
   });
   h+= zs.length ? '<button class="btn sm ghost" style="width:100%;margin-top:8px" data-a="dnone" data-p="'+pref+'">Nessun dolore</button>'
                 : '<div class="xs" style="margin-top:6px;color:var(--ok)">Nessun dolore segnato.</div>';
-  if(dolMax(m)>5) h+='<div class="flag stop" style="margin-top:8px">⚠<div>Sopra 5: se sei in seduta, ferma la serie. Le salite di carico si fermano finché non rientra.</div></div>';
+  if(dolMax(m)>=DOL_STOP) h+='<div class="flag stop" style="margin-top:8px">⚠<div>Sopra 5: se sei in seduta, ferma la serie. Le salite di carico si fermano finché non rientra.</div></div>';
+  else if(dolMax(m)>=DOL_CAMBIA) h+='<div class="flag disc" style="margin-top:8px">⚠<div>Da 3: per questa zona passa a un altro esercizio e annotalo. Se si ripete, fisioterapista (regola 15).</div></div>';
   return h;
 }
 function dolEditor(pref, mappa, titolo){
@@ -107,7 +113,8 @@ function dolEsercizioSalva(i){
   e.dol=Object.assign({}, DOLED.e||{});
   var mx=dolMax(e.dol);
   save(); closeSheet(); render();
-  if(mx>5){ suono("tardi"); toast("Sopra 5: ferma la serie. Annotato sull'esercizio"); }
+  if(mx>=DOL_STOP){ suono("tardi"); toast("Sopra 5: ferma la serie. Annotato sull'esercizio"); }
+  else if(mx>=DOL_CAMBIA){ suono("tardi"); toast("Da 3: cambia esercizio per questa zona. Annotato"); }
   else toast(mx? "Dolore annotato: "+dolTesto(e.dol) : "Nessun dolore su questo esercizio");
 }
 /* dalla seduta: il massimo per zona tra gli esercizi */
@@ -134,9 +141,9 @@ function dolDiagnosi(){
   S.sess.filter(function(s){ return dataOk(s.date) && giorniDa(s.date)<=14; }).forEach(function(s){
     var m=dolDi(s,"dolz","dol"), dopo=d2s(new Date(s2d(s.date).getTime()+86400000)), mm=dolDi(benOn(dopo),"dolmz","dolm");
     Object.keys(m).forEach(function(z){
-      if(m[z]>5) out.push({k:"segnale", t:"Dolore "+zonaNome(z).toLowerCase()+" "+m[z]+"/10 · "+s.date.slice(0,5),
-        m:"Sopra 5 durante la seduta (giorno "+s.day+"). Niente salite di carico sugli esercizi che la caricano finché al mattino non è sotto 3. Se si ripete, al fisioterapista."});
-      else if(mm[z]!=null && mm[z]>=3 && mm[z]>=m[z]) out.push({k:"segnale", t:zonaNome(z)+" non rientrata · "+dopo.slice(0,5),
+      if(m[z]>=DOL_CAMBIA) out.push({k:"segnale", t:"Dolore "+zonaNome(z).toLowerCase()+" "+m[z]+"/10 · "+s.date.slice(0,5),
+        m:(m[z]>=DOL_STOP? "Sopra 5" : "Da 3")+" durante la seduta (giorno "+s.day+"). Alla prossima seduta cambia gli esercizi che caricano questa zona e niente salite su quelli finché al mattino non è sotto 3. Se si ripete, al fisioterapista (regola 15)."});
+      if(mm[z]!=null && mm[z]>=3 && mm[z]>=m[z]) out.push({k:"segnale", t:zonaNome(z)+" non rientrata · "+dopo.slice(0,5),
         m:"Il mattino dopo la seduta era "+mm[z]+"/10, non meno di durante ("+m[z]+"). Il carico di quel giorno era troppo: la prossima volta tieni i carichi fermi."});
     });
   });
