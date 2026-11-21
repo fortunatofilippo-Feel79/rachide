@@ -76,10 +76,10 @@ function deltaDa(d, l, lista){
    Niente spinte sopra la testa in aggiunta (spalla sinistra). */
 var RIEMPI={
   Petto:{casa:["Floor Press (volume)","Push-up"], bande:["Push-up piedi rialzati con banda","Push-up"], corpo:["Push-up piedi rialzati","Push-up"]},
-  Dorso:{casa:["Rematore manubri (volume)","Pullover manubrio"], bande:["Band row seduto","Band row un braccio","Band pull-down"], corpo:["Rematore al telaio della porta"]},
+  Dorso:{casa:["Rematore manubri (volume)","Pullover manubrio"], bande:["Band row seduto","Band row un braccio"], corpo:["Rematore al telaio della porta"]},
   Spalle:{casa:["Alzate laterali","Face pull"], bande:["Alzate laterali con banda","Band pull-apart"], corpo:["Y-T-W a busto inclinato"]},
   Bicipiti:{casa:["Curl bicipiti manubri","Hammer Curl"], bande:["Band curl bicipiti","Hammer curl con banda"], corpo:["Curl isometrico asciugamano"]},
-  Tricipiti:{casa:["French Press","Band tricep extension"], bande:["Band tricep extension"], corpo:["Push-up stretti"]},
+  Tricipiti:{casa:["Overhead extension 1 braccio","Kick back tricipiti"], bande:["Band tricep extension"], corpo:["Push-up stretti"]},
   Gambe:{casa:["Box Squat","Hip thrust con banda","Affondi indietro manubri"], bande:["Bulgarian split squat 3s","Hip hinge una gamba","Hip thrust con banda"], corpo:["Affondi indietro","Box squat alla sedia 3s","Hip thrust a una gamba"]},
   Core:{casa:["Side plank","Dead bug"], bande:["Dead bug","Side plank"], corpo:["Dead bug","Side plank"]}
 };

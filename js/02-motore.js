@@ -294,7 +294,11 @@ var RIDOTTA_N=4, RIDOTTA_MIN=45;
 function eserciziPer(day, luogo, rid){
   var p=PLAN[day]; if(!p) return [];
   var lista = rid ? p.ex.slice(0, RIDOTTA_N) : p.ex;
-  if(!luogo || luogo==="casa" || p.sede!=="Casa") return lista.slice();
+  /* in casa c'e' tutto: pesi, bande e corpo libero. Fuori casa niente pesi: con le bande
+     o a corpo libero. Le sedute di trasferta (T1, T2) sono gia' con le bande: senza bande
+     passano al corpo libero. */
+  if(!luogo || luogo==="casa") return lista.slice();
+  if(p.sede!=="Casa" && luogo!=="corpo") return lista.slice();
   var visti={}, out=[];
   lista.forEach(function(x){
     var m=ALT[x.n], a = (m && (luogo in m)) ? m[luogo] : x.n;
