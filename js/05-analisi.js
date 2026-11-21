@@ -361,7 +361,7 @@ function diagnose(){
     });
     if(k.dur && k.dur>70) out.push({k:"durata", t:"Durata media "+k.dur+" min · settimana "+lastFull,
       m:"Sopra il tuo tetto di 60-70 minuti. Di solito è tempo morto fra le serie: oltre ~90 secondi non aggiunge ipertrofia (Singer 2024). Usa il timer e cambia i dischi dentro il recupero, non dopo."});
-    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Pareggia sempre sul lato debole."});
+    if(k.asim>10) out.push({k:"asim", t:"Asimmetria "+k.asim+"% · settimana "+lastFull, m:"Differenza fra ripetizioni sx e dx. Il lato debole lavora per primo e decide ripetizioni e carico; il lato forte si ferma lì, mai serie in più sul debole. Oltre il 10% per 3 sedute è una nota per il fisioterapista (regola 14)."});
   }
   /* 3b. grassi e reflusso: la correlazione che giustifica il tracciamento */
   var gr=[], gl=[];
@@ -375,7 +375,7 @@ function diagnose(){
     if(mA-mB >= 0.6) out.push({k:"comp", t:"Grassi e reflusso \u00b7 reflusso "+mA.toFixed(1)+" contro "+mB.toFixed(1),
       m:"Nelle giornate sopra "+(BLK_TGT.g+1.5)+" blocchi di grassi il reflusso medio \u00e8 pi\u00f9 alto ("+gr.length+" giornate contro "+gl.length+"). Non \u00e8 una prova di causa, ma \u00e8 il primo posto dove guardare."});
   }
-  /* 3a. dolore in qualsiasi zona: sopra 5 in seduta, non rientrato al mattino, ricorrente (Silbernagel 2007) */
+  /* 3a. dolore in qualsiasi zona: da 3 in seduta (regola 15), non rientrato al mattino, ricorrente */
   dolDiagnosi().forEach(function(x){ out.push(x); });
   /* 3. segnali articolari */
   var sig=S.sess.filter(s=>s.sig).slice(-3);
@@ -403,8 +403,8 @@ function diagnose(){
     var stalli=out.filter(function(x){ return x.k==="stallo"||x.k==="crollo"; }).length;
     if(sl.stato==="sotto" && !sl.noisy){
       out.unshift({k:"spinta", t:"Spinta "+(sl.g>0?"+":"")+sl.g+" g/sett \u00b7 sotto il corridoio",
-        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico. Regola del Piano alimentare: le calorie si ricalibrano solo se la pendenza resta fuori corridoio per 2 settimane di fila; alla seconda lettura sotto, +200-250 kcal al giorno. Intanto non scendere di peso sui manubri."
-                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Se e' la seconda settimana di fila, +200-250 kcal al giorno; se e' la prima, aspetta la prossima lettura.")
+        m: (stalli? "Ci sono "+stalli+" segnalazion"+(stalli>1?"i":"e")+" di stallo o crollo qui sotto. Con la pendenza sotto il minimo la causa piu' probabile e' alimentare, non il carico. Regola del Piano alimentare: le calorie si ricalibrano solo se la pendenza resta fuori corridoio per 2 settimane di fila; alla seconda lettura sotto, +150 kcal al giorno sui carboidrati degli spuntini, al massimo una modifica ogni 14 giorni (regola 10). Intanto non scendere di peso sui manubri."
+                  : "Nessuno stallo aperto per ora, ma sotto "+PESO_TGT[0]+" g/sett la crescita si ferma prima che i numeri lo mostrino. Se e' la seconda settimana di fila, +150 kcal al giorno sugli spuntini (regola 10); se e' la prima, aspetta la prossima lettura.")
            + " Calcolata su "+sl.n+" pesate in "+sl.days+" giorni."});
     }
     if(sl.stato==="sopra" && !sl.noisy) out.push({k:"spinta", t:"Spinta +"+sl.g+" g/sett \u00b7 sopra il corridoio",
@@ -489,13 +489,35 @@ var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7, "rossa+giall
 var VARIANTI={
   "Plank":{next:"Plank braccia avanzate", come:"Gomiti 10-15 cm più avanti delle spalle, glutei stretti, bacino fermo. Riparti da 3×20 s."},
   "Plank braccia avanzate":{next:"Plank con braccio avanti alternato", come:"Dal plank sui gomiti allunghi un braccio avanti per 2 s e cambi lato; il bacino non deve ruotare. Riparti da 3×6 per lato."},
-  "Push-up":{next:"Push-up piedi rialzati", come:"Piedi su un rialzo di 30-40 cm, corpo in linea, espira mentre spingi. Riparti da 3×8."},
+  "Push-up":{next:"Push-up piedi rialzati", come:"Piedi su un rialzo basso, 20-30 cm: la testa non scende sotto il petto (reflusso). Corpo in linea, espira mentre spingi. Riparti da 3×8."},
   "Push-up stretti":{next:"Push-up stretti piedi rialzati", come:"Mani sotto le spalle, gomiti lungo i fianchi, piedi su un rialzo basso. Riparti da 3×8."},
-  "Pike push-up":{next:"Pike push-up piedi rialzati", come:"Piedi sul bordo del letto, anche sopra le spalle, la testa scende fra le mani. Riparti da 3×6."},
-  "Bulgarian split squat 3s":{next:"Bulgarian split squat 3s con pausa", come:"Discesa in 3 s più 2 s fermo in basso; il lato che scende meno decide la profondità. Riparti da 3×8 per lato."},
-  "Hip hinge una gamba":{next:"Hip hinge una gamba con banda", come:"Banda gialla sotto il piede d'appoggio, maniglie in mano: tira di più quando risali. Riparti da 3×8 per lato."},
   "Dead bug":{next:"Dead bug con pausa 3 s", come:"Braccio e gamba opposti si allungano e restano fermi 3 s a 5 cm da terra; la lombare resta schiacciata. Riparti da 3×6 per lato."}
 };
+/* ---------- scale a livelli (Catalogo esercizi, 21/11/2026) ----------
+   Per gli esercizi a corpo libero che restano con lo stesso nome la scala ha tre
+   livelli: si passa al successivo con il top del range per 2 sedute, e da quel
+   giorno conta solo lo storico del livello nuovo. Scelte: le pause e il carico
+   esterno crescono lo stimolo piu' del solo rallentare; nel Pike push-up il
+   livello 3 aggiunge una banda invece di alzare i piedi, cosi' la testa non va
+   piu' in giu' (reflusso) e la spalla sinistra lavora nella stessa posizione. */
+var SCALE={
+  "Bulgarian split squat 3s":[
+    {t:"discesa in 3 s", come:"Discesa contata in 3 s, il piede dietro serve solo all'equilibrio; il lato che scende meno decide la profondità."},
+    {t:"discesa in 3 s e 2 s fermo in basso", come:"Discesa in 3 s, poi 2 s fermo in basso prima di risalire. Riparti da 3×8 per lato e risali."},
+    {t:"zaino di circa 8 kg al petto", come:"Zaino o valigia carica, circa 8 kg, tenuta al petto con le due braccia; discesa in 3 s. Riparti da 3×8 per lato e risali."}],
+  "Pike push-up":[
+    {t:"piedi a terra", come:"V rovesciata, bacino alto: la testa scende in verticale davanti alle mani, gomiti sopra le mani."},
+    {t:"discesa in 3 s e 1 s con la testa a 5 cm da terra", come:"Stessa posizione: scendi in 3 s e resta 1 s con la testa a 5 cm dal pavimento. Riparti da 3×6 e risali."},
+    {t:"banda gialla dietro la schiena", come:"Banda gialla passata sulle scapole, estremità sotto le mani: più carico senza mettere la testa più in giù (reflusso). Fastidio alla spalla sinistra: torni al livello 2. Riparti da 3×6."}],
+  "Hip hinge una gamba":[
+    {t:"punta delle dita al muro", come:"In piedi su una gamba, punta delle dita al muro solo per l'equilibrio; bacino indietro, i due «fari» delle creste iliache verso il pavimento."},
+    {t:"senza appoggio, discesa in 3 s", come:"Niente muro: discesa in 3 s fino a busto quasi parallelo, risali stringendo il gluteo. Riparti da 3×8 per lato."},
+    {t:"zaino o bottiglia da 2 l nella mano opposta", come:"Peso nella mano opposta alla gamba d'appoggio: il core lavora di più per non ruotare. Riparti da 3×8 per lato."}]
+};
+function livelloDi(n){ var l=(S.livelli||{})[n]; return (l && +l.l) || 1; }
+function livelloDal(n){ var l=(S.livelli||{})[n]; return (l && l.dal) || null; }
+function livelloTesto(n){ var sc=SCALE[n]; if(!sc) return ""; var l=Math.min(livelloDi(n), sc.length); return "Livello "+l+" di "+sc.length+": "+sc[l-1].t; }
+function passaLivello(n, l){ S.livelli=S.livelli||{}; S.livelli[n]={l:l, dal:today()}; cfgTocca("impostazioni"); }
 function comeSi(e, r){
   var lato = e.u? " per lato" : "";
   if(e.b && r.next) return "Banda "+r.next+" ("+String(BANDKG[r.next]).replace(".",",")+" kg) al posto della "+lastBand(e.n,e.b)+
@@ -504,6 +526,7 @@ function comeSi(e, r){
     ": se all'inizio ne fai meno va bene, resti a "+r.next+" kg finché non le chiudi per due sedute"+(meta(e.n).t==="comp"?" a RIR 1-2":"")+".";
   if(r.next) return "Stessa tecnica con "+r.next+" kg. Riparti da "+e.lo+" ripetizioni"+lato+" e risali fino a "+e.hi+
     ": quando chiudi il top per due sedute"+(meta(e.n).t==="comp"?" a RIR 1-2":"")+", si sale ancora.";
+  if(r.livello && SCALE[e.n]) return SCALE[e.n][r.livello-1].come;
   var v=VARIANTI[e.n]; if(v) return v.come;
   return "Variante successiva da definire col coach.";
 }
@@ -519,18 +542,20 @@ function progressioni(){
     if((now - s2d(h[h.length-1].date).getTime())/86400000 > 21) return;   /* fermo da 3 settimane: non conta */
     var t=meta(e.n).t, ord={comp:0, compl:1, iso:2, core:3}[t]; if(ord===undefined) ord=2;
     var why=r.why, v=VARIANTI[e.n];
-    if(!r.next && !e.b){ if(v) why="→ "+v.next; else ord+=10; }
-    cand.push({n:e.n, day:d, why:why, next:r.next, ord:ord, ultima:h[h.length-1].date, come:comeSi(e, r)});
+    if(!r.next && !e.b && !r.livello){ if(v) why="→ "+v.next; else ord+=10; }
+    cand.push({n:e.n, day:d, why:why, next:r.next, livello:r.livello, ord:ord, ultima:h[h.length-1].date, come:comeSi(e, r)});
   }); });
   cand.sort(function(a,b){ return a.ord-b.ord || s2d(a.ultima)-s2d(b.ultima) || (a.n<b.n?-1:1); });
   /* recupero basso: i carichi si fermano solo se hai autorizzato la proposta dello stato di oggi */
   var fz=frozen(), rb0=recoveryOggi(), dec0=(rb0 && typeof stoDecisa==="function")? stoDecisa("fermi|"+today()) : null;
-  var rbasso=(rb0 && dec0==="ok")? rb0 : null, ferma=fz||!!rbasso;
-  _PGC={scelta: ferma? null : (cand[0]||null), coda: ferma? cand : cand.slice(1), frozen:fz, recupero:rbasso, recuperoProposto:(rb0 && !dec0)? rb0 : null};
+  var notte=(typeof dolNotteRecente==="function") && dolNotteRecente();   /* regola 19 */
+  var rbasso=(rb0 && dec0==="ok")? rb0 : null, ferma=fz||!!rbasso||notte;
+  _PGC={scelta: ferma? null : (cand[0]||null), coda: ferma? cand : cand.slice(1), frozen:fz, notte:notte, recupero:rbasso, recuperoProposto:(rb0 && !dec0)? rb0 : null};
   return _PGC;
 }
 function cardProg(){
   var pg=progressioni(), h="";
+  if(pg.notte) h+='<div class="flag stop" style="margin-bottom:10px">⚠<div><b>Dolore di notte segnato negli ultimi 3 giorni.</b> È da medico, non da coach (regola 19): le progressioni sono ferme finché non ne parli col medico.</div></div>';
   if(pg.frozen){
     h+='<div class="card" style="border-color:var(--amb);border-style:dashed;background:rgba(224,164,88,.06)">'+
        '<div class="between"><div class="eyebrow amb">Carichi congelati · fino alla settimana '+S.freeze.until+'</div>'+
@@ -569,7 +594,7 @@ function pianoRows(){
     out.push({id:d+"|"+e.n, day:d, ord:i+1, ex:e.n, gruppo:m.g, serie:e.s, lo:e.lo, hi:e.hi,
       load:(e.b||m.sec)? "" : suggestLoad(e), band: e.b? lastBand(e.n, e.b) : "",
       uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:"", attesa:e.hold||"", prog:prog,
-      note:e.tip||"", agg:oggi});
+      note:((typeof SCALE!=="undefined" && SCALE[e.n])? livelloTesto(e.n)+". " : "")+(e.tip||""), agg:oggi});
   }); });
   return out;
 }

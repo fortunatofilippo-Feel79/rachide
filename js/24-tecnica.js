@@ -162,7 +162,7 @@ var TEC={
  m:["tricipiti"], m2:[],
  err:[["I gomiti si aprono","Immagina due binari; se la banda è troppo dura per tenerli fermi, scendi di una."],["Il busto dà slancio","Glutei stretti, costole basse."],["Il piede scivola sulla banda","Fermati e rimettilo: non continuare."]]},
 "Kick back tricipiti":{
- corpo:[["Busto","Quasi orizzontale, schiena piatta."],["Mano libera","Appoggiata a una sedia."],["Ginocchia","Morbide."],["Omero","Parallelo al pavimento, attaccato al busto: resta lì."],["Avambraccio","In partenza pende verticale."]],
+ corpo:[["Busto","Inclinato a 45°, schiena piatta: la testa resta sopra lo stomaco (reflusso)."],["Gambe","Sfalsate."],["Mano libera","Appoggiata a un tavolo."],["Ginocchia","Morbide."],["Omero","Parallelo al pavimento, attaccato al busto: resta lì."],["Avambraccio","In partenza pende verticale."]],
  mov:[["Distendi","1-2 s","espira","Porta la mano indietro fino a braccio dritto."],["Tieni","1 s","","Fermo a braccio disteso."],["Torna","2 s","inspira","Fino all'avambraccio verticale."]],
  m:["tricipiti"], m2:[],
  err:[["Il gomito scende e il braccio dondola","Lavora la spalla: fissa il gomito e scendi di peso."],["La schiena si arrotonda","Bacino indietro, petto avanti."],["Il manubrio sale con lo slancio","Questo esercizio si fa leggero e lento."]]},

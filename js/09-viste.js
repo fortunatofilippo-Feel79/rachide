@@ -270,14 +270,16 @@ function exCard(e,i,def){
                      : '<div class="exfig" data-a="tip" data-i="'+i+'">'+figBox(e.n, {cls:"compatta"})+'</div>';
   }
 
+  if(typeof SCALE!=="undefined" && SCALE[e.n]) h+='<div class="xs" style="margin-top:7px"><b>'+esc(livelloTesto(e.n))+'</b></div>';
   var lt=lastTwo(e.n);
   if(lt.length) h+='<div class="xs mut" style="margin-top:7px">'+lt.map(r=>r.date.slice(0,5)+" · "+(r.load?r.load+" kg · ":"")+r.reps.join("/")).join("  |  ")+'</div>';
 
   var r=readiness(def), pg=progressioni(), scelta=!!(pg.scelta && pg.scelta.n===e.n);
   if(r.ready && !full){
-    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>'+(r.dischi? "Dischi" : "Attrezzo")+'</b><div>'+esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+'.'+
+    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>'+(r.dischi? "Dischi" : r.fine? "Scala" : "Attrezzo")+'</b><div>'+esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+'.'+
       (r.dischi? ' <span class="mut">Quando li hai, aggiorna «Dischi di casa» nel Coach: la salita riparte da sola.</span>' : '')+'</div></div>';
-    else if(scelta) h+='<div class="flag up" style="margin-top:9px"><b>↑</b><div><b>'+esc(pg.scelta.why)+'</b><br>'+esc(pg.scelta.come)+'</div></div>';
+    else if(scelta) h+='<div class="flag up" style="margin-top:9px"><b>↑</b><div><b>'+esc(pg.scelta.why)+'</b><br>'+esc(pg.scelta.come)+
+      (pg.scelta.livello? '<button class="btn sm" style="width:100%;margin-top:8px" data-a="livello" data-n="'+esc(e.n)+'" data-l="'+pg.scelta.livello+'">Passo al livello '+pg.scelta.livello+'</button>' : '')+'</div></div>';
     else if(pg.recupero) h+='<div class="xs mut" style="margin-top:8px">Pronto per salire, ma oggi hai scelto di tenere i carichi: il recupero è basso.</div>';
     else h+='<div class="xs mut" style="margin-top:8px">Pronto anche questo, ma resta in coda: una progressione alla volta.</div>';
   }
@@ -584,7 +586,7 @@ function viewCorpo(){
        'Un \u0394 oltre 2 unit\u00e0 e\' la cosa da portare al fisioterapista, piu\' del valore assoluto.</div>';
   } else {
     h+='<div class="xs mut" style="margin-top:8px">Quattro test, due valori per lato. '+
-       'Accendi questa misura fra qualche settimana, quando peso e stress saranno diventati automatici: due abitudini nuove per volta, non tre.</div>';
+       'Il test si fa ogni 4 settimane: tocca «Da fare» e segna i valori dei due lati. È la base per il fisioterapista: conta la differenza fra i lati più del valore.</div>';
   }
   h+='</div>';
 

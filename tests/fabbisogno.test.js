@@ -84,3 +84,9 @@ test('proteine: proposta di salire sotto 1,6 g per kg', () => {
   c2.S.ben = [{ date: giorno(c2, -1), w: 40, peso: 76 }];
   assert.ok(!c2.fabQuadro().proposte.some(x => x.tipo === 'prot'));
 });
+
+test('regola 10: al massimo 150 kcal per proposta', () => {
+  const { carica } = require('./carica');
+  const ctx = carica();
+  assert.equal(ctx.FAB_MAX, 150);
+});
