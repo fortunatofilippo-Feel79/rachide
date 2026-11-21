@@ -8,32 +8,35 @@
 var VERSIONE_APP = "4.7.2";
 
 /* ---------- catalogo esercizi ---------- */
-/* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
+/* g = gruppo · t = tipo (rec) · uni = unilaterale · sec = misurato in secondi
+   tot = il carico e' la somma dei due manubri (Box Squat); negli altri e' per manubrio.
+   Nessun tetto (decisione di Filippo del 21/11/2026): oltre i dischi di casa l'app
+   dice «servono dischi» (caricoDisponibile in 02-motore.js). */
 var EX = {
-  "Floor Press manubri":        {g:"Petto",   t:"comp", cap:20, step:2},
-  "Rematore manubri":           {g:"Dorso",   t:"comp", cap:20, step:2},
-  "Shoulder Press manubri":     {g:"Spalle",  t:"comp", cap:20, step:2},
+  "Floor Press manubri":        {g:"Petto",   t:"comp", step:2},
+  "Rematore manubri":           {g:"Dorso",   t:"comp", step:2},
+  "Shoulder Press manubri":     {g:"Spalle",  t:"comp", step:2},
   "Push-up piedi rialzati con banda":{g:"Petto",t:"compl", band:true},
   "French Press":               {g:"Tricipiti",t:"iso",  step:2},
-  "Overhead extension 1 braccio":{g:"Tricipiti",t:"iso", cap:14, step:2, uni:true},
+  "Overhead extension 1 braccio":{g:"Tricipiti",t:"iso", step:2, uni:true},
   "Plank":                      {g:"Core",    t:"core", sec:true},
-  "Box Squat":                  {g:"Gambe",   t:"comp", cap:30, step:2},
-  "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",cap:20, step:2, uni:true},
+  "Box Squat":                  {g:"Gambe",   t:"comp", step:2, tot:true},
+  "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",step:2, uni:true},
   "Calf raise monopodalico":    {g:"Gambe",   t:"iso",  uni:true},
   "Band tricep extension":      {g:"Tricipiti",t:"iso", band:true},
   "Side plank":                 {g:"Core",    t:"core", sec:true, uni:true},
-  "Rematore manubri (volume)":  {g:"Dorso",   t:"comp", cap:20, step:2},
+  "Rematore manubri (volume)":  {g:"Dorso",   t:"comp", step:2},
   "Pullover manubrio":          {g:"Dorso",   t:"compl",step:2},
-  "Floor Press (volume)":       {g:"Petto",   t:"compl",cap:20, step:2},
+  "Floor Press (volume)":       {g:"Petto",   t:"compl",step:2},
   "Push-up":                    {g:"Petto",   t:"compl"},
-  "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  cap:8,  step:2},
+  "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  step:2},
   "Alzate laterali":            {g:"Spalle",  t:"iso",  step:1},
-  "Face pull":                  {g:"Spalle",  t:"iso",  cap:6,  step:2},
+  "Face pull":                  {g:"Spalle",  t:"iso",  step:2},
   "Hip thrust con banda":       {g:"Gambe",   t:"compl",band:true},
-  "Split-stance RDL":           {g:"Gambe",   t:"comp", cap:20, step:2, uni:true},
+  "Split-stance RDL":           {g:"Gambe",   t:"comp", step:2, uni:true},
   "Affondi indietro manubri":   {g:"Gambe",   t:"compl",step:2, uni:true},
-  "Hammer Curl":                {g:"Bicipiti",t:"iso",  cap:8,  step:2},
-  "Reverse Fly":                {g:"Spalle",  t:"iso",  cap:6,  step:2},
+  "Hammer Curl":                {g:"Bicipiti",t:"iso",  step:2},
+  "Reverse Fly":                {g:"Spalle",  t:"iso",  step:2},
   "Bulgarian split squat 3s":   {g:"Gambe",   t:"compl",uni:true},
   "Pike push-up":               {g:"Spalle",  t:"compl"},
   "Hip hinge una gamba":        {g:"Gambe",   t:"compl",uni:true},
@@ -68,7 +71,8 @@ var EX = {
 
 var REST = {comp:150, compl:90, iso:75, core:45};
 /* scala reale del set BeMaxx: gialla 4,5 · blu 9,1 · verde 13,6 · nera 18,1 · rossa 22,7 kg */
-var BANDS = ["gialla","blu","verde","nera","rossa"];
+var BANDS = ["gialla","blu","verde","nera","rossa","rossa+gialla","rossa+blu","rossa+verde","rossa+nera"];
+/* oltre la rossa le bande si sommano (maniglie con moschettoni): + gialla 27,2 kg, + blu 31,8, + verde 36,3, + nera 40,8 */
 
 /* ---------- sonno: si scrive in ore.minuti ----------
    «6.40», «6,4» e «6:40» vogliono dire 6 h 40 (decisione di Filippo del 23/10 e del

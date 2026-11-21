@@ -97,8 +97,7 @@ function briefing(){
     var sporche={}; S.log.forEach(function(r){ if(r.tec>=1 && dataOk(r.date) && giorniDa(r.date)<=14){ var o=sporche[r.ex]||(sporche[r.ex]={n:0, max:0, load:r.load}); if(r.side!=="D") o.n++; if(r.tec>o.max) o.max=r.tec; o.load=r.load; } });
     var ks=Object.keys(sporche);
     L.push("- Esecuzione segnata non pulita, ultimi 14 giorni: "+(ks.length? ks.map(function(n){ return n+" ("+(sporche[n].max>=2?"sporca":"sbavature")+", "+sporche[n].n+" volt"+(sporche[n].n===1?"a":"e")+(sporche[n].load? ", "+sporche[n].load+" kg" : "")+")"; }).join("; ") : "nessuna"));
-    var oltre=Object.keys(S.tettoOltre||{});
-    if(oltre.length) L.push("- Sopra il tetto consigliato per scelta dell'utente: "+oltre.map(function(n){ return n+" (dal "+S.tettoOltre[n].slice(0,5)+", ora "+lastLoad(n,0)+" kg)"; }).join("; "));
+    L.push("- Dischi di casa: "+dischiCasa()+" kg per manubrio (Box Squat "+2*dischiCasa()+" in tutto). Nessun tetto di carico (21/11).");
     var fq=fabQuadro();
     L.push("- Fabbisogno: "+(fq.formula.ok? "formula "+fq.formula.tdee+" kcal (riposo "+fq.formula.bmr+" × "+dec(fq.formula.pal)+")" : "formula non calcolabile (manca "+fq.formula.manca.join(", ")+")")+
       " · "+(fq.reale.ok? "dai dati "+fq.reale.tdee+" kcal ± "+fq.reale.margine+" ("+fq.reale.n+" giornate complete, "+fq.reale.mangiato+" kcal mangiate, peso "+(fq.reale.pendenza>0?"+":"")+fq.reale.pendenza+" g/sett)" : "dai dati non ancora: "+fq.reale.why)+

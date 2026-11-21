@@ -81,15 +81,10 @@ document.addEventListener("click", function(ev){
   if(a==="x"){ CIB_DAY=0; WG=null; Fig.pausa=false; closeSheet(); render(); return; }
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
-    var m=meta(e.n), st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
-    var eraSotto=!(m.cap && e.load>m.cap);
+    var st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
     e.load=Math.max(0,nv);
-    /* il tetto e' una proposta: salire oltre e' la tua autorizzazione, tornare sotto la toglie */
-    if(m.cap){ S.tettoOltre=S.tettoOltre||{};
-      if(e.load>m.cap){ if(!S.tettoOltre[e.n]){ S.tettoOltre[e.n]=today(); cfgTocca("impostazioni"); } }
-      else if(S.tettoOltre[e.n]){ delete S.tettoOltre[e.n]; cfgTocca("impostazioni"); } }
     save(); render();
-    if(m.cap && nv>m.cap && eraSotto) toast("Sopra il tetto consigliato di "+m.cap+" kg: è una tua scelta, resta scritto per il coach");
+    if(a==="load+" && e.load>caricoDisponibile(e.n)) toast("Oltre i dischi di casa ("+dec(caricoDisponibile(e.n))+" kg): se li hai comprati, aggiorna «Dischi di casa» nel Coach");
     return;
   }
   if(a==="v+"||a==="v-"){ e.cur.v=Math.max(0,e.cur.v+(a==="v+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
@@ -201,6 +196,7 @@ document.addEventListener("click", function(ev){
   if(a==="propvedi"){ var pa=propAttiva(); if(pa) patchPreview(pa.testo, pa.id); return; }
   if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; cfgTocca("proposta"); save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
   if(a==="propcheck"){ propCheck(true); return; }
+  if(a==="dischi"){ var dv=Math.max(5, Math.min(60, dischiCasa()+(+el.dataset.v||0))); S.dischi=dv; cfgTocca("impostazioni"); save(); PLAN=buildPlan(); render(); toast("Dischi di casa: "+dec(dv)+" kg per manubrio"); if(SYNC.on()) doPush(false); return; }
   if(a==="passo1"){ S.passo1=!S.passo1; cfgTocca("passo1"); save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
   if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
   if(a==="papply"){ patchApply(); return; }

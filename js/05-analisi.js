@@ -332,9 +332,9 @@ function diagnose(){
       var sameLoad = rows.every(r=>r.load===rows[0].load) && rows[0].load>0;
       var neverTop = rows.every(r=>!r.top);
       var lastDate = dates[dates.length-1], rec = recoveryNote(lastDate);
-      var mt=meta(e.n), alTetto = !!(mt.cap && rows[0].load>=mt.cap);
+      var alTetto = !e.b && rows[0].load>=caricoDisponibile(e.n);   /* al limite dei dischi di casa */
       if(sameLoad && neverTop) out.push({k:"stallo", t:e.n,
-        m: alTetto ? "Tre sessioni a "+rows[0].load+" kg, che è il tetto fissato, senza chiudere il top del range. Non scendere: tieni il carico, recupero di 2 minuti e punta alle ripetizioni."
+        m: alTetto ? "Tre sessioni a "+rows[0].load+" kg, il massimo dei dischi di casa, senza chiudere il top del range. Non scendere: tieni il carico, recupero di 2 minuti e punta alle ripetizioni."
                    : "Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."
           + (rec? " ⚠ Recupero l'ultima volta: "+rec+". Il calo può venire da lì, non dal carico — verifica su un giorno riposato prima di scendere." : "")});
       var hiRir = rows.filter(r=>r.rir!==null && r.rir>=3).length;
@@ -485,7 +485,7 @@ function lastSideRep(n, side, fb){
 }
 
 /* ---------- 4 · una progressione alla volta ---------- */
-var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7};
+var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7, "rossa+gialla":27.2, "rossa+blu":31.8, "rossa+verde":36.3, "rossa+nera":40.8};
 var VARIANTI={
   "Plank":{next:"Plank braccia avanzate", come:"Gomiti 10-15 cm più avanti delle spalle, glutei stretti, bacino fermo. Riparti da 3×20 s."},
   "Plank braccia avanzate":{next:"Plank con braccio avanti alternato", come:"Dal plank sui gomiti allunghi un braccio avanti per 2 s e cambi lato; il bacino non deve ruotare. Riparti da 3×6 per lato."},
@@ -565,10 +565,10 @@ function pianoRows(){
   ["A","B","C","D","T1","T2"].forEach(function(d){ if(!PLAN || !PLAN[d]) return; PLAN[d].ex.forEach(function(e,i){
     var m=meta(e.n), r=readiness(e);
     var prog = (pg.scelta && pg.scelta.n===e.n) ? "SCELTA: "+pg.scelta.why :
-               r.ready ? (r.cap? "tetto: "+r.why : (pg.recupero? "fermo oggi (recupero basso): " : "in coda: ")+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
+               r.ready ? (r.cap? (r.dischi? "dischi: " : "attrezzo: ")+r.why : (pg.recupero? "fermo oggi (recupero basso): " : "in coda: ")+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
     out.push({id:d+"|"+e.n, day:d, ord:i+1, ex:e.n, gruppo:m.g, serie:e.s, lo:e.lo, hi:e.hi,
       load:(e.b||m.sec)? "" : suggestLoad(e), band: e.b? lastBand(e.n, e.b) : "",
-      uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:m.cap||"", attesa:e.hold||"", prog:prog,
+      uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:"", attesa:e.hold||"", prog:prog,
       note:e.tip||"", agg:oggi});
   }); });
   return out;

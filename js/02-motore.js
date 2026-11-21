@@ -160,11 +160,8 @@ function histAll(name){
    anche se le ripetizioni calano: e' la doppia progressione, si risale nel range.
    Si torna al carico precedente solo se la seduta al carico nuovo e' crollata
    (una serie sotto il 75% del minimo del range: il peso era troppo).
-   Il tetto per la spalla e' una proposta, non un blocco (decisione del 14/11/2026):
-   l'app propone di restare entro il tetto, anche sullo storico di prima del tetto;
-   se in seduta sali oltre con il +, quella e' la tua autorizzazione (S.tettoOltre)
-   e da li' il carico di lavoro torna a essere l'ultimo usato. Scendendo di nuovo
-   entro il tetto l'autorizzazione si toglie.
+   Nessun tetto di carico (decisione di Filippo del 21/11/2026): ne' d'attrezzo ne'
+   per la spalla. Dove servono piu' dischi lo dice la progressione (readiness).
    (Prima: ogni seduta non chiusa al top sopra il carico di piano riportava
    al carico di piano, e la progressione tornava indietro.) */
 function suggestLoad(def){
@@ -181,11 +178,13 @@ function suggestLoad(def){
       if(minimo!==Infinity && minimo<soglia) out=prev;
     }
   }
-  if(m.cap && out>m.cap && !(S.tettoOltre||{})[def.n]) out=m.cap;
   return out;
 }
-/* sopra il tetto consigliato: non blocca niente, serve a dirlo */
-function sopraTetto(n, load){ var m=meta(n); return !!(m.cap && load>m.cap); }
+/* dischi di casa: fino a quanti kg arriva un manubrio (Profilo, di fabbrica 20).
+   Per il Box Squat il carico e' la somma dei due manubri. */
+var DISCHI_STD=20;
+function dischiCasa(){ var v=+S.dischi; return v>0? v : DISCHI_STD; }
+function caricoDisponibile(n){ return meta(n).tot? 2*dischiCasa() : dischiCasa(); }
 /* Rientro dopo una pausa (trasferte, settimane piene). La forza regge per circa
    tre settimane senza allenamento, poi cala (McMaster 2013, Sports Med 43:367).
    8-21 giorni: stesso carico, la prima serie fa da prova.
@@ -223,12 +222,15 @@ function isTop(reps, hi, sets){
   return reps.filter(r=>r>=hi).length >= Math.min(need, reps.length) && reps.length>=Math.min(sets,need);
 }
 
-/* gradino di carico: con i dischi da 0,5 kg si sale di 1 kg per manubrio,
-   tranne sugli esercizi con un tetto per la spalla, che restano come sono */
-var CLIN={"Curl bicipiti manubri":1,"Hammer Curl":1,"Reverse Fly":1,"Face pull":1,"Overhead extension 1 braccio":1};
+/* gradino di carico: con i dischi da 0,5 kg si sale di 1 kg per manubrio.
+   Esercizi dove la spalla sinistra ha dato segnali in passato: nessun tetto, ma un
+   consiglio che parte dai tuoi feedback in seduta (dolore, esecuzione, RIR). */
+var SPALLA={"Curl bicipiti manubri":1,"Hammer Curl":1,"Reverse Fly":1,"Face pull":1,"Overhead extension 1 braccio":1,
+  "Shoulder Press manubri":1,"Alzate laterali":1};
+var CONSIGLIO_SPALLA="spalla sx: sali col gradino piu' piccolo che hai; dolore 0-2 che il giorno dopo non sale, avanti; da 3 o esecuzione che cambia, torni al carico di prima (regola 15)";
 function stepOf(n){
   var m=meta(n);
-  if(S.passo1 && !CLIN[n] && !m.band && !m.sec) return Math.min(1, m.step||2);
+  if(S.passo1 && !m.band && !m.sec) return Math.min(1, m.step||2);
   return m.step||2;
 }
 
@@ -259,22 +261,18 @@ function readiness(exDef){
   var cur = exDef.b ? lastBand(n, exDef.b) : suggestLoad(exDef);
   if(exDef.b){
     var i=BANDS.indexOf(cur);
-    if(i>=BANDS.length-1){ return {ready:true, cap:true, why:"Banda rossa: aggiungi una serie o rallenta il ritorno a 3s"}; }
+    /* oltre la rossa si sommano due bande; finite anche quelle serve una banda piu' dura */
+    if(i>=BANDS.length-1){ return {ready:true, cap:true, attrezzo:true, why:"servono bande piu' dure: oltre "+cur+" non ne hai. Intanto ritorno in 3 s e 2 s di tenuta"}; }
     return {ready:true, why:"banda "+cur+" → "+BANDS[i+1], next:BANDS[i+1]};
   }
-  if(m.cap && cur>=m.cap){
-    /* il tetto e' una proposta: l'app consiglia come progredire senza salire di carico,
-       ma il + resta libero. Se sali lo stesso resta scritto per il coach. */
-    var alt = n.indexOf("Reverse Fly")===0 ? "tetto consigliato 6 kg finché non hai una valutazione della spalla: la proposta è non salire"
-            : n.indexOf("Floor Press")===0 ? "tetto consigliato dei manubri: sali di ripetizioni fino a 12, poi 1 s di pausa a terra"
-            : n.indexOf("Curl")===0||n.indexOf("Hammer")===0 ? "tetto consigliato 8 kg: progredisci di ripetizioni, fino a 12"
-            : n.indexOf("Face pull")===0 ? "tetto consigliato 6 kg: progredisci con 2 s di tenuta a gomiti alti"
-            : "tetto consigliato raggiunto: progredisci con tempo o ripetizioni";
-    return {ready:true, cap:true, why:alt, tetto:m.cap, oltre:cur+stepOf(n)};
-  }
   if(!cur) return {ready:true, why:"passa alla variante successiva della scala"};
-  var step = stepOf(n);
-  return {ready:true, why:cur+" → "+(cur+step)+" kg", next:cur+step};
+  var step = stepOf(n), nx = cur+step, disp = caricoDisponibile(n), sp = SPALLA[n]? " · "+CONSIGLIO_SPALLA : "";
+  if(nx>disp){
+    /* nessun tetto: se i dischi di casa non bastano, l'app lo dice e propone come salire intanto */
+    return {ready:true, cap:true, dischi:true, next:nx, disp:disp,
+      why:"servono dischi: "+nx+" kg"+(m.tot? " in tutto" : " per manubrio")+", oggi arrivi a "+disp+". Intanto rallenta la discesa a 3 s o aggiungi 1 s di pausa"+sp};
+  }
+  return {ready:true, why:cur+" → "+nx+" kg"+sp, next:nx};
 }
 
 
