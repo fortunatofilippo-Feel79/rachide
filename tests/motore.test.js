@@ -33,13 +33,60 @@ test('se la seduta al carico nuovo crolla sotto il range si torna al precedente'
   assert.equal(ctx.suggestLoad(defDi(ctx, 'A', 'French Press')), 16);
 });
 
-test('il tetto per la spalla e\' una proposta: vale sullo storico, ma non se hai autorizzato a salire', () => {
+test('nessun tetto: il carico di lavoro e\' l\'ultimo usato, anche per la spalla', () => {
   const ctx = carica();
   ctx.S.log = [riga(ctx, 'a', -3, 'Reverse Fly', 8, [15, 15, 15], { day: 'D' })];
-  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 6, 'senza autorizzazione propone il tetto');
-  ctx.S.tettoOltre = { 'Reverse Fly': '01/11/2026' };
-  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 8, 'autorizzato: l\'ultimo carico usato');
-  assert.equal(ctx.sopraTetto('Reverse Fly', 8), true);
+  assert.equal(ctx.suggestLoad(defDi(ctx, 'D', 'Reverse Fly')), 8);
+  assert.equal(typeof ctx.sopraTetto, 'undefined', 'il tetto non esiste piu\'');
+});
+
+test('oltre i dischi di casa l\'app dice «servono dischi», poi riparte quando li aggiorni', () => {
+  const ctx = carica();
+  ctx.S.log = [
+    riga(ctx, 'a', -10, 'Floor Press manubri', 20, [12, 12, 12, 12], { top: true, day: 'A', rir: 1 }),
+    riga(ctx, 'b', -3, 'Floor Press manubri', 20, [12, 12, 12, 12], { top: true, day: 'A', rir: 1 })
+  ];
+  const def = defDi(ctx, 'A', 'Floor Press manubri');
+  let r = ctx.readiness(def);
+  assert.equal(r.ready, true);
+  assert.equal(r.dischi, true, 'con dischi fino a 20 kg il 22 non c\'e\'');
+  assert.match(r.why, /servono dischi: 22 kg per manubrio/);
+  ctx.S.dischi = 25;
+  r = ctx.readiness(def);
+  assert.equal(r.dischi, undefined);
+  assert.equal(r.next, 22, 'con i dischi nuovi si sale');
+});
+
+test('Box Squat: il carico e\' la somma dei due manubri', () => {
+  const ctx = carica();
+  ctx.S.log = [
+    riga(ctx, 'a', -10, 'Box Squat', 32, [10, 10, 10], { top: true }),
+    riga(ctx, 'b', -3, 'Box Squat', 32, [10, 10, 10], { top: true })
+  ];
+  const r = ctx.readiness(defDi(ctx, 'B', 'Box Squat'));
+  assert.equal(r.next, 34, '34 kg in tutto sta nei 40 dei due manubri');
+  assert.equal(ctx.caricoDisponibile('Box Squat'), 40);
+});
+
+test('oltre la banda rossa le bande si sommano', () => {
+  const ctx = carica();
+  ctx.S.log = [
+    riga(ctx, 'a', -10, 'Hip thrust con banda', 0, [15, 15, 15, 15], { top: true, day: 'D', band: 'rossa' }),
+    riga(ctx, 'b', -3, 'Hip thrust con banda', 0, [15, 15, 15, 15], { top: true, day: 'D', band: 'rossa' })
+  ];
+  const r = ctx.readiness(defDi(ctx, 'D', 'Hip thrust con banda'));
+  assert.equal(r.next, 'rossa+gialla');
+});
+
+test('esercizi della spalla: nessun tetto, un consiglio dai feedback in seduta', () => {
+  const ctx = carica();
+  ctx.S.log = [
+    riga(ctx, 'a', -10, 'Curl bicipiti manubri', 8, [12, 12, 12, 12], { top: true, day: 'C' }),
+    riga(ctx, 'b', -3, 'Curl bicipiti manubri', 8, [12, 12, 12, 12], { top: true, day: 'C' })
+  ];
+  const r = ctx.readiness(defDi(ctx, 'C', 'Curl bicipiti manubri'));
+  assert.equal(r.next, 10);
+  assert.match(r.why, /spalla sx/);
 });
 
 test('pronto a salire solo con due top consecutivi allo stesso carico', () => {

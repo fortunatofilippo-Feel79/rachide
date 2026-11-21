@@ -20,8 +20,29 @@ function giorniFa(data){ return Math.round((s2d(today())-s2d(data))/86400000); }
 
 /* ---------- piano e disponibilita' ---------- */
 function pianoSett(w){ return (S.pianoSett||{})[w]||null; }
-function sedutaFatta(w, d){ return S.sess.some(function(s){ return s.w===w && s.day===d && !isRest(s); }); }
-function sedutaCoperta(w, d){ return S.sess.some(function(s){ return s.w===w && s.day===d; }); }
+/* ---------- trasferta: T1 copre A o B, T2 copre C o D (regola 51) ----------
+   Una seduta fuori casa vale per la seduta di casa dello stesso tipo che manca
+   ancora nella settimana: T2 prima per la C, poi per la D; T1 prima per la A,
+   poi per la B. Se il piano della settimana prevedeva gia' quella trasferta,
+   la seduta vale per se'; quelle in piu' coprono le sedute di casa. Cosi' dopo
+   un imprevisto la settimana si ricalibra da sola sulle sedute che restano. */
+var COPRE={T1:["A","B"], T2:["C","D"]};
+function copertureT(w){
+  var p=(typeof pianoSett==="function")? pianoSett(w) : null, nPiano={}, dirette={}, out={}, usate={};
+  ((p && p.sedute)||[]).forEach(function(e){ nPiano[e.d]=(nPiano[e.d]||0)+1; });
+  S.sess.forEach(function(s){ if(s.w===w) dirette[s.day]=true; });
+  S.sess.filter(function(s){ return s.w===w && COPRE[s.day] && !isRest(s); })
+    .sort(function(a,b){ return s2d(a.date)-s2d(b.date); })
+    .forEach(function(s){
+      usate[s.day]=(usate[s.day]||0)+1;
+      if(usate[s.day]<=(nPiano[s.day]||0)) return;
+      var d=COPRE[s.day].filter(function(x){ return !dirette[x] && !out[x]; })[0];
+      if(d) out[d]=s;
+    });
+  return out;
+}
+function sedutaFatta(w, d){ return S.sess.some(function(s){ return s.w===w && s.day===d && !isRest(s); }) || !!copertureT(w)[d]; }
+function sedutaCoperta(w, d){ return S.sess.some(function(s){ return s.w===w && s.day===d; }) || !!copertureT(w)[d]; }
 /* le sedute del piano con il loro stato: fatta, riposo, oggi, futura, saltata */
 function seduteDelPiano(w){
   var p=pianoSett(w); if(!p) return [];

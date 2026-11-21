@@ -46,7 +46,7 @@ function viewOggi(){
   var riposi=tutte.filter(isRest);
   var giorni=giorniSettimana(w), pk=picco(w);
   /* un giorno è "coperto" se allenato o segnato come riposo */
-  var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
+  var next=giorni.filter(function(d){ return !sedutaCoperta(w, d); })[0];   /* T1 e T2 coprono A-B e C-D */
   /* se il piano prevede una seduta per oggi, e' quella */
   var pNext=prossimaDelPiano(w);
   if(pNext && giorni.indexOf(pNext.d)>=0 && !sedutaCoperta(w, pNext.d)) next=pNext.d;
@@ -275,8 +275,8 @@ function exCard(e,i,def){
 
   var r=readiness(def), pg=progressioni(), scelta=!!(pg.scelta && pg.scelta.n===e.n);
   if(r.ready && !full){
-    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>Tetto</b><div>'+esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+'.'+
-      (r.oltre? ' <span class="mut">È una proposta: se decidi di salire a '+r.oltre+' kg usa il +, resta scritto per il coach.</span>' : '')+'</div></div>';
+    if(r.cap) h+='<div class="flag info" style="margin-top:9px"><b>'+(r.dischi? "Dischi" : "Attrezzo")+'</b><div>'+esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+'.'+
+      (r.dischi? ' <span class="mut">Quando li hai, aggiorna «Dischi di casa» nel Coach: la salita riparte da sola.</span>' : '')+'</div></div>';
     else if(scelta) h+='<div class="flag up" style="margin-top:9px"><b>↑</b><div><b>'+esc(pg.scelta.why)+'</b><br>'+esc(pg.scelta.come)+'</div></div>';
     else if(pg.recupero) h+='<div class="xs mut" style="margin-top:8px">Pronto per salire, ma oggi hai scelto di tenere i carichi: il recupero è basso.</div>';
     else h+='<div class="xs mut" style="margin-top:8px">Pronto anche questo, ma resta in coda: una progressione alla volta.</div>';
@@ -286,7 +286,6 @@ function exCard(e,i,def){
   if(e.rientro && !sets.length) h+='<div class="flag info" style="margin-top:9px"><b>↺</b><div><b>Rientro dopo '+e.rientro.gg+' giorni.</b> '+
     (e.rientro.taglio ? 'Oltre tre settimane: oggi un gradino sotto ('+e.load+' kg). La prossima seduta torni al carico di prima.'
                       : 'Stesso carico di prima: la prima serie fa da prova. Se chiudi a RIR 2 o più, resta qui.')+'</div></div>';
-  if(sopraTetto(e.n, e.load) && !full) h+='<div class="flag disc" style="margin-top:9px"><b>Tetto</b><div>'+e.load+' kg è sopra il tetto consigliato di '+m.cap+' kg. Fermati al primo fastidio alla spalla o se la tecnica cambia.</div></div>';
   if(typeof propNotaEsercizio==="function" && !full) h+=propNotaEsercizio(e, def);
   if(def.swap) h+='<div class="flag disc" style="margin-top:9px"><b>⟳</b><div>'+esc(def.swap)+' mentre fai questo.</div></div>';
 
@@ -530,11 +529,11 @@ function viewCorpo(){
      '<div class="grid2" style="margin-top:8px"><button class="btn sm '+(mattinaFatta(b)?"ghost":"amb")+'" data-a="ben" data-m="mattina">'+(mattinaFatta(b)?"✓ ":"")+'Mattino · 1′</button>'+
      '<button class="btn sm '+(seraFatta(b)?"ghost":"")+'" data-a="ben" data-m="sera">'+(seraFatta(b)?"✓ ":"")+'Sera · 30″</button></div>';
   if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl==null?"–":b.refl)+' · camminate '+(b.camm==null?"–":b.camm)+
-    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
+    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+sonnoTxt(b.sonno)+' · alcol '+(b.alc?"sì":"no")+'</div>';
   else h+='<div class="xs mut" style="margin-top:8px">Al risveglio i numeri di Zepp, la sera reflusso e stress. Due momenti brevi invece di uno lungo.</div>';
   if(b && b.sede==="Fuori") h+='<div class="xs" style="margin-top:4px;color:var(--amb)">Notte fuori casa'+(b.citta?' · '+esc(b.citta):'')+'</div>';
   var cf=casaFuori();
-  h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+dec(r1(cf.sc))+' h</b> contro fuori <b>'+dec(r1(cf.sf))+' h</b>'+
+  h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+sonnoTxt(cf.sc)+'</b> contro fuori <b>'+sonnoTxt(cf.sf)+'</b>'+
               ((cf.hc&&cf.hf)?' · HRV '+Math.round(cf.hc)+' contro '+Math.round(cf.hf):'')+'</div>'
             : '<div class="xs mut" style="margin-top:8px">Casa contro fuori casa: servono 3 notti per parte (ora '+cf.nc+' e '+cf.nf+').</div>';
   h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="benadd">＋ Aggiungi un giorno saltato</button>';
@@ -547,7 +546,7 @@ function viewCorpo(){
     recentB.forEach(function(x){
       var rn=recoveryNote(x.date);
       h+='<button class="item" data-a="ben" data-d="'+esc(x.date)+'"><div class="badge"'+(rn?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+x.date.slice(0,5)+'</div>'+
-         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+(x.sonno||"–")+'h · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
+         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+sonnoTxt(x.sonno)+' · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
          '<div class="ch">›</div></button>';
     });
     h+='</div>';
@@ -752,8 +751,13 @@ function viewCoach(){
   h+='</div>';
   h+='<div class="card"><div class="between"><div><div class="eyebrow">Gradino di carico</div>'+
      '<div class="sm" style="margin-top:4px">'+(S.passo1? "<b>1 kg</b> per manubrio: hai i dischi da 0,5 kg." : "<b>2 kg</b> per manubrio.")+'</div></div></div>'+
-     '<div class="xs mut" style="margin-top:6px">Con i dischi da 0,5 kg il salto passa da +14% a +7% su 14 kg. Curl, Hammer, Reverse Fly, Face pull e Overhead extension restano come sono: il loro tetto è per la spalla.</div>'+
+     '<div class="xs mut" style="margin-top:6px">Con i dischi da 0,5 kg il salto passa da +14% a +7% su 14 kg. Vale per tutti gli esercizi con i manubri: per quelli della spalla è il modo più dolce di salire.</div>'+
      '<button class="btn sm '+(S.passo1?"ghost":"")+'" style="width:100%;margin-top:10px" data-a="passo1">'+(S.passo1?"Torna a 2 kg":"Ho i dischi da 0,5 kg: passa a 1 kg")+'</button></div>';
+  h+='<div class="card"><div class="between"><div><div class="eyebrow">Dischi di casa</div>'+
+     '<div class="sm" style="margin-top:4px">Un manubrio arriva a <b>'+dec(dischiCasa())+' kg</b> (Box Squat: '+dec(2*dischiCasa())+' kg in tutto).</div></div></div>'+
+     '<div class="xs mut" style="margin-top:6px">Non ci sono tetti: quando una salita supera i dischi che hai, l\'app scrive «servono dischi» e ti dice come salire intanto. Comprati i dischi, aggiorna qui.</div>'+
+     '<div class="grid2" style="margin-top:10px"><button class="btn sm ghost" data-a="dischi" data-v="-2.5">− 2,5 kg</button>'+
+     '<button class="btn sm" data-a="dischi" data-v="2.5">+ 2,5 kg</button></div></div>';
 
   h+='<div class="eyebrow" style="margin:18px 0 6px">Dati</div>';
   var bk=backupState();

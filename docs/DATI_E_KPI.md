@@ -1,6 +1,6 @@
 # Dati e KPI di Rachide
 
-> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.7.2). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
+> File generato da `tools/genera-doc.js` a partire dal codice dell'app (versione 4.8.0). Non modificarlo a mano: cambia le definizioni in `js/01-dati.js` e rigeneralo con `node tools/genera-doc.js`.
 
 Riferimento per il coach: che cosa misura l'app, quando, con quale formula e quale bersaglio, da dove viene ogni bersaglio, come sono fatte le schede del foglio e quali regole applica il motore da solo.
 
@@ -72,8 +72,9 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 
 ## Regole che l'app applica da sola
 
+- **Trasferta.** T1 copre A o B, T2 copre C o D: una seduta fuori casa vale per la seduta di casa dello stesso tipo che manca ancora (prima A e C), e la settimana si ricalibra sulle sedute che restano. Una trasferta gia' prevista dal piano vale per se'.
 - **Doppia progressione.** Si sale di carico dopo due sedute consecutive al top del range allo stesso carico; sui composti il top vale solo a RIR 1-2. Una progressione alla volta (prima i composti). Gradino 2 kg per manubrio, 1 kg con i dischi da 0,5 kg.
-- **Carico suggerito.** L'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. I tetti per la spalla sono una proposta (decisione del 14/11/2026): l'app propone di restare entro il tetto e indica come progredire senza salire; se in seduta si sale oltre con il +, quella è l'autorizzazione (`tettoOltre` nelle impostazioni) e il carico di lavoro torna a essere l'ultimo usato, con un avviso sulla scheda.
+- **Carico suggerito.** L'ultimo usato. Dopo una salita si resta sul carico nuovo anche se le ripetizioni calano; si torna al precedente solo se una serie crolla sotto il 75% del minimo del range. Nessun tetto di carico (decisione del 21/11/2026): quando la salita supera i dischi di casa (impostazione «Dischi di casa», di fabbrica 20 kg per manubrio; Box Squat somma dei due manubri) la progressione scrive «servono dischi» e propone come salire intanto. Oltre la banda rossa si sommano due bande. Sugli esercizi della spalla un consiglio basato sul dolore in seduta.
 - **Rientro dopo una pausa.** Dopo 8-21 giorni senza l'esercizio: stesso carico, la prima serie fa da prova. Oltre 21 giorni: un gradino sotto per una seduta ([McMaster 2013](https://pubmed.ncbi.nlm.nih.gov/23529287/)).
 - **Recupero.** Livello 2: HRV sotto la fascia normale insieme a FC a riposo sopra la norma (+7%), oppure stress ≥ 2 con sonno < 6,5 h. HRV: fascia dei 60 giorni precedenti sul logaritmo. Al livello 2 l'app propone di tenere i carichi fermi per oggi: vale solo se autorizzata.
 - **Stato di oggi.** In Oggi l'app legge insieme recupero, sonno delle ultime 3 notti (giallo sotto 6.5 h, rosso sotto 6), stress e testa su 3 giorni, dolore (una zona da 4/10 al mattino, sopra 5 nell'ultima seduta se non rientrata, o 3 volte in 14 giorni), carico (serie dure dei 7 giorni oltre il 130% della media delle 4 settimane prima), giorni di fila, cibo di ieri (sotto l'80% del target) e reflusso della sera prima. Un rosso o tre gialli: giornata da gestire; un giallo: avanti con giudizio. Guidare l'allenamento con l'HRV rende più o meno come un piano fisso ([Düking 2021](https://pubmed.ncbi.nlm.nih.gov/34489178/); [Manresa-Rocamora 2021](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8507742/)): per questo sono proposte, non blocchi. Le soglie sono scelte del progetto.
@@ -81,7 +82,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 - **Scendere di carico.** Proposto solo dopo una salita recente (ultime 3 sedute dell'esercizio) e solo se l'esecuzione non tiene: esecuzione segnata sporca (2 punti) o con sbavature in due sedute (2), sotto il minimo del range in due sedute (2) o in una (1), dolore da 4/10 sull'esercizio (2), cedimento su un composto (1), un lato che cede molto prima (1), salita fatta senza due sedute al top (1). Da 2 punti l'app propone due sedute al carico precedente con esecuzione pulita fino al top, poi si risale. Fondamento: a parità di sforzo la crescita non dipende dal carico ([Lopez 2021](https://pubmed.ncbi.nlm.nih.gov/33433148/)), mentre la forza massima sì; la tecnica che conta è movimento controllato e ampiezza piena ([Androulakis-Korakakis 2024](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10801605/)). Un rifiuto la silenzia per 14 giorni.
 - **Serie dure.** L'unità di volume è lo sforzo, non l'attrezzo: una serie chiusa a RIR 0-3 conta 1, a RIR 4 o più conta 0,5, senza RIR conta 1. Vale per pesi, bande e corpo libero ([Schoenfeld 2017](https://pubmed.ncbi.nlm.nih.gov/28834797/): crescita simile con carichi leggeri se le serie sono vicine al cedimento). La soglia è una scelta del progetto.
 - **Carico sollevato.** Pesi: kg esatti. Bande: valore nominale della banda × 0,7 × ripetizioni (stima). Corpo libero: quota del peso × ripetizioni (stima; solo il push-up ha una misura, circa 69-75% del peso, [Suprak 2011](https://pubmed.ncbi.nlm.nih.gov/20179649)). Le tenute e il core non hanno un carico. Per confrontare le settimane si usano le serie dure.
-- **Piano flessibile.** Casa, Bande, Corpo libero: ogni esercizio ha un sostituto con lo stesso schema di movimento; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.
+- **Piano flessibile.** Casa (pesi, bande e corpo libero), Bande, Corpo libero: fuori casa niente pesi; ogni esercizio ha un sostituto con lo stesso schema di movimento, e senza bande anche le sedute T1 e T2 passano al corpo libero; le serie restano quelle del piano e si sommano se due esercizi hanno lo stesso sostituto. Le alternative si registrano col loro nome.
 - **Piano della settimana.** Il coach scrive la domenica un piano di massima (giorno, seduta, luogo, ora, minuti). L'app lo segue in Oggi e lo porta nel calendario (.ics, allarme 30 minuti prima). Per ogni giorno l'utente indica dove è (`casa` = pesi, bande o niente; `fuori` = con le bande; `fuori0` = senza attrezzi; `no` = occupato) e quanto tempo ha (30, 60 o 90 minuti, riscaldamento compreso). Avvisa se passano 10 giorni senza pesi e non ne è previsto nessuno.
 - **Catena delle settimane.** Conta quello che ottieni, non quante volte ti alleni: a parità di volume la frequenza cambia poco ([Iversen 2021](https://pubmed.ncbi.nlm.nih.gov/34125411/)). **Piena**: tutte le sedute del bersaglio (4, 2 in picco, meno i riposi) oppure tutti e 7 i gruppi al minimo di serie dure, con qualsiasi numero di sedute. **Tenuta**: almeno 2 sedute e tutte quelle del piano adattato ai giorni disponibili (nessuna saltata, nessuna da fare), ma qualche gruppo sotto: con l'intensità mantenuta poche sedute conservano forza e massa per qualche settimana ([Spiering 2021](https://pubmed.ncbi.nlm.nih.gov/33629972/)). **Rotta**: settimana finita con meno di 2 sedute, senza un piano, o con una seduta del piano saltata e la settimana non ricalcolata. **Aperta**: la settimana in corso finché non è piena o tenuta. Piene e tenute fanno la catena; dopo 3 tenute di fila l'app avvisa (soglia del progetto: il mantenimento a lungo diventa regressione). Se la settimana rischia di rompersi l'app propone 30 minuti a corpo libero: la seduta che recupera di più, adattata a 30′, che entra nel piano. L'aderenza confronta le sedute fatte con quelle del piano (massimo 100%).
 - **Generatore delle sedute.** In *Adatta la settimana* (e per la proposta della domenica) l'app prova tutte le combinazioni di sedute che mancano e giorni liberi e tiene quella con il punteggio migliore: 3 punti per ogni serie che manca al minimo di un gruppo, 1 per ogni serie oltre il massimo, penalità per sedute in giorni attaccati (di più se lavorano gli stessi gruppi, soprattutto le gambe) e per ogni seduta spostata rispetto al piano che c'è già. Poi adatta gli esercizi: (1) toglie le serie oltre il massimo settimanale; (2) se la seduta non sta nel tempo toglie le serie che valgono meno per minuto risparmiato (prima i gruppi già pieni; mai sotto 2 serie; il primo esercizio resta: nei giorni corti contano i multiarticolari, [Iversen 2021](https://pubmed.ncbi.nlm.nih.gov/34125411/)); (3) se un gruppo resta sotto il minimo aggiunge una serie a un suo esercizio (al massimo +2 sul piano, 5 in tutto) o un esercizio nuovo da 2 serie, scelto fra quelli del piano o delle alternative per quell'attrezzo; (4) se il tempo è finito scambia una serie di un gruppo già nel range con una del gruppo che manca. Al massimo 10 serie per gruppo nella stessa seduta: oltre circa 11 il guadagno non cresce ([Remmert et al. 2025, preprint](https://sportrxiv.org/index.php/server/preprint/view/537)). Tempo stimato: 40 s di lavoro per serie (doppio se unilaterale), recupero del tipo di esercizio (comp 150 s, compl 90 s, iso 75 s, core 45 s), 30 s di cambio, 5 minuti di riscaldamento; tolleranza 5%. Le modifiche si salvano nel piano (`agg`, `ser`, `via`) e la seduta guidata le usa; se in un giorno cambi attrezzo la seduta si riadatta. La progressione di un esercizio con meno serie del solito si giudica sulle serie del piano.
@@ -164,7 +165,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `camm` | camminate dopo i pasti 0-2 (sera) |
 | `hrv` | HRV notturna da Zepp (mattino) |
 | `read` | readiness Zepp (mattino) |
-| `sonno` | ore di sonno (mattino) |
+| `sonno` | sonno della notte in ore.minuti: 6.40 = 6 h 40 (mattino) |
 | `alc` | alcol la sera prima (mattino) |
 | `peso` | peso a digiuno kg (mattino, vuoto in trasferta) |
 | `rhr` | FC a riposo (mattino) |
@@ -225,9 +226,9 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `band` | banda suggerita |
 | `uni` | Sì se un lato alla volta |
 | `tempo` | Sì se misurato in secondi |
-| `tetto` | tetto di carico per la spalla (kg) |
+| `tetto` | vuoto dalla 4.8: nessun tetto di carico |
 | `attesa` | decisione di non salire |
-| `prog` | stato della progressione (scelta, in coda, tetto, fermo) |
+| `prog` | stato della progressione (scelta, in coda, dischi, attrezzo, fermo) |
 | `note` | nota tecnica del piano |
 | `agg` | data di aggiornamento |
 
@@ -262,8 +263,8 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `grassi` | grassi medi g |
 | `hrv` | HRV mediana |
 | `rhr` | FC a riposo mediana |
-| `sonno` | sonno medio h |
-| `sonno_fuori` | sonno medio nelle notti fuori |
+| `sonno` | sonno medio in ore.minuti |
+| `sonno_fuori` | sonno medio nelle notti fuori, in ore.minuti |
 | `rec_bassi` | giorni con recupero basso |
 | `prog` | progressione scelta |
 | `stato_oggi` | stato di oggi (via libera, avanti con giudizio, giornata da gestire) con i segnali, e le proposte dell'app degli ultimi 14 giorni con la decisione presa |

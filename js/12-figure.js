@@ -557,7 +557,7 @@ var FIG={
    {p:pIn({hip:[107,92], fn:[116,FG_ANK], ff:[92,122], tf:60}), h:0, d:0.7, c:"Torna su"}]},
  "Reverse Fly":{fx:"arm", db:"nf", inset:{p:pPiegato(), t:"busto a 45°"}, k:[
    {p:pChino({an:[8,-8], af:[-8,8]}), h:0.2, d:1.3, c:"Visto di fronte, busto a 45°: manubri che pendono"},
-   {p:pChino({an:[90,72], af:[-90,-72]}), h:0.5, d:2, c:"Apri fino all'altezza delle spalle stringendo le scapole. 6 kg è il tetto"}]},
+   {p:pChino({an:[90,72], af:[-90,-72]}), h:0.5, d:2, c:"Apri fino all'altezza delle spalle stringendo le scapole"}]},
 
  /* ---------- trasferta ---------- */
  "Pike push-up":{fx:"arm", k:[

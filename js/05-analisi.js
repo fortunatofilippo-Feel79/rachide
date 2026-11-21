@@ -84,7 +84,7 @@ function controlloBen(r){
   var a=[];
   if(r.rhr!=null && !plaus("rhr",r.rhr)) a.push("FC a riposo "+r.rhr+" (di solito tra 35 e 100)");
   if(r.hrv!=null && !plaus("hrv",r.hrv)) a.push("HRV "+r.hrv+" (di solito tra 10 e 200)");
-  if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+r.sonno+" h (di solito tra 3 e 12)");
+  if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+sonnoTxt(r.sonno)+" (di solito tra 3 e 12 ore)");
   if(r.peso!=null){
     var ps=S.ben.filter(function(b){ return b.peso>0 && b.date!==r.date && dataOk(b.date); })
       .sort(function(x,y){ return s2d(y.date)-s2d(x.date); }).slice(0,7).map(function(b){ return b.peso; });
@@ -124,7 +124,7 @@ function recovery(date){
   if(b.read!=null && b.read<70){ parts.push("readiness "+b.read); lvl=Math.max(lvl,1); }
   /* soglie come da Lettura dati e Jarvis (decisione del 18/10/2026): sonno sotto 6,5 h, stress da 2 */
   var sonnoCorto = b.sonno!=null && b.sonno<SONNO_BASSO, stressAlto = b.stress!=null && b.stress>=STRESS_ALTO;
-  if(sonnoCorto){ parts.push("sonno "+b.sonno+"h"); lvl=Math.max(lvl,1); }
+  if(sonnoCorto){ parts.push("sonno "+sonnoTxt(b.sonno)); lvl=Math.max(lvl,1); }
   if(stressAlto){ parts.push("stress "+b.stress); lvl=Math.max(lvl,1); }
   var hint="";
   /* livello 2 = due segnali insieme. La coppia stress+sonno viene prima del «rumore di misura» dell'HRV:
@@ -332,9 +332,9 @@ function diagnose(){
       var sameLoad = rows.every(r=>r.load===rows[0].load) && rows[0].load>0;
       var neverTop = rows.every(r=>!r.top);
       var lastDate = dates[dates.length-1], rec = recoveryNote(lastDate);
-      var mt=meta(e.n), alTetto = !!(mt.cap && rows[0].load>=mt.cap);
+      var alTetto = !e.b && rows[0].load>=caricoDisponibile(e.n);   /* al limite dei dischi di casa */
       if(sameLoad && neverTop) out.push({k:"stallo", t:e.n,
-        m: alTetto ? "Tre sessioni a "+rows[0].load+" kg, che è il tetto fissato, senza chiudere il top del range. Non scendere: tieni il carico, recupero di 2 minuti e punta alle ripetizioni."
+        m: alTetto ? "Tre sessioni a "+rows[0].load+" kg, il massimo dei dischi di casa, senza chiudere il top del range. Non scendere: tieni il carico, recupero di 2 minuti e punta alle ripetizioni."
                    : "Tre sessioni a "+rows[0].load+" kg senza mai chiudere il top del range. Il carico è sopra la capacità attuale: scendi di 2 kg e ricostruisci."
           + (rec? " ⚠ Recupero l'ultima volta: "+rec+". Il calo può venire da lì, non dal carico — verifica su un giorno riposato prima di scendere." : "")});
       var hiRir = rows.filter(r=>r.rir!==null && r.rir>=3).length;
@@ -485,7 +485,7 @@ function lastSideRep(n, side, fb){
 }
 
 /* ---------- 4 · una progressione alla volta ---------- */
-var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7};
+var BANDKG={gialla:4.5, blu:9.1, verde:13.6, nera:18.1, rossa:22.7, "rossa+gialla":27.2, "rossa+blu":31.8, "rossa+verde":36.3, "rossa+nera":40.8};
 var VARIANTI={
   "Plank":{next:"Plank braccia avanzate", come:"Gomiti 10-15 cm più avanti delle spalle, glutei stretti, bacino fermo. Riparti da 3×20 s."},
   "Plank braccia avanzate":{next:"Plank con braccio avanti alternato", come:"Dal plank sui gomiti allunghi un braccio avanti per 2 s e cambi lato; il bacino non deve ruotare. Riparti da 3×6 per lato."},
@@ -565,10 +565,10 @@ function pianoRows(){
   ["A","B","C","D","T1","T2"].forEach(function(d){ if(!PLAN || !PLAN[d]) return; PLAN[d].ex.forEach(function(e,i){
     var m=meta(e.n), r=readiness(e);
     var prog = (pg.scelta && pg.scelta.n===e.n) ? "SCELTA: "+pg.scelta.why :
-               r.ready ? (r.cap? "tetto: "+r.why : (pg.recupero? "fermo oggi (recupero basso): " : "in coda: ")+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
+               r.ready ? (r.cap? (r.dischi? "dischi: " : "attrezzo: ")+r.why : (pg.recupero? "fermo oggi (recupero basso): " : "in coda: ")+r.why) : (r.cedimento? "top raggiunto a cedimento" : "");
     out.push({id:d+"|"+e.n, day:d, ord:i+1, ex:e.n, gruppo:m.g, serie:e.s, lo:e.lo, hi:e.hi,
       load:(e.b||m.sec)? "" : suggestLoad(e), band: e.b? lastBand(e.n, e.b) : "",
-      uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:m.cap||"", attesa:e.hold||"", prog:prog,
+      uni:e.u?"Sì":"", tempo:m.sec?"Sì":"", tetto:"", attesa:e.hold||"", prog:prog,
       note:e.tip||"", agg:oggi});
   }); });
   return out;
@@ -600,7 +600,7 @@ function statoRows(){
       grassi: cib.length? Math.round(media(cib.map(function(b){ return b.cibG||0; }))) : "",
       hrv: vuotoSe(mediana(bb.filter(function(b){ return b.hrv; }).map(function(b){ return b.hrv; }))),
       rhr: vuotoSe(mediana(bb.filter(function(b){ return b.rhr; }).map(function(b){ return b.rhr; }))),
-      sonno: son.length? r1(media(son)) : "", sonno_fuori: sonF.length? r1(media(sonF)) : "",
+      sonno: son.length? sonnoHM(media(son)) : "", sonno_fuori: sonF.length? sonnoHM(media(sonF)) : "",
       rec_bassi: bb.filter(function(b){ return recovery(b.date).lvl>=1; }).length,
       prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso, proposta autorizzata" : "",
       stato_oggi: (cur && typeof stoTestoCoach==="function")? stoTestoCoach().join(" | ").slice(0,900) : "",
@@ -787,7 +787,7 @@ async function benPaste(){
   var f=function(re){ var m=String(txt).match(re); return m? m[1].replace(",",".") : null; };
   var vals={sonno:f(/sonno[^\d]{0,14}(\d+(?:[.,]\d+)?)/i), hrv:f(/hrv[^\d]{0,14}(\d+)/i),
             rhr:f(/(?:fc|riposo|rhr)[^\d]{0,14}(\d+)/i), peso:f(/peso[^\d]{0,14}(\d+(?:[.,]\d+)?)/i)};
-  if(vals.sonno){ var sn=parseFloat(vals.sonno); if(sn>24) sn=sn/60; vals.sonno=(Math.round(sn*10)/10).toString(); }
+  if(vals.sonno){ var sn=parseFloat(vals.sonno); vals.sonno = sn>24 ? sonnoHM(sn/60) : sonnoHM(sn); }   /* da Salute: minuti o ore decimali; nel campo si scrive in ore.minuti */
   var n=0;
   [["sonno","bSonno"],["hrv","bHrv"],["rhr","bRhr"],["peso","bPeso"]].forEach(function(p){
     if(vals[p[0]]){ var el=document.getElementById(p[1]); if(el){ el.value=vals[p[0]]; n++; } }

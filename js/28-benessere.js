@@ -76,15 +76,15 @@ function beneLetture(){
   };
   /* notti corte e HRV del mattino */
   metti(beneGruppi(gg, function(b){ var s=son(b); return s==null? null : s<SONNO_BASSO? true : s>=7? false : null; }, hrv), 0.07, true, function(g,d){
-    return {t:"Notti corte e HRV", m:"Dopo le notti sotto "+dec(SONNO_BASSO)+" ore la tua HRV è in media "+Math.round(g.a)+", dopo quelle da 7 ore in su "+Math.round(g.b)+"."+(d<0? " Il sonno è la prima leva del tuo recupero." : " Nei tuoi dati il sonno corto non abbassa l'HRV.")}; });
+    return {t:"Notti corte e HRV", m:"Dopo le notti sotto "+sonnoTxt(SONNO_BASSO)+" la tua HRV è in media "+Math.round(g.a)+", dopo quelle da 7 ore in su "+Math.round(g.b)+"."+(d<0? " Il sonno è la prima leva del tuo recupero." : " Nei tuoi dati il sonno corto non abbassa l'HRV.")}; });
   /* alcol la sera e HRV, alcol e sonno */
   metti(beneGruppi(gg, function(b){ return !!b.alc; }, hrv), 0.07, true, function(g,d){
     return {t:"Alcol e HRV", m:"Dopo una sera con alcol l'HRV è in media "+Math.round(g.a)+", senza "+Math.round(g.b)+"."+(d<0? " Se il giorno dopo c'è una seduta pesante, conta." : "")}; });
   metti(beneGruppi(gg, function(b){ return !!b.alc; }, son), 0.4, false, function(g,d){
-    return {t:"Alcol e sonno", m:"Con alcol la sera dormi in media "+dec(r1(g.a))+" ore, senza "+dec(r1(g.b))+"."}; });
+    return {t:"Alcol e sonno", m:"Con alcol la sera dormi in media "+sonnoTxt(g.a)+", senza "+sonnoTxt(g.b)+"."}; });
   /* stress della sera prima e sonno */
   metti(beneGruppi(gg, function(b){ var p=prima(b); return (!p || p.stress==null)? null : p.stress>=STRESS_ALTO; }, son), 0.4, false, function(g,d){
-    return {t:"Stress e sonno", m:"Dopo una giornata con stress da "+STRESS_ALTO+" in su dormi "+dec(r1(g.a))+" ore, altrimenti "+dec(r1(g.b))+"."+(d<0? " La respirazione 4-7 la sera è lo strumento che hai già nel piano." : "")}; });
+    return {t:"Stress e sonno", m:"Dopo una giornata con stress da "+STRESS_ALTO+" in su dormi "+sonnoTxt(g.a)+", altrimenti "+sonnoTxt(g.b)+"."+(d<0? " La respirazione 4-7 la sera è lo strumento che hai già nel piano." : "")}; });
   /* stress e reflusso nello stesso giorno */
   metti(beneGruppi(gg, function(b){ return b.stress==null? null : b.stress>=STRESS_ALTO; }, function(b){ return b.refl; }), 0.5, false, function(g,d){
     return {t:"Stress e reflusso", m:"Nei giorni di stress alto il reflusso è in media "+dec(r1(g.a))+" su 3, negli altri "+dec(r1(g.b))+"."}; });
@@ -102,7 +102,7 @@ function beneLetture(){
     return {t:"Cibo ed energia in seduta", m:"Il giorno dopo aver mangiato sotto l'85% del target l'energia in seduta è "+dec(r1(g.a))+" su 5, altrimenti "+dec(r1(g.b))+"."}; });
   /* seduta e sonno della notte dopo */
   metti(beneGruppi(gg, function(b){ var p=prima(b); return p? !!seduta(p.date) : null; }, son), 0.4, false, function(g,d){
-    return {t:"Allenamento e sonno", m:"La notte dopo una seduta dormi "+dec(r1(g.a))+" ore, le altre "+dec(r1(g.b))+"."}; });
+    return {t:"Allenamento e sonno", m:"La notte dopo una seduta dormi "+sonnoTxt(g.a)+", le altre "+sonnoTxt(g.b)+"."}; });
   /* come ti senti e sonno */
   metti(beneGruppi(gg, function(b){ var s=son(b); return s==null? null : s<SONNO_BASSO; }, function(b){ return b.mente; }), 0.5, false, function(g,d){
     return {t:"Sonno e testa", m:"Dopo una notte corta segni la testa a "+dec(r1(g.a))+" su 5, altrimenti "+dec(r1(g.b))+"."}; });

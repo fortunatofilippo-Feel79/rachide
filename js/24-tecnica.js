@@ -200,6 +200,8 @@ var TEC={
  err:[["Spingi col piede dietro","Avanza di 10 cm il piede davanti."],["Il busto si inclina molto avanti","Guarda avanti e scendi in verticale."],["Il ginocchio va dentro","Spingilo verso la punta."],["Un lato scende meno","È quel lato a decidere la profondità di entrambi."]]},
 "Bulgarian split squat 3s":{da:"Bulgarian Split Squat manubri", corpo:[["Braccia","Senza manubri: mani sui fianchi."]], nota:"Senza carico lo stimolo viene dal tempo: 3 secondi di discesa.",
  err:[["Dodici ripetizioni senza fatica","Passa a 4 secondi di discesa o aggiungi 2 secondi di pausa in basso."]]},
+"Calf raise (BW)":{da:"Calf raise monopodalico", nota:"Senza manubrio, fuori casa: stessa tecnica sul bordo di un gradino. Lo stimolo viene dai 2 s in allungamento e da 1 s fermo in punta.",
+ err:[["Arrivi a 20 senza fatica","Allunga a 3 s la discesa e resta 2 s in punta."]]},
 "Calf raise monopodalico":{
  corpo:[["Piede","Avampiede su un rialzo, tallone libero di scendere."],["Ginocchio","Disteso e fermo."],["Mano","Al muro, solo per l'equilibrio."],["Bacino","Dritto sopra il piede."]],
  mov:[["Salita","1-2 s","espira","Sulla punta, il più in alto possibile."],["In alto","1 s","",""],["Discesa","2-3 s","inspira","Fino a sentire l'allungamento."]],

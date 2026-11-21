@@ -81,15 +81,10 @@ document.addEventListener("click", function(ev){
   if(a==="x"){ CIB_DAY=0; WG=null; Fig.pausa=false; closeSheet(); render(); return; }
   if(a==="band"){ e.band=v; save(); render(); return; }
   if(a==="load+"||a==="load-"){
-    var m=meta(e.n), st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
-    var eraSotto=!(m.cap && e.load>m.cap);
+    var st=stepOf(e.n), nv=e.load+(a==="load+"?st:-st);
     e.load=Math.max(0,nv);
-    /* il tetto e' una proposta: salire oltre e' la tua autorizzazione, tornare sotto la toglie */
-    if(m.cap){ S.tettoOltre=S.tettoOltre||{};
-      if(e.load>m.cap){ if(!S.tettoOltre[e.n]){ S.tettoOltre[e.n]=today(); cfgTocca("impostazioni"); } }
-      else if(S.tettoOltre[e.n]){ delete S.tettoOltre[e.n]; cfgTocca("impostazioni"); } }
     save(); render();
-    if(m.cap && nv>m.cap && eraSotto) toast("Sopra il tetto consigliato di "+m.cap+" kg: è una tua scelta, resta scritto per il coach");
+    if(a==="load+" && e.load>caricoDisponibile(e.n)) toast("Oltre i dischi di casa ("+dec(caricoDisponibile(e.n))+" kg): se li hai comprati, aggiorna «Dischi di casa» nel Coach");
     return;
   }
   if(a==="v+"||a==="v-"){ e.cur.v=Math.max(0,e.cur.v+(a==="v+"?(meta(e.n).sec?5:1):(meta(e.n).sec?-5:-1))); render(); return; }
@@ -201,6 +196,7 @@ document.addEventListener("click", function(ev){
   if(a==="propvedi"){ var pa=propAttiva(); if(pa) patchPreview(pa.testo, pa.id); return; }
   if(a==="propno"){ if(S.prop) S.propFatta=S.prop.id; cfgTocca("proposta"); save(); render(); toast("Proposta scartata: scrivi al Coach cosa non va"); return; }
   if(a==="propcheck"){ propCheck(true); return; }
+  if(a==="dischi"){ var dv=Math.max(5, Math.min(60, dischiCasa()+(+el.dataset.v||0))); S.dischi=dv; cfgTocca("impostazioni"); save(); PLAN=buildPlan(); render(); toast("Dischi di casa: "+dec(dv)+" kg per manubrio"); if(SYNC.on()) doPush(false); return; }
   if(a==="passo1"){ S.passo1=!S.passo1; cfgTocca("passo1"); save(); PLAN=buildPlan(); render(); toast(S.passo1?"Gradino 1 kg per manubrio":"Gradino 2 kg"); if(SYNC.on()) doPush(false); return; }
   if(a==="ridotta"){ startSession(el.dataset.d, false, true); return; }
   if(a==="papply"){ patchApply(); return; }
@@ -232,7 +228,7 @@ document.addEventListener("input", function(ev){
 /* ---------- sessione ---------- */
 function restForm(){
   var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
-  var liberi=giorniSettimana(w).filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); });
+  var liberi=giorniSettimana(w).filter(function(d){ return !sedutaCoperta(w, d); });
   if(!liberi.length){ toast("La settimana è già coperta."); return; }
   sheet('<div class="eyebrow amb">Riposo programmato</div><h2 style="margin:4px 0 8px">Un giorno deciso a tavolino</h2>'+
     '<div class="sm mut">Non è una sessione saltata: è recupero previsto. Non conta come mancata e abbassa il bersaglio della settimana. Così l\'aderenza resta onesta.</div>'+
@@ -489,7 +485,7 @@ function formBen(date, isAdd, momento){
       '<label class="fld"><span class="eyebrow">FC riposo</span><input type="number" inputmode="numeric" id="bRhr" value="'+(b.rhr||"")+'"'+ph(ie.rhr)+'></label>'+
       '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" inputmode="numeric" id="bRead" value="'+(b.read||"")+'"'+ph(ie.read)+'></label></div>'+
     '<div class="grid2">'+
-      '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" inputmode="decimal" id="bSonno" value="'+(b.sonno||"")+'"'+ph(ie.sonno)+'></label>'+
+      '<label class="fld"><span class="eyebrow">Sonno ore.minuti</span><input type="text" inputmode="decimal" id="bSonno" value="'+sonnoHM(b.sonno)+'"'+(ph(sonnoHM(ie.sonno))||' placeholder="6.40"')+'></label>'+
       '<label class="fld"><span class="eyebrow glow">Peso mattino kg</span><input type="number" step="0.1" inputmode="decimal" id="bPeso" value="'+(b.peso||"")+'"'+ph(ie.peso)+'></label></div>'+
     '<div class="xs mut" style="margin-top:6px">In grigio il valore di ieri: i numeri non si precompilano, così non copi per sbaglio quelli vecchi. In trasferta il peso lascialo vuoto.</div>'+
     '<label class="fld"><span class="eyebrow">Dove hai dormito</span><div class="pills" id="bSede">'+
@@ -533,7 +529,7 @@ async function saveBen(origDate){
     refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
     resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
     hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
-    sonno:g("bSonno",prev.sonno==null?null:prev.sonno), peso:g("bPeso",prev.peso==null?null:prev.peso),
+    sonno:(function(){ var el=document.getElementById("bSonno"); if(!el) return prev.sonno==null?null:prev.sonno; return el.value===""? null : sonnoOre(el.value); })(), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
     dolm: c("#ded-m")? dolMax(DOLED.m||{}) : (prev.dolm==null?null:prev.dolm),
     dolmz: c("#ded-m")? dolStr(DOLED.m||{}) : (prev.dolmz||""),
@@ -955,6 +951,7 @@ function doImport(){
     if(!o.log||!o.sess) throw 0;
     S=Object.assign({log:[],sess:[],mis:[],ben:[],sim:[],mob:[],patches:[],draft:null,seeded:true,intent:null}, o);
     if(!Array.isArray(S.mob)) S.mob=[];
+    migraSonno();
     S.lastBackup=today(); S.installed=S.installed||today();
     PLAN=buildPlan(); save(); closeSheet(); render(); toast("Backup ripristinato");
   }catch(e){ toast("File non valido: controlla di aver incollato tutto il .json"); }

@@ -5,35 +5,38 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.7.2";
+var VERSIONE_APP = "4.8.0";
 
 /* ---------- catalogo esercizi ---------- */
-/* g = gruppo · t = tipo (rec) · cap = tetto · uni = unilaterale · sec = misurato in secondi */
+/* g = gruppo · t = tipo (rec) · uni = unilaterale · sec = misurato in secondi
+   tot = il carico e' la somma dei due manubri (Box Squat); negli altri e' per manubrio.
+   Nessun tetto (decisione di Filippo del 21/11/2026): oltre i dischi di casa l'app
+   dice «servono dischi» (caricoDisponibile in 02-motore.js). */
 var EX = {
-  "Floor Press manubri":        {g:"Petto",   t:"comp", cap:20, step:2},
-  "Rematore manubri":           {g:"Dorso",   t:"comp", cap:20, step:2},
-  "Shoulder Press manubri":     {g:"Spalle",  t:"comp", cap:20, step:2},
+  "Floor Press manubri":        {g:"Petto",   t:"comp", step:2},
+  "Rematore manubri":           {g:"Dorso",   t:"comp", step:2},
+  "Shoulder Press manubri":     {g:"Spalle",  t:"comp", step:2},
   "Push-up piedi rialzati con banda":{g:"Petto",t:"compl", band:true},
   "French Press":               {g:"Tricipiti",t:"iso",  step:2},
-  "Overhead extension 1 braccio":{g:"Tricipiti",t:"iso", cap:14, step:2, uni:true},
+  "Overhead extension 1 braccio":{g:"Tricipiti",t:"iso", step:2, uni:true},
   "Plank":                      {g:"Core",    t:"core", sec:true},
-  "Box Squat":                  {g:"Gambe",   t:"comp", cap:30, step:2},
-  "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",cap:20, step:2, uni:true},
+  "Box Squat":                  {g:"Gambe",   t:"comp", step:2, tot:true},
+  "Bulgarian Split Squat manubri":{g:"Gambe", t:"compl",step:2, uni:true},
   "Calf raise monopodalico":    {g:"Gambe",   t:"iso",  uni:true},
   "Band tricep extension":      {g:"Tricipiti",t:"iso", band:true},
   "Side plank":                 {g:"Core",    t:"core", sec:true, uni:true},
-  "Rematore manubri (volume)":  {g:"Dorso",   t:"comp", cap:20, step:2},
+  "Rematore manubri (volume)":  {g:"Dorso",   t:"comp", step:2},
   "Pullover manubrio":          {g:"Dorso",   t:"compl",step:2},
-  "Floor Press (volume)":       {g:"Petto",   t:"compl",cap:20, step:2},
+  "Floor Press (volume)":       {g:"Petto",   t:"compl",step:2},
   "Push-up":                    {g:"Petto",   t:"compl"},
-  "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  cap:8,  step:2},
+  "Curl bicipiti manubri":      {g:"Bicipiti",t:"iso",  step:2},
   "Alzate laterali":            {g:"Spalle",  t:"iso",  step:1},
-  "Face pull":                  {g:"Spalle",  t:"iso",  cap:6,  step:2},
+  "Face pull":                  {g:"Spalle",  t:"iso",  step:2},
   "Hip thrust con banda":       {g:"Gambe",   t:"compl",band:true},
-  "Split-stance RDL":           {g:"Gambe",   t:"comp", cap:20, step:2, uni:true},
+  "Split-stance RDL":           {g:"Gambe",   t:"comp", step:2, uni:true},
   "Affondi indietro manubri":   {g:"Gambe",   t:"compl",step:2, uni:true},
-  "Hammer Curl":                {g:"Bicipiti",t:"iso",  cap:8,  step:2},
-  "Reverse Fly":                {g:"Spalle",  t:"iso",  cap:6,  step:2},
+  "Hammer Curl":                {g:"Bicipiti",t:"iso",  step:2},
+  "Reverse Fly":                {g:"Spalle",  t:"iso",  step:2},
   "Bulgarian split squat 3s":   {g:"Gambe",   t:"compl",uni:true},
   "Pike push-up":               {g:"Spalle",  t:"compl"},
   "Hip hinge una gamba":        {g:"Gambe",   t:"compl",uni:true},
@@ -68,7 +71,26 @@ var EX = {
 
 var REST = {comp:150, compl:90, iso:75, core:45};
 /* scala reale del set BeMaxx: gialla 4,5 · blu 9,1 · verde 13,6 · nera 18,1 · rossa 22,7 kg */
-var BANDS = ["gialla","blu","verde","nera","rossa"];
+var BANDS = ["gialla","blu","verde","nera","rossa","rossa+gialla","rossa+blu","rossa+verde","rossa+nera"];
+/* oltre la rossa le bande si sommano (maniglie con moschettoni): + gialla 27,2 kg, + blu 31,8, + verde 36,3, + nera 40,8 */
+
+/* ---------- sonno: si scrive in ore.minuti ----------
+   «6.40», «6,4» e «6:40» vogliono dire 6 h 40 (decisione di Filippo del 23/10 e del
+   21/11/2026). Una cifra dopo il punto sono decine di minuti (6.4 = 6 h 40), due cifre
+   sono i minuti (6.47 = 6 h 47). Dentro l'app il sonno vale in ore decimali (6 h 40 =
+   6,667), cosi' medie e soglie tornano; sul foglio si scrive sempre in ore.minuti. */
+function sonnoOre(v){
+  if(v===null || v===undefined || v==="") return null;
+  var s=String(v).trim().replace(",",".").replace(/\s*h\s*/i,".");
+  var m=s.match(/^(\d{1,2})(?:[.:](\d{1,2}))?\.?$/);
+  if(!m){ var f=parseFloat(s); return isFinite(f)? f : null; }
+  var h=+m[1], mi=(m[2]===undefined)? 0 : (m[2].length===1? +m[2]*10 : +m[2]);
+  if(mi>=60){ var d=parseFloat(s); return isFinite(d)? d : null; }   /* non sono minuti: gia' ore decimali */
+  return Math.round((h+mi/60)*1000)/1000;
+}
+function sonnoMin(h){ return (h===null || h===undefined || h==="" || !isFinite(+h))? null : Math.round(+h*60); }
+function sonnoHM(h){ var t=sonnoMin(h); return t===null? "" : Math.floor(t/60)+"."+String(t%60).padStart(2,"0"); }
+function sonnoTxt(h){ var t=sonnoMin(h); return t===null? "–" : Math.floor(t/60)+" h "+String(t%60).padStart(2,"0"); }
 
 /* ---------- riscaldamento: 6 minuti, blocco scoliosi ---------- */
 var WARM = [
@@ -90,7 +112,7 @@ var WARM_SEC = [55, 70, 95, 60, 75];
 /* s = serie · lo/hi = range rep · L = carico di partenza · b = banda · u = unilaterale */
 var BASEPLAN = {
  A:{name:"Spinta e trazione, forza", sede:"Casa", dischi:"20 › 20 › 14 › 16", min:60, ex:[
-   {n:"Floor Press manubri", s:4, lo:8, hi:10, L:20, tip:"Discesa contata 3 secondi. Sei al tetto dei manubri: qui si progredisce col tempo."},
+   {n:"Floor Press manubri", s:4, lo:8, hi:10, L:20, tip:"Discesa contata 3 secondi."},
    {n:"Rematore manubri", s:4, lo:8, hi:10, L:20, tip:"Se la schiena si arrotonda anche di poco, appoggia i pesi. Non finire la serie."},
    {n:"Shoulder Press manubri", s:3, lo:8, hi:10, L:14, tip:"Seduto, schiena appoggiata. Fastidio spalla sn → ferma la serie e attiva il flag."},
    {n:"Push-up piedi rialzati con banda", s:3, lo:10, hi:12, b:"gialla", swap:"Porta i manubri a 16 kg mentre fai questo"},
@@ -121,7 +143,7 @@ var BASEPLAN = {
    {n:"French Press", s:3, lo:10, hi:10, L:16},
    {n:"Curl bicipiti manubri", s:3, lo:10, hi:10, L:8, swap:"Manubri a 8 kg"},
    {n:"Hammer Curl", s:3, lo:10, hi:10, L:8, tip:"Presa neutra rinforza la presa, che è stata il limite sul RDL."},
-   {n:"Reverse Fly", s:3, lo:15, hi:15, L:6, tip:"6 kg è il tetto consigliato: a 8 kg la spalla sn ha ceduto due volte."}
+   {n:"Reverse Fly", s:3, lo:15, hi:15, L:6, tip:"A 8 kg la spalla sn ha ceduto due volte ad agosto: sali col gradino piccolo e guarda il dolore."}
  ]},
  T1:{name:"Trasferta · spinta e gambe", sede:"Trasferta", dischi:"solo bande", min:40, ex:[
    {n:"Push-up piedi rialzati con banda", s:4, lo:10, hi:12, b:"gialla", tip:"In hotel il rialzo è il bordo del letto o la valigia rigida."},
@@ -170,26 +192,35 @@ var ALT={
   "Rematore manubri":              {bande:"Band row seduto", corpo:"Rematore al telaio della porta"},
   "Rematore manubri (volume)":     {bande:"Band row un braccio", corpo:"Rematore al telaio della porta"},
   "Shoulder Press manubri":        {bande:"Shoulder press con banda", corpo:"Pike push-up"},
-  "Push-up piedi rialzati con banda":{corpo:"Push-up"},
+  "Push-up piedi rialzati con banda":{corpo:"Push-up piedi rialzati"},
   "French Press":                  {bande:"Band tricep extension", corpo:"Push-up stretti"},
   "Overhead extension 1 braccio":  {bande:"Band tricep extension", corpo:"Push-up stretti"},
   "Band tricep extension":         {corpo:"Push-up stretti"},
   "Box Squat":                     {bande:"Box squat alla sedia 3s", corpo:"Box squat alla sedia 3s"},
   "Bulgarian Split Squat manubri": {bande:"Bulgarian split squat 3s", corpo:"Bulgarian split squat 3s"},
-  "Pullover manubrio":             {bande:"Band pull-down", corpo:null},
+  "Pullover manubrio":             {bande:"Band row un braccio", corpo:"Rematore al telaio della porta"},
   "Curl bicipiti manubri":         {bande:"Band curl bicipiti", corpo:"Curl isometrico asciugamano"},
-  "Hammer Curl":                   {bande:"Hammer curl con banda", corpo:null},
+  "Hammer Curl":                   {bande:"Hammer curl con banda", corpo:"Curl isometrico asciugamano"},
   "Alzate laterali":               {bande:"Alzate laterali con banda", corpo:"Y-T-W a busto inclinato"},
   "Face pull":                     {bande:"Band pull-apart", corpo:"Y-T-W a busto inclinato"},
   "Reverse Fly":                   {bande:"Band pull-apart", corpo:"Y-T-W a busto inclinato"},
   "Hip thrust con banda":          {corpo:"Hip thrust a una gamba"},
   "Split-stance RDL":              {bande:"Hip hinge una gamba", corpo:"Hip hinge una gamba"},
-  "Affondi indietro manubri":      {bande:"Affondi indietro", corpo:"Affondi indietro"}
+  "Affondi indietro manubri":      {bande:"Affondi indietro", corpo:"Affondi indietro"},
+  "Calf raise monopodalico":       {bande:"Calf raise (BW)", corpo:"Calf raise (BW)"},
+  "Kick back tricipiti":           {bande:"Band tricep extension", corpo:"Push-up stretti"},
+  /* fuori casa senza bande: le sedute T1 e T2 passano al corpo libero */
+  "Band row seduto":               {corpo:"Rematore al telaio della porta"},
+  "Band row un braccio":           {corpo:"Rematore al telaio della porta"},
+  "Band pull-apart":               {corpo:"Y-T-W a busto inclinato"},
+  "Band curl bicipiti":            {corpo:"Curl isometrico asciugamano"},
+  "Hammer curl con banda":         {corpo:"Curl isometrico asciugamano"}
 };
 /* prescrizione delle alternative che non hanno un giorno di trasferta proprio */
 var ALTDEF={
   "Push-up piedi rialzati":        {lo:8,  hi:15, tip:"Piedi su letto o sedia bassa. Se arrivi a 15 pulite, rallenta la discesa a 3 secondi."},
-  "Rematore al telaio della porta":{lo:10, hi:15, u:true, tip:"Più i piedi sono vicini al telaio, più è duro. Controlla prima che la porta sia ferma."},
+  "Rematore al telaio della porta":{lo:10, hi:15, u:true, tip:"Telaio di una porta interna aperta e ferma, mai la porta d'ingresso dell'albergo (regola 26). Più i piedi sono vicini al telaio, più è duro."},
+  "Calf raise (BW)":               {lo:15, hi:20, u:true, tip:"Senza peso, una gamba alla volta sul bordo di un gradino: 2 s in allungamento in basso, 1 s in punta."},
   "Shoulder press con banda":      {lo:10, hi:15, b:"verde", tip:"Banda sotto entrambi i piedi. Fastidio alla spalla sinistra: ferma la serie."},
   "Box squat alla sedia 3s":       {lo:12, hi:15, tip:"3 secondi in discesa, 1 secondo di pausa sfiorando la sedia."},
   "Curl isometrico asciugamano":   {lo:20, hi:30, sec:true, tip:"Tieni con tutta la forza: non è una tenuta comoda."},
@@ -288,6 +319,10 @@ var G = {
  f:"Quadricipite e gluteo della gamba anteriore, con bruciore che arriva dalla durata più che dal carico.",
  e:"Fai 12 ripetizioni con 3 secondi di discesa senza fatica: sei sotto stimolo.",
  c:"Passa a 4 secondi o aggiungi una pausa di 2 secondi in basso."},
+"Calf raise (BW)":{p:"Senza peso, fuori casa. Una gamba alla volta, avampiede sul bordo di un gradino e tallone nel vuoto, una mano al muro solo per l'equilibrio. Scendi col tallone in 2 s, sali in punta e tieni 1 s.",
+ f:"Il polpaccio, contratto in alto e allungato in basso.",
+ e:"Rimbalzi in basso, ti aggrappi al muro, pieghi il ginocchio per aiutarti.",
+ c:"Se arrivi a 20 senza fatica allunga la discesa a 3 s e resta 2 s in punta."},
 "Calf raise monopodalico":{p:"Su una gamba, avampiede su un rialzo col tallone libero di scendere. Una mano al muro solo per l'equilibrio. Sali sulla punta, pausa 1 secondo, scendi lentamente.",
  f:"Contrazione intensa del polpaccio in alto, allungamento chiaro in basso.",
  e:"Rimbalzi in basso invece di controllare. Ti aggrappi al muro. Il ginocchio si piega per aiutare.",
@@ -349,7 +384,7 @@ var G = {
 "Reverse Fly":{p:"Busto a 45°, schiena dritta, manubri che pendono, gomiti leggermente piegati e fissi. Apri le braccia lateralmente fino all'altezza delle spalle stringendo le scapole.",
  f:"Parte posteriore della spalla e zona interscapolare.",
  e:"Ti raddrizzi per usare slancio. Senti il trapezio alto o il collo. Il braccio sinistro arriva meno in alto o molla a fine serie — è il segnale specifico da monitorare.",
- c:"Se la spalla sinistra dà segnali: FERMA la serie, non finirla, e attiva il flag. Non è un dato da annotare a fine settimana. 6 kg è il tetto consigliato: a 8 ha ceduto due volte."},
+ c:"Se la spalla sinistra dà segnali: FERMA la serie, non finirla, e attiva il flag. Non è un dato da annotare a fine settimana. Ad agosto a 8 kg ha ceduto due volte: sali col gradino più piccolo che hai."},
 
 "Pike push-up":{p:"Da posizione di push-up, cammina coi piedi verso le mani fino a una V rovesciata. Testa fra le braccia, bacino alto. Abbassa la testa verso il pavimento: la traiettoria è verticale.",
  f:"Deltoidi anteriori e tricipiti. È l'equivalente a corpo libero dello Shoulder Press.",

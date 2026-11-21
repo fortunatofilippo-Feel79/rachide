@@ -44,7 +44,7 @@ function chipsEsercizio(n){
   if(m.g && m.g!=="—") c.push(m.g);
   c.push(m.band?"con banda":m.sec?"a tempo":({comp:"multiarticolare",compl:"complementare",iso:"isolamento",core:"core"}[m.t]||""));
   if(m.uni) c.push("un lato alla volta");
-  if(m.cap) c.push("tetto consigliato "+m.cap+" kg");
+  if(m.tot) c.push("carico: i due manubri insieme");
   return '<div class="chips">'+c.filter(Boolean).map(function(x){ return '<span>'+esc(x)+'</span>'; }).join("")+'</div>';
 }
 function guideSheet(n, tip, giorno){
@@ -196,7 +196,7 @@ function libIndice(){
       add(x.n, /^T/.test(d)?"trasf":/^E/.test(d)?"picco":d);
       var al=ALT[x.n]; if(al){ add(al.bande,"bande"); add(al.corpo,"corpo"); }
       if(/^T/.test(d)) add(x.n, "bande");
-      else if(!/^T/.test(d) && (x.L>0 || (EX[x.n] && EX[x.n].cap))) add(x.n, "pesi");
+      else if(!/^T/.test(d) && (x.L>0 || (EX[x.n] && EX[x.n].step))) add(x.n, "pesi");
     });
   });
   return Object.keys(idx).map(function(k){ return idx[k]; });
