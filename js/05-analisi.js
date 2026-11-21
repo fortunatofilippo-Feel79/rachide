@@ -84,7 +84,7 @@ function controlloBen(r){
   var a=[];
   if(r.rhr!=null && !plaus("rhr",r.rhr)) a.push("FC a riposo "+r.rhr+" (di solito tra 35 e 100)");
   if(r.hrv!=null && !plaus("hrv",r.hrv)) a.push("HRV "+r.hrv+" (di solito tra 10 e 200)");
-  if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+r.sonno+" h (di solito tra 3 e 12)");
+  if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+sonnoTxt(r.sonno)+" (di solito tra 3 e 12 ore)");
   if(r.peso!=null){
     var ps=S.ben.filter(function(b){ return b.peso>0 && b.date!==r.date && dataOk(b.date); })
       .sort(function(x,y){ return s2d(y.date)-s2d(x.date); }).slice(0,7).map(function(b){ return b.peso; });
@@ -124,7 +124,7 @@ function recovery(date){
   if(b.read!=null && b.read<70){ parts.push("readiness "+b.read); lvl=Math.max(lvl,1); }
   /* soglie come da Lettura dati e Jarvis (decisione del 18/10/2026): sonno sotto 6,5 h, stress da 2 */
   var sonnoCorto = b.sonno!=null && b.sonno<SONNO_BASSO, stressAlto = b.stress!=null && b.stress>=STRESS_ALTO;
-  if(sonnoCorto){ parts.push("sonno "+b.sonno+"h"); lvl=Math.max(lvl,1); }
+  if(sonnoCorto){ parts.push("sonno "+sonnoTxt(b.sonno)); lvl=Math.max(lvl,1); }
   if(stressAlto){ parts.push("stress "+b.stress); lvl=Math.max(lvl,1); }
   var hint="";
   /* livello 2 = due segnali insieme. La coppia stress+sonno viene prima del «rumore di misura» dell'HRV:
@@ -600,7 +600,7 @@ function statoRows(){
       grassi: cib.length? Math.round(media(cib.map(function(b){ return b.cibG||0; }))) : "",
       hrv: vuotoSe(mediana(bb.filter(function(b){ return b.hrv; }).map(function(b){ return b.hrv; }))),
       rhr: vuotoSe(mediana(bb.filter(function(b){ return b.rhr; }).map(function(b){ return b.rhr; }))),
-      sonno: son.length? r1(media(son)) : "", sonno_fuori: sonF.length? r1(media(sonF)) : "",
+      sonno: son.length? sonnoHM(media(son)) : "", sonno_fuori: sonF.length? sonnoHM(media(sonF)) : "",
       rec_bassi: bb.filter(function(b){ return recovery(b.date).lvl>=1; }).length,
       prog: (cur && pg.scelta)? pg.scelta.n+": "+pg.scelta.why : (cur && pg.recupero)? "carichi fermi oggi: recupero basso, proposta autorizzata" : "",
       stato_oggi: (cur && typeof stoTestoCoach==="function")? stoTestoCoach().join(" | ").slice(0,900) : "",
@@ -787,7 +787,7 @@ async function benPaste(){
   var f=function(re){ var m=String(txt).match(re); return m? m[1].replace(",",".") : null; };
   var vals={sonno:f(/sonno[^\d]{0,14}(\d+(?:[.,]\d+)?)/i), hrv:f(/hrv[^\d]{0,14}(\d+)/i),
             rhr:f(/(?:fc|riposo|rhr)[^\d]{0,14}(\d+)/i), peso:f(/peso[^\d]{0,14}(\d+(?:[.,]\d+)?)/i)};
-  if(vals.sonno){ var sn=parseFloat(vals.sonno); if(sn>24) sn=sn/60; vals.sonno=(Math.round(sn*10)/10).toString(); }
+  if(vals.sonno){ var sn=parseFloat(vals.sonno); vals.sonno = sn>24 ? sonnoHM(sn/60) : sonnoHM(sn); }   /* da Salute: minuti o ore decimali; nel campo si scrive in ore.minuti */
   var n=0;
   [["sonno","bSonno"],["hrv","bHrv"],["rhr","bRhr"],["peso","bPeso"]].forEach(function(p){
     if(vals[p[0]]){ var el=document.getElementById(p[1]); if(el){ el.value=vals[p[0]]; n++; } }

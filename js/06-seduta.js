@@ -181,7 +181,7 @@ function briefing(){
     bn.forEach(function(b){
       var rc=recovery(b.date);
       L.push("- "+b.date+": peso "+(b.peso||"-")+" | HRV "+(b.hrv||"-")+" | FC rip "+(b.rhr||"-")+
-        " | read "+(b.read||"-")+" | sonno "+(b.sonno||"-")+" | stress "+(b.stress==null?"-":b.stress)+
+        " | read "+(b.read||"-")+" | sonno "+(b.sonno? sonnoTxt(b.sonno) : "-")+" | stress "+(b.stress==null?"-":b.stress)+
         " | testa "+(b.mente==null?"-":b.mente)+" | reflusso "+(b.refl==null?"-":b.refl)+
         " | alcol "+(b.alc?"si":"no")+(rc.hint?"  >> "+rc.hint:""));
     }); }

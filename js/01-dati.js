@@ -70,6 +70,24 @@ var REST = {comp:150, compl:90, iso:75, core:45};
 /* scala reale del set BeMaxx: gialla 4,5 · blu 9,1 · verde 13,6 · nera 18,1 · rossa 22,7 kg */
 var BANDS = ["gialla","blu","verde","nera","rossa"];
 
+/* ---------- sonno: si scrive in ore.minuti ----------
+   «6.40», «6,4» e «6:40» vogliono dire 6 h 40 (decisione di Filippo del 23/10 e del
+   21/11/2026). Una cifra dopo il punto sono decine di minuti (6.4 = 6 h 40), due cifre
+   sono i minuti (6.47 = 6 h 47). Dentro l'app il sonno vale in ore decimali (6 h 40 =
+   6,667), cosi' medie e soglie tornano; sul foglio si scrive sempre in ore.minuti. */
+function sonnoOre(v){
+  if(v===null || v===undefined || v==="") return null;
+  var s=String(v).trim().replace(",",".").replace(/\s*h\s*/i,".");
+  var m=s.match(/^(\d{1,2})(?:[.:](\d{1,2}))?\.?$/);
+  if(!m){ var f=parseFloat(s); return isFinite(f)? f : null; }
+  var h=+m[1], mi=(m[2]===undefined)? 0 : (m[2].length===1? +m[2]*10 : +m[2]);
+  if(mi>=60){ var d=parseFloat(s); return isFinite(d)? d : null; }   /* non sono minuti: gia' ore decimali */
+  return Math.round((h+mi/60)*1000)/1000;
+}
+function sonnoMin(h){ return (h===null || h===undefined || h==="" || !isFinite(+h))? null : Math.round(+h*60); }
+function sonnoHM(h){ var t=sonnoMin(h); return t===null? "" : Math.floor(t/60)+"."+String(t%60).padStart(2,"0"); }
+function sonnoTxt(h){ var t=sonnoMin(h); return t===null? "–" : Math.floor(t/60)+" h "+String(t%60).padStart(2,"0"); }
+
 /* ---------- riscaldamento: 6 minuti, blocco scoliosi ---------- */
 var WARM = [
   {n:"Cat-cow", d:"8 ripetizioni lente · muovi lo sterno, non la testa"},

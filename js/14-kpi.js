@@ -160,7 +160,7 @@ function kpiValori(){
       !hs||hs.trend==null ? "na" : hs.trend==="sotto" ? "att" : "ok");
   var f7=mediaUltimi("rhr",7), fn=rhrNorma(today()), fsc=(f7&&fn)? Math.round((f7/fn-1)*100) : null;
   put("fc7", fsc, f7? Math.round(f7)+" bpm · norma "+fn : "–");
-  var s7=mediaUltimi("sonno",7); put("sonno7", s7==null?null:r1(s7), s7==null? "–" : dec(r1(s7))+" h");
+  var s7=mediaUltimi("sonno",7); put("sonno7", s7==null?null:r1(s7), s7==null? "–" : sonnoTxt(s7));
   var st7=mediaUltimi("stress",7); put("stress7", st7==null?null:r1(st7), st7==null? "–" : dec(r1(st7)));
   var rf7=mediaUltimi("refl",7); put("reflusso7", rf7==null?null:r1(rf7), rf7==null? "–" : dec(r1(rf7)));
   var dg=dolGiorni(7).filter(function(g){ return g.compilato; }), dm=dg.length? media(dg.map(function(g){ return g.max; })) : null;

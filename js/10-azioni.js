@@ -489,7 +489,7 @@ function formBen(date, isAdd, momento){
       '<label class="fld"><span class="eyebrow">FC riposo</span><input type="number" inputmode="numeric" id="bRhr" value="'+(b.rhr||"")+'"'+ph(ie.rhr)+'></label>'+
       '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" inputmode="numeric" id="bRead" value="'+(b.read||"")+'"'+ph(ie.read)+'></label></div>'+
     '<div class="grid2">'+
-      '<label class="fld"><span class="eyebrow">Sonno h</span><input type="number" step="0.1" inputmode="decimal" id="bSonno" value="'+(b.sonno||"")+'"'+ph(ie.sonno)+'></label>'+
+      '<label class="fld"><span class="eyebrow">Sonno ore.minuti</span><input type="text" inputmode="decimal" id="bSonno" value="'+sonnoHM(b.sonno)+'"'+(ph(sonnoHM(ie.sonno))||' placeholder="6.40"')+'></label>'+
       '<label class="fld"><span class="eyebrow glow">Peso mattino kg</span><input type="number" step="0.1" inputmode="decimal" id="bPeso" value="'+(b.peso||"")+'"'+ph(ie.peso)+'></label></div>'+
     '<div class="xs mut" style="margin-top:6px">In grigio il valore di ieri: i numeri non si precompilano, così non copi per sbaglio quelli vecchi. In trasferta il peso lascialo vuoto.</div>'+
     '<label class="fld"><span class="eyebrow">Dove hai dormito</span><div class="pills" id="bSede">'+
@@ -533,7 +533,7 @@ async function saveBen(origDate){
     refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
     resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
     hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
-    sonno:g("bSonno",prev.sonno==null?null:prev.sonno), peso:g("bPeso",prev.peso==null?null:prev.peso),
+    sonno:(function(){ var el=document.getElementById("bSonno"); if(!el) return prev.sonno==null?null:prev.sonno; return el.value===""? null : sonnoOre(el.value); })(), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
     dolm: c("#ded-m")? dolMax(DOLED.m||{}) : (prev.dolm==null?null:prev.dolm),
     dolmz: c("#ded-m")? dolStr(DOLED.m||{}) : (prev.dolmz||""),
@@ -955,6 +955,7 @@ function doImport(){
     if(!o.log||!o.sess) throw 0;
     S=Object.assign({log:[],sess:[],mis:[],ben:[],sim:[],mob:[],patches:[],draft:null,seeded:true,intent:null}, o);
     if(!Array.isArray(S.mob)) S.mob=[];
+    migraSonno();
     S.lastBackup=today(); S.installed=S.installed||today();
     PLAN=buildPlan(); save(); closeSheet(); render(); toast("Backup ripristinato");
   }catch(e){ toast("File non valido: controlla di aver incollato tutto il .json"); }

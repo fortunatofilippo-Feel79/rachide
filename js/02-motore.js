@@ -118,9 +118,10 @@ function seed(){
   S.ben = parse(SEED_BEN,["date","w","refl","resp","camm","hrv","read","sonno","alc","note"]).map(function(r){
     return {date:r.date, w:+r.w, refl:r.refl===""?null:+r.refl, resp:r.resp==="1",
       camm:r.camm===""?null:+r.camm, hrv:+r.hrv||null, read:+r.read||null,
-      sonno:+r.sonno||null, alc:r.alc==="1", note:r.note};
+      sonno:sonnoOre(r.sonno), alc:r.alc==="1", note:r.note};
   });
   S.seeded = true;
+  S.sonnoV = 2;
 }
 /* Lo stato salvato si tiene sempre, anche senza serie registrate. Prima un telefono
    con solo cibo e benessere (o appena collegato al foglio) ripartiva vuoto a ogni
@@ -131,7 +132,14 @@ function statoDaSalvato(saved){
   ["log","sess","mis","ben","sim","mob","patches"].forEach(function(k){ if(!Array.isArray(S[k])) S[k]=[]; });
   if(!S.dirtyBen) S.dirtyBen={};
   if(!S.benTs) S.benTs={};
+  if(ok) migraSonno();
   return ok;
+}
+/* il sonno salvato prima della 4.8 era scritto in ore.minuti: si converte una volta sola */
+function migraSonno(){
+  if(S.sonnoV===2) return false;
+  (S.ben||[]).forEach(function(b){ if(b && b.sonno!==null && b.sonno!==undefined && b.sonno!=="") b.sonno=sonnoOre(b.sonno); });
+  S.sonnoV=2; return true;
 }
 
 /* ---------- lettura storico ---------- */

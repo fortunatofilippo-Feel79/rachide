@@ -530,11 +530,11 @@ function viewCorpo(){
      '<div class="grid2" style="margin-top:8px"><button class="btn sm '+(mattinaFatta(b)?"ghost":"amb")+'" data-a="ben" data-m="mattina">'+(mattinaFatta(b)?"✓ ":"")+'Mattino · 1′</button>'+
      '<button class="btn sm '+(seraFatta(b)?"ghost":"")+'" data-a="ben" data-m="sera">'+(seraFatta(b)?"✓ ":"")+'Sera · 30″</button></div>';
   if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl==null?"–":b.refl)+' · camminate '+(b.camm==null?"–":b.camm)+
-    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+(b.sonno||"–")+'h · alcol '+(b.alc?"sì":"no")+'</div>';
+    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+sonnoTxt(b.sonno)+' · alcol '+(b.alc?"sì":"no")+'</div>';
   else h+='<div class="xs mut" style="margin-top:8px">Al risveglio i numeri di Zepp, la sera reflusso e stress. Due momenti brevi invece di uno lungo.</div>';
   if(b && b.sede==="Fuori") h+='<div class="xs" style="margin-top:4px;color:var(--amb)">Notte fuori casa'+(b.citta?' · '+esc(b.citta):'')+'</div>';
   var cf=casaFuori();
-  h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+dec(r1(cf.sc))+' h</b> contro fuori <b>'+dec(r1(cf.sf))+' h</b>'+
+  h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+sonnoTxt(cf.sc)+'</b> contro fuori <b>'+sonnoTxt(cf.sf)+'</b>'+
               ((cf.hc&&cf.hf)?' · HRV '+Math.round(cf.hc)+' contro '+Math.round(cf.hf):'')+'</div>'
             : '<div class="xs mut" style="margin-top:8px">Casa contro fuori casa: servono 3 notti per parte (ora '+cf.nc+' e '+cf.nf+').</div>';
   h+='<button class="btn sm ghost" style="width:100%;margin-top:10px" data-a="benadd">＋ Aggiungi un giorno saltato</button>';
@@ -547,7 +547,7 @@ function viewCorpo(){
     recentB.forEach(function(x){
       var rn=recoveryNote(x.date);
       h+='<button class="item" data-a="ben" data-d="'+esc(x.date)+'"><div class="badge"'+(rn?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+x.date.slice(0,5)+'</div>'+
-         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+(x.sonno||"–")+'h · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
+         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+sonnoTxt(x.sonno)+' · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
          '<div class="ch">›</div></button>';
     });
     h+='</div>';

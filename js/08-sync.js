@@ -166,7 +166,7 @@ var SYNC = {
          mentre questa rilettura era in viaggio: vince il telefono */
       if(loc && (dirty[r.date] || (bts[r.date]||0)>=t0)){ self.pending++; return loc; }
       return {date:r.date, w:+r.w||weekOf(r.date), refl:num(r.refl), resp:r.resp===true||r.resp==="Sì",
-        camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:num(r.sonno),
+        camm:num(r.camm), hrv:num(r.hrv), read:num(r.read), sonno:sonnoOre(r.sonno),
         alc:r.alc===true||r.alc==="Sì", note:r.note||"",
         peso:keep(r,loc,"peso"), rhr:keep(r,loc,"rhr"), stress:keep(r,loc,"stress"),
         mente:keep(r,loc,"mente"), passi:keep(r,loc,"passi"), ipo:keep(r,loc,"ipo"), dolm:keepn(r,loc,"dolm"), dolmz:keeps(r,loc,"dolmz"),
@@ -189,7 +189,7 @@ var SYNC = {
   },
   benRow(r){
     return {date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
-      read:r.read,sonno:r.sonno,alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
+      read:r.read,sonno:sonnoHM(r.sonno),alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
       mente:r.mente,passi:r.passi,ipo:r.ipo,dolm:(r.dolm==null?"":r.dolm),dolmz:r.dolmz||"",cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibA:(r.cibA==null?"":r.cibA),cibJ:r.cibJ,sede:r.sede||"",citta:r.citta||"",note:r.note};
   },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */

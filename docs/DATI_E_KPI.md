@@ -164,7 +164,7 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `camm` | camminate dopo i pasti 0-2 (sera) |
 | `hrv` | HRV notturna da Zepp (mattino) |
 | `read` | readiness Zepp (mattino) |
-| `sonno` | ore di sonno (mattino) |
+| `sonno` | sonno della notte in ore.minuti: 6.40 = 6 h 40 (dalla 4.8; una cifra dopo il punto sono decine di minuti) |
 | `alc` | alcol la sera prima (mattino) |
 | `peso` | peso a digiuno kg (mattino, vuoto in trasferta) |
 | `rhr` | FC a riposo (mattino) |
@@ -262,8 +262,8 @@ Stati: **ok**, **attenzione**, **fuori**, **dati insufficienti**. I KPI settiman
 | `grassi` | grassi medi g |
 | `hrv` | HRV mediana |
 | `rhr` | FC a riposo mediana |
-| `sonno` | sonno medio h |
-| `sonno_fuori` | sonno medio nelle notti fuori |
+| `sonno` | sonno medio, in ore.minuti (6.40 = 6 h 40) |
+| `sonno_fuori` | sonno medio nelle notti fuori, in ore.minuti |
 | `rec_bassi` | giorni con recupero basso |
 | `prog` | progressione scelta |
 | `stato_oggi` | stato di oggi (via libera, avanti con giudizio, giornata da gestire) con i segnali, e le proposte dell'app degli ultimi 14 giorni con la decisione presa |
