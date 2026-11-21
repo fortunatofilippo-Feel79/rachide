@@ -232,7 +232,7 @@ document.addEventListener("input", function(ev){
 /* ---------- sessione ---------- */
 function restForm(){
   var w=weekOf(today()), tutte=S.sess.filter(function(s){ return s.w===w; });
-  var liberi=giorniSettimana(w).filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); });
+  var liberi=giorniSettimana(w).filter(function(d){ return !sedutaCoperta(w, d); });
   if(!liberi.length){ toast("La settimana è già coperta."); return; }
   sheet('<div class="eyebrow amb">Riposo programmato</div><h2 style="margin:4px 0 8px">Un giorno deciso a tavolino</h2>'+
     '<div class="sm mut">Non è una sessione saltata: è recupero previsto. Non conta come mancata e abbassa il bersaglio della settimana. Così l\'aderenza resta onesta.</div>'+

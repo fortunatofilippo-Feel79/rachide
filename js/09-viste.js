@@ -46,7 +46,7 @@ function viewOggi(){
   var riposi=tutte.filter(isRest);
   var giorni=giorniSettimana(w), pk=picco(w);
   /* un giorno è "coperto" se allenato o segnato come riposo */
-  var next=giorni.filter(function(d){ return !tutte.some(function(s){ return s.day===d; }); })[0];
+  var next=giorni.filter(function(d){ return !sedutaCoperta(w, d); })[0];   /* T1 e T2 coprono A-B e C-D */
   /* se il piano prevede una seduta per oggi, e' quella */
   var pNext=prossimaDelPiano(w);
   if(pNext && giorni.indexOf(pNext.d)>=0 && !sedutaCoperta(w, pNext.d)) next=pNext.d;
