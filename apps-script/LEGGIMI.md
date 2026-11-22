@@ -23,10 +23,21 @@ L'app funziona con entrambe: finché non installi la v3 resta tutto come oggi.
    - «la stessa di prima»: nell'app non devi cambiare niente;
    - «FRASE SEGRETA NUOVA: …»: copiala, ti serve al punto 7.
 5. **Ridistribuisci con una versione nuova.** **Esegui il deployment** (in alto a destra; in inglese *Deploy*) → **Gestisci deployment** → scegli il deployment attivo → **Modifica** (matita) → Versione: **Nuova versione** → **Esegui il deployment**. Esegui come: *Me*; Chi ha accesso: *Chiunque*. L'indirizzo `/exec` resta lo stesso. (Non usare «Nuovo deployment»: creerebbe un indirizzo diverso da quello che conosce l'app.)
-6. **Controllo.** Apri l'indirizzo `/exec` nel browser: deve comparire «Rachide · script del foglio v3.1 · attivo» con la frase *impostata*. Se vedi altro, il deployment non è aggiornato: rifai il punto 5.
+6. **Controllo.** Apri l'indirizzo `/exec` nel browser: deve comparire «Rachide · script del foglio v3.2 · attivo» con la frase *impostata*. Se vedi altro, il deployment non è aggiornato: rifai il punto 5.
 7. **Nell'app.** Coach → Collegamento al foglio. Se al punto 4 c'era una frase nuova: Modifica → incollala nel secondo campo → Salva e prova. Poi **Invia tutto**: nel foglio nascono `App_Config` e `App_KPI`, e da qui in poi l'app invia solo le modifiche.
 
 Nella scheda Coach deve comparire: *Script v3: storico, piano e impostazioni sul foglio*.
+
+## Aggiornare dalla 3.1 alla 3.2 (5 minuti, da computer)
+
+La 3.2 legge da sola la proposta del Coach: il file più recente della cartella Drive «Rachide · proposte del Coach» che comincia con «Rachide_proposta_». Il resto non cambia.
+
+1. Nel foglio: Estensioni → Apps Script.
+2. Sostituisci tutto il codice con [la versione da copiare](https://raw.githubusercontent.com/fortunatofilippo-Feel79/rachide/main/apps-script/Rachide.gs) e salva.
+3. Esegui `installa` (se Google chiede di nuovo l'autorizzazione a Drive, consenti).
+4. Punto 5 qui sopra: Gestisci deployment → Modifica → *Nuova versione* → Esegui il deployment.
+5. Apri l'indirizzo `/exec`: deve comparire «v3.2 · attivo».
+6. Nell'app: Coach → «Controlla se c'è una proposta».
 
 ### Se non funziona
 

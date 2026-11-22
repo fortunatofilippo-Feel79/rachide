@@ -15,18 +15,23 @@
    ============================================================ */
 
 var VERSIONE = 3;
-var VERSIONE_TESTO = "3.1 (04/11/2026)";
+var VERSIONE_TESTO = "3.2 (22/11/2026)";
 
 /* Frase segreta: meglio nelle proprietà dello script (Impostazioni progetto →
    Proprietà dello script → SEGRETO), oppure esegui una volta generaSegreto().
    Se proprio vuoi, scrivila qui tra le virgolette. */
 var SEGRETO_QUI = "";
 
-/* Proposta della settimana. Se la review della domenica la scrive in un file su
-   Drive, metti qui il nome esatto del file (quello che usava lo script v2).
-   Altrimenti la cerco nell'ultima riga della scheda App_Proposta (id, data, testo). */
+/* Proposta della settimana, cercata in quest'ordine:
+   1. l'ultima riga della scheda App_Proposta (id, data, testo), se c'e';
+   2. il file piu' recente della cartella PROPOSTA_CARTELLA il cui nome comincia
+      con PROPOSTA_PREFISSO: la routine Coach della domenica ne crea uno nuovo
+      ogni settimana («Rachide_proposta_AAAA-MM-GG.json»);
+   3. il file dal nome fisso PROPOSTA_FILE, se lo scrivi qui (vecchio modo v2). */
 var PROPOSTA_FILE = "";
 var PROPOSTA_SCHEDA = "App_Proposta";
+var PROPOSTA_CARTELLA = "Rachide · proposte del Coach";
+var PROPOSTA_PREFISSO = "Rachide_proposta_";
 
 var SCHEDE = {
   log:   {nome:"App_Log",       chiave:["id"]},
@@ -236,15 +241,33 @@ function proposta_(){
     var v = sh.getRange(sh.getLastRow(), 1, 1, 3).getDisplayValues()[0];
     if(v[2]) return {id:String(v[0] || ("riga" + sh.getLastRow())), data:String(v[1] || ""), testo:String(v[2])};
   }
-  if(!PROPOSTA_FILE) return null;
-  var it = DriveApp.getFilesByName(PROPOSTA_FILE), f = null;
-  while(it.hasNext()){ var x = it.next(); if(!f || x.getLastUpdated() > f.getLastUpdated()) f = x; }
+  var f = propostaDallaCartella_();
+  if(!f && PROPOSTA_FILE){
+    var it = DriveApp.getFilesByName(PROPOSTA_FILE);
+    while(it.hasNext()){ var x = it.next(); if(!f || x.getLastUpdated() > f.getLastUpdated()) f = x; }
+  }
   if(!f) return null;
   var t = f.getMimeType() === MimeType.GOOGLE_DOCS ? DocumentApp.openById(f.getId()).getBody().getText() : f.getBlob().getDataAsString();
   var j = null; try{ j = JSON.parse(t); }catch(err){}
   if(j && j.testo) return {id:String(j.id || f.getId()), data:String(j.data || ""), testo:String(j.testo)};
   return {id:f.getId() + "@" + f.getLastUpdated().getTime(),
           data:Utilities.formatDate(f.getLastUpdated(), Session.getScriptTimeZone(), "dd/MM/yyyy"), testo:t};
+}
+/* il file piu' recente della cartella delle proposte (nel cestino no) */
+function propostaDallaCartella_(){
+  if(!PROPOSTA_CARTELLA) return null;
+  var cart = DriveApp.getFoldersByName(PROPOSTA_CARTELLA), f = null;
+  while(cart.hasNext()){
+    var c = cart.next(); if(c.isTrashed && c.isTrashed()) continue;
+    var it = c.getFiles();
+    while(it.hasNext()){
+      var x = it.next();
+      if(x.isTrashed && x.isTrashed()) continue;
+      if(PROPOSTA_PREFISSO && String(x.getName()).indexOf(PROPOSTA_PREFISSO) !== 0) continue;
+      if(!f || x.getLastUpdated() > f.getLastUpdated()) f = x;
+    }
+  }
+  return f;
 }
 
 /* ---------- uscita: JSON, oppure JSONP se c'e' callback ---------- */

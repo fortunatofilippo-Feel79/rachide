@@ -22,6 +22,8 @@ function finto(segreto) {
   };
   const ss = { getSheetByName: n => fogli[n] || null, insertSheet: n => (fogli[n] = new Foglio(n)) };
   const props = {}; if (segreto !== undefined) props.SEGRETO = segreto;
+  const cartelle = {};
+  function iter(a) { let i = 0; return { hasNext: () => i < a.length, next: () => a[i++] }; }
   const ctx = {
     SpreadsheetApp: { getActive: () => ss },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; }, getProperties: () => Object.assign({}, props) }) },
@@ -29,13 +31,14 @@ function finto(segreto) {
     ContentService: { MimeType: { JSON: 'json', JAVASCRIPT: 'js', TEXT: 'text' }, createTextOutput: s => ({ s, setMimeType(m) { this.m = m; return this; } }) },
     Utilities: { getUuid: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', formatDate: () => '01/11/2026' },
     Logger: { log() {} }, Session: { getScriptTimeZone: () => 'Europe/Rome' },
-    DriveApp: { getFilesByName: () => ({ hasNext: () => false }) }, MimeType: { GOOGLE_DOCS: 'doc' }, DocumentApp: {},
+    DriveApp: { getFilesByName: () => ({ hasNext: () => false }), getFoldersByName: n => iter(cartelle[n] ? [cartelle[n]] : []) }, MimeType: { GOOGLE_DOCS: 'doc' }, DocumentApp: {},
     ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/X/exec' }) },
     JSON, Object, Array, String
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Rachide.gs'), 'utf8'), ctx);
   ctx.__fogli = fogli; ctx.__props = props;
+  ctx.__cartella = (nome, files) => { cartelle[nome] = { getFiles: () => iter(files) }; };
   return ctx;
 }
 const post = (ctx, body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).s);
@@ -106,6 +109,33 @@ test('proposta dalla scheda App_Proposta', () => {
   assert.equal(post(ctx, { secret: s, azione: 'proposta' }).proposta.id, 'p1');
 });
 
+function fileFinto(nome, ts, testo, cestino) {
+  return { getName: () => nome, getId: () => 'id-' + nome, getLastUpdated: () => new Date(ts), isTrashed: () => !!cestino,
+    getMimeType: () => 'application/json', getBlob: () => ({ getDataAsString: () => testo }) };
+}
+
+test('proposta dal file piu recente della cartella del Coach', () => {
+  const ctx = finto('segreto-di-prova-123'), s = 'segreto-di-prova-123';
+  ctx.__cartella('Rachide · proposte del Coach', [
+    fileFinto('Rachide_proposta_2026-11-15.json', 1000, '{"nota":"15/11","ops":[]}'),
+    fileFinto('Rachide_proposta_2026-11-22.json', 3000, '{"nota":"22/11","ops":[]}'),
+    fileFinto('Rachide_proposta_2026-11-29.json', 9000, '{"nota":"cestino","ops":[]}', true),
+    fileFinto('appunti.txt', 5000, 'altro')
+  ]);
+  const p = post(ctx, { secret: s, azione: 'proposta' }).proposta;
+  assert.equal(JSON.parse(p.testo).nota, '22/11');
+  assert.equal(p.id, 'id-Rachide_proposta_2026-11-22.json@3000');
+  assert.equal(JSON.parse(get(ctx, { k: s, azione: 'proposta' }).s).proposta.id, p.id, 'anche via GET');
+});
+
+test('la scheda App_Proposta resta prima della cartella', () => {
+  const ctx = finto('segreto-di-prova-123'), s = 'segreto-di-prova-123';
+  ctx.__cartella('Rachide · proposte del Coach', [fileFinto('Rachide_proposta_2026-11-22.json', 3000, '{"ops":[]}')]);
+  const sh = ctx.SpreadsheetApp.getActive().insertSheet('App_Proposta');
+  sh.d = [['id', 'data', 'testo'], ['p1', '02/11/2026', '{"ops":[]}']];
+  assert.equal(post(ctx, { secret: s, azione: 'proposta' }).proposta.id, 'p1');
+});
+
 test('generaSegreto salva una frase di 32 caratteri nelle proprieta', () => {
   const ctx = finto('');
   const k = ctx.generaSegreto();
@@ -117,7 +147,7 @@ test('aperto dal browser senza niente: pagina di stato, senza dati e senza la fr
   const ctx = finto('segreto-di-prova-123');
   const r = get(ctx, {});
   assert.equal(r.m, 'text');
-  assert.match(r.s, /script del foglio v3\.1/);
+  assert.match(r.s, /script del foglio v3\.2/);
   assert.match(r.s, /Frase segreta: impostata \(20 caratteri\)/);
   assert.ok(!r.s.includes('segreto-di-prova-123'), 'la frase non si vede');
   assert.match(r.s, /App_Config: non ancora creata/);
