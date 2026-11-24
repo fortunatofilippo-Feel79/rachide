@@ -55,3 +55,13 @@ Punto di partenza: **5 schede**, **24 KPI**, un indice di benessere su 6 aree, u
 - **Nel cruscotto:** il KPI «Camminata svelta 30′», con bersaglio 3 su 7 (regola 76), conta nell'area Movimento del benessere. Fonte sull'effetto dell'allenamento aerobico sull'HRV a riposo: [Sandercock, Bromley, Brodie 2005](https://pubmed.ncbi.nlm.nih.gov/15741842/), meta-analisi.
 - **Nei tuoi dati letti insieme:** la lettura «Camminata svelta e HRV» confronta l'HRV del mattino dopo, con almeno 4 giorni per parte. Nel briefing c'è il conteggio dei 7 giorni.
 - **Difetto corretto:** nel modulo del mattino il «Sì» a «Dolore di notte» non si poteva selezionare, perché il gestore dei clic non conosceva quel pulsante. Restava sempre «No». È un dato di sicurezza (regola 19).
+
+## 5. Consiglio del giorno · 4.14.0 (proposta 36, approvata il 24/11/2026)
+- **Dove e quando:** in Oggi, dopo il benessere del mattino, un consiglio solo. Contiene cosa fare oggi, la tecnica per riuscirci, il dato che lo fa scattare e la fonte. Senza il mattino compilato non compare.
+- **Ordine di scelta:**
+  1. i segnali di stamattina: recupero, sonno, alcol, stress e mente, reflusso, cibo di ieri, notte fuori, dolore;
+  2. i KPI in rosso, poi quelli in giallo, nell'ordine della regola 68, a rotazione giorno per giorno;
+  3. se è tutto in verde, un gesto per tenere l'area più debole.
+- **Adattato a te:** le ore si calcolano dai tuoi orari. L'ultimo caffè cade 6 ore prima dell'ora della sera; la cena va finita entro la tua ora tipica o 3 ore prima di dormire; la camminata svelta va in un'ora lontana dalla seduta. Gli alimenti consigliati sono i tuoi.
+- **Risposta:** «Fatto» / «Non oggi», salvata nella colonna `cons` del foglio e riportata nel briefing.
+- **Fonti verificate:** [Drake 2013](https://pubmed.ncbi.nlm.nih.gov/24235903/), [Brooks e Lack 2006](https://pubmed.ncbi.nlm.nih.gov/16796222/), [Balban 2023](https://pubmed.ncbi.nlm.nih.gov/36630953/), [Gollwitzer e Sheeran 2006](https://doi.org/10.1016/S0065-2601(06)38002-1), [ACG 2022](https://pubmed.ncbi.nlm.nih.gov/34807007/), [Schoenfeld e Aragon 2018](https://pubmed.ncbi.nlm.nih.gov/29497353/).
