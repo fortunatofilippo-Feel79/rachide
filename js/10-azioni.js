@@ -125,7 +125,6 @@ document.addEventListener("click", function(ev){
   if(a==="mis"){ formMis(); return; }
   if(a==="savemis"){ saveMis(); return; }
   if(a==="ben"){ formBen(el.dataset.d||null, false, el.dataset.m||undefined); return; }
-  if(a==="benpaste"){ benPaste(); return; }
   if(a==="chiusw"){ formChiusura(); return; }
   if(a==="savechiusw"){ saveChiusura(); return; }
   if(a==="pasto"){ formPasto(el.dataset.m, el.dataset.c); return; }
@@ -135,19 +134,16 @@ document.addEventListener("click", function(ev){
   if(a==="cibric"){ cibAddRic(el.dataset.m, el.dataset.n).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibq"){ cibQ(el.dataset.m, +el.dataset.i, +el.dataset.d).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibdel"){ cibDel(el.dataset.m, +el.dataset.i).then(function(){ render(); formPasto(el.dataset.m); }); return; }
-  if(a==="ciblib"){ formLibero(el.dataset.m); return; }
-  if(a==="ciblibok"){
-    var tx=document.getElementById("cibTxt"), pz=document.querySelector("#cibPz .pill.on");
-    var txt=tx? tx.value.trim() : "";
-    if(!txt){ toast("Scrivi cosa hai mangiato"); return; }
-    cibAddLibero(el.dataset.m, txt, pz? +pz.dataset.q : 1).then(function(){ render(); formPasto(el.dataset.m); });
-    return;
-  }
   if(a==="cibrec"){
     var src=el.dataset.s==="s" ? _CIBS : _CIBR, vv=src[+el.dataset.i];
     if(vv) cibAddVoce(el.dataset.m, vv).then(function(){ render(); formPasto(el.dataset.m); });
     return;
   }
+  if(a==="ricsalva"){ formRicetta(el.dataset.m); return; }
+  if(a==="ricok"){ var rn=document.getElementById("ricNome"), mkr=el.dataset.m;
+    if(!rn || !rn.value.trim()){ toast("Dai un nome alla ricetta"); return; }
+    if(ricettaSalva(mkr, rn.value)){ save(); if(SYNC.on()) doPush(false); formPasto(mkr); toast("Ricetta salvata"); } return; }
+  if(a==="ricvia"){ if(confirm("Togliere la ricetta «"+el.dataset.n+"»?")){ ricettaTogli(el.dataset.n); save(); if(SYNC.on()) doPush(false); formPasto(el.dataset.m); } return; }
   if(a==="cibrip"){ cibRipeti(el.dataset.m).then(function(){ render(); formPasto(el.dataset.m); }); return; }
   if(a==="cibcal"){
     S.cibOff=+el.dataset.v||0; S.cibOffTs=today(); cfgTocca("cibo");
@@ -220,7 +216,6 @@ document.addEventListener("click", function(ev){
 });
 document.addEventListener("input", function(ev){
   var t=ev.target;
-  if(t.id==="cibTxt"){ cibSuggerisci(t.value, t.dataset.m); return; }
   if(t.id==="libq"){ libFiltra(t.value); return; }
   if(t.dataset && t.dataset.o){ salvaOrario(t.dataset.o, t.value); return; }
   if(t.dataset.note!==undefined && S.draft){ S.draft.ex[+t.dataset.note].note=t.value; save(); }
@@ -383,14 +378,15 @@ function stopRest(){ rest=null; }
 function closeSession(){
   var d=S.draft, min=Math.max(1,Math.round((Date.now()-d.t0)/60000));
   var logged=d.ex.filter(e=>e.sets.length).length;
+  var pastoDaDiario=(typeof cibOraPasto==="function")? cibOraPasto(d.date, oraDa(d.t0)) : null;
   sheet('<div class="eyebrow">Chiudi la sessione</div><h2 style="margin:4px 0 12px">Giorno '+d.day+' · '+logged+'/'+d.ex.length+' esercizi</h2>'+
     '<label class="fld"><span class="eyebrow">Data</span><input type="date" id="fDate" value="'+isoDay(d.date)+'"></label>'+
     '<label class="fld"><span class="eyebrow">Durata (min)</span><input type="number" id="fMin" value="'+min+'"></label>'+
     '<label class="fld"><span class="eyebrow">Energia</span><div class="pills" id="fEn">'+
       [1,2,3,4,5].map(v=>'<button class="pill" data-en="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<div class="grid2"><label class="fld"><span class="eyebrow">Iniziata alle</span><input type="time" id="fOra" value="'+oraDa(d.t0)+'"></label>'+
-    '<label class="fld"><span class="eyebrow">Ultimo pasto pieno alle</span><input type="time" id="fPasto" value="'+esc(d.pasto||"")+'"></label></div>'+
-    '<div class="xs mut" style="margin-top:4px">L\'ora d\'inizio viene dal cronometro. Il pasto pieno va finito almeno 2 ore prima (regola 52): serve a leggere il bruciore.</div>'+
+    '<label class="fld"><span class="eyebrow">Ultimo pasto pieno alle</span><input type="time" id="fPasto" value="'+esc(d.pasto||pastoDaDiario||"")+'"></label></div>'+
+    '<div class="xs mut" style="margin-top:4px">L\'ora d\'inizio viene dal cronometro'+(pastoDaDiario && !d.pasto? ', quella del pasto dal diario del cibo' : '')+'. Il pasto pieno va finito almeno 2 ore prima (regola 52): serve a leggere il bruciore.</div>'+
     dolEditor("s", dolDaSeduta(d), "Dolore durante la seduta · il massimo per zona")+
     '<div class="xs mut" style="margin-top:4px">Da 3, o se sale fra le serie, la prossima volta cambi esercizio su quella zona; sopra 5 si ferma la serie (regola 15). Le zone segnate sugli esercizi sono già qui.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><textarea id="fNote" placeholder="Cosa è successo oggi"></textarea></label>'+
@@ -448,9 +444,11 @@ async function commitSession(){
 
 /* ---------- form misure / benessere / simmetria ---------- */
 function formMis(){
+  /* il peso di stamattina e' gia' nel benessere: non si riscrive */
+  var bo=benOn(today()), pm=(bo && bo.peso)? bo.peso : "";
   sheet('<div class="eyebrow">Misure</div><h2 style="margin:4px 0 10px">'+today()+'</h2>'+
     ["peso|Peso (kg)","torace|Torace (cm)","bic|Bicipite (cm)","coscia|Coscia (cm)","vita|Vita (cm)"].map(function(f){
-      var a=f.split("|"); return '<label class="fld"><span class="eyebrow">'+a[1]+'</span><input type="number" step="0.1" id="m_'+a[0]+'"></label>';
+      var a=f.split("|"); return '<label class="fld"><span class="eyebrow">'+a[1]+(a[0]==="peso" && pm? ' · da stamattina' : '')+'</span><input type="number" step="0.1" inputmode="decimal" id="m_'+a[0]+'" value="'+(a[0]==="peso"? pm : "")+'"></label>';
     }).join("")+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="m_note"></label>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savemis">Salva</button>'+
@@ -463,7 +461,7 @@ async function saveMis(){
   var okS=await save(); if(SYNC.on()) doPush(false); closeSheet(); render(); toast(okS?"Misure salvate":"NON salvate: il dispositivo rifiuta la scrittura");
 }
 /* Benessere in due momenti, ognuno con i suoi campi:
-   mattina (al risveglio, da Zepp): HRV, FC, readiness, sonno, peso, dove hai dormito, alcol, spalla
+   mattina (al risveglio, da Zepp): HRV, FC, HybridCharge, sonno, peso, dove hai dormito, alcol, dolori
    sera (prima di dormire): reflusso, camminate, respirazione, stress, testa, note.
    Senza momento (correzione di un giorno passato) si vedono tutti. Ogni modulo
    salva solo i campi che mostra: gli altri restano come sono. */
@@ -485,12 +483,12 @@ function formBen(date, isAdd, momento){
     (isAdd?'<div class="sm mut" style="margin-bottom:8px">Un giorno saltato: scegli la data e compila. È un dato nuovo, si aggiunge al foglio senza problemi.</div>':"")+
     (editDate?'<label class="fld"><span class="eyebrow">Data</span><input type="date" id="bDate" value="'+isoDay(dt)+'"></label>':'<input type="hidden" id="bDate" value="'+isoDay(dt)+'">');
   if(mat){
-    h+='<div class="between" style="margin-top:6px"><div class="eyebrow glow">Da Zepp</div>'+
-      '<button class="btn sm ghost" data-a="benpaste">Incolla da Salute</button></div>'+
+    h+='<div class="eyebrow glow" style="margin-top:6px">Da Zepp · nell\'ordine in cui li trovi</div>'+
     '<div class="grid3">'+
       '<label class="fld"><span class="eyebrow">HRV notte</span><input type="number" inputmode="numeric" id="bHrv" value="'+(b.hrv||"")+'"'+ph(ie.hrv)+'></label>'+
       '<label class="fld"><span class="eyebrow">FC riposo</span><input type="number" inputmode="numeric" id="bRhr" value="'+(b.rhr||"")+'"'+ph(ie.rhr)+'></label>'+
-      '<label class="fld"><span class="eyebrow">Readiness</span><input type="number" inputmode="numeric" id="bRead" value="'+(b.read||"")+'"'+ph(ie.read)+'></label></div>'+
+      '<label class="fld"><span class="eyebrow">HybridCharge</span><input type="number" inputmode="numeric" min="0" max="100" id="bHc" value="'+(b.hc==null?"":b.hc)+'"'+ph(ie.hc)+'></label></div>'+
+    '<div class="scala">HybridCharge al risveglio, 0-100: <b>0-59</b> scarso · <b>60-79</b> discreto · <b>80-100</b> buono (fasce di Zepp). Lo calcola da sonno, HRV e FC: l\'app lo legge insieme a quei numeri, non in più.</div>'+
     '<div class="grid2">'+
       '<label class="fld"><span class="eyebrow">Sonno ore.minuti</span><input type="text" inputmode="decimal" id="bSonno" value="'+sonnoHM(b.sonno)+'"'+(ph(sonnoHM(ie.sonno))||' placeholder="6.40"')+'></label>'+
       '<label class="fld"><span class="eyebrow glow">Peso mattino kg</span><input type="number" step="0.1" inputmode="decimal" id="bPeso" value="'+(b.peso||"")+'"'+ph(ie.peso)+'></label></div>'+
@@ -538,7 +536,7 @@ async function saveBen(origDate){
     refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
     resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
     dolnotte: c("#bNotte")? pick("#bNotte","nt")===1 : !!prev.dolnotte,
-    hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), read:g("bRead",prev.read==null?null:prev.read),
+    hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), hc:g("bHc",prev.hc==null?null:prev.hc),
     sonno:(function(){ var el=document.getElementById("bSonno"); if(!el) return prev.sonno==null?null:prev.sonno; return el.value===""? null : sonnoOre(el.value); })(), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),
     dolm: c("#ded-m")? dolMax(DOLED.m||{}) : (prev.dolm==null?null:prev.dolm),
@@ -599,7 +597,7 @@ async function saveSett(){
   var g=function(id){ var v=document.getElementById(id).value; return v===""?null:+v; };
   var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0];
   if(!b){ b={date:dt, w:weekOf(dt), refl:null, camm:null, resp:false, alc:false, hrv:null, rhr:null,
-             read:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
+             hc:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
   b.passi=g("wPassi"); b.ipo=g("wIpo");
   benTouch(dt);
   var okS=await save(); if(SYNC.on()) doPush(false);

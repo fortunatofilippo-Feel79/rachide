@@ -340,16 +340,21 @@ function alimAggiornaLista(){
     (ok? '<div class="between" style="margin-top:8px"><div class="xs mut">Tocca una riga per scegliere un altro alimento.</div><div class="sm" style="font-weight:700">'+macTxt(tot)+'</div></div>' : '');
 }
 /* il pasto a parole: scrivi, vedi cosa ho capito, aggiungi tutto con un tocco */
-function formScrivi(mk, testo){
-  ALIMF={mk:mk, righe:[], scelte:{}, q:null};
+function formScrivi(mk, testo, scelte){
+  ALIMF={mk:mk, righe:[], scelte:scelte||{}, q:null};
   var m=meal(mk);
-  sheet('<div class="eyebrow">'+esc(cibDate())+'</div><h2 style="margin:3px 0 10px;font-size:18px">'+esc(m.n)+' · scrivi cosa hai mangiato</h2>'+
+  /* le voci che usi di piu' in questo pasto: un tocco le aggiunge al testo */
+  ALIMF.chips=cibStorico(mk).slice(0,8);
+  sheet('<div class="eyebrow">'+esc(cibDate())+' · scrivi cosa hai mangiato</div>'+
+    '<div class="pills" style="flex-wrap:wrap;margin:6px 0 10px">'+MEALS.map(function(x){ return '<button class="pill'+(x.k===mk?" on":"")+'" data-a="alimpasto" data-m="'+x.k+'">'+esc(x.n.replace("Spuntino ","Spunt. "))+'</button>'; }).join("")+'</div>'+
     '<textarea id="alimTxt" rows="3" placeholder="pollo 200 g, riso 80, un cucchiaio d\'olio">'+esc(testo||"")+'</textarea>'+
+    (ALIMF.chips.length? '<div class="xs mut" style="margin:8px 0 4px">I tuoi soliti in '+esc(m.n.toLowerCase())+': tocca per aggiungerli</div><div class="pills" style="flex-wrap:wrap">'+
+      ALIMF.chips.map(function(v,i){ return '<button class="pill" data-a="alimchip" data-i="'+i+'">'+esc(v.n+(v.gr? " "+v.gr+" g" : ""))+'</button>'; }).join("")+'</div>' : '')+
     '<div id="alimRis"></div>'+
     '<div class="eyebrow" style="margin:12px 0 6px">Se non lo riconosco, la porzione era</div><div class="pills" id="cibPz">'+
     PORZ.map(function(p,i){ return '<button class="pill'+(i===1?" on":"")+'" data-q="'+p[1]+'">'+p[0]+'</button>'; }).join("")+'</div>'+
-    '<button class="btn pri" style="margin-top:14px" data-a="alimok">Aggiungi</button>'+
-    '<button class="btn ghost" style="margin-top:8px" data-a="pasto" data-m="'+mk+'">Indietro</button>');
+    '<button class="btn pri" style="margin-top:14px" data-a="alimok">Aggiungi a '+esc(m.n.toLowerCase())+'</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="pasto" data-m="'+mk+'">Vedi il pasto</button>');
   alimAggiornaLista();
   setTimeout(function(){ var t=document.getElementById("alimTxt"); if(t) t.focus(); }, 60);
 }
@@ -406,6 +411,10 @@ document.addEventListener("click", function(ev){
   var a=el.dataset.a;
   if(a==="alimscrivi"){ formScrivi(el.dataset.m, ""); return; }
   if(a==="alimok"){ alimConferma(); return; }
+  if(a==="alimpasto"){ var tp=document.getElementById("alimTxt"); formScrivi(el.dataset.m, tp? tp.value : "", ALIMF.scelte); return; }
+  if(a==="alimchip"){ var tc=document.getElementById("alimTxt"), vc=(ALIMF.chips||[])[+el.dataset.i]; if(!tc || !vc) return;
+    var add=vc.n+(vc.gr? " "+vc.gr+" g" : ""), cur=tc.value.replace(/[\s,]+$/,"");
+    tc.value = cur? cur+", "+add : add; alimAggiornaLista(); return; }
   if(a==="alimalt"){ alimAlternative(+el.dataset.i); return; }
   if(a==="alimsc"){ var t0=ALIMF.testo||"", mk0=ALIMF.mk, sc=Object.assign({}, ALIMF.scelte); sc[el.dataset.n]=+el.dataset.k;
     formScrivi(mk0, t0); ALIMF.scelte=sc; alimAggiornaLista(); return; }

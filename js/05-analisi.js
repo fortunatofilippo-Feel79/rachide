@@ -78,7 +78,7 @@ function hrvBase(exclDate){
 }
 /* valori plausibili: un numero fuori scala (FC 31) e' un errore di battitura,
    non un dato. Resta salvato com'e', ma non entra nelle mediane del recupero. */
-var PLAUS={rhr:[35,100], hrv:[10,200], sonno:[3,12]};
+var PLAUS={rhr:[35,100], hrv:[10,200], sonno:[3,12], hc:[0,100]};
 function plaus(field, v){ var r=PLAUS[field]; return !r || (v>=r[0] && v<=r[1]); }
 /* controllo prima di salvare il benessere: chiede conferma, non blocca */
 function controlloBen(r){
@@ -86,6 +86,7 @@ function controlloBen(r){
   if(r.rhr!=null && !plaus("rhr",r.rhr)) a.push("FC a riposo "+r.rhr+" (di solito tra 35 e 100)");
   if(r.hrv!=null && !plaus("hrv",r.hrv)) a.push("HRV "+r.hrv+" (di solito tra 10 e 200)");
   if(r.sonno!=null && !plaus("sonno",r.sonno)) a.push("Sonno "+sonnoTxt(r.sonno)+" (di solito tra 3 e 12 ore)");
+  if(r.hc!=null && !plaus("hc",r.hc)) a.push("HybridCharge "+r.hc+" (va da 0 a 100)");
   if(r.peso!=null){
     var ps=S.ben.filter(function(b){ return b.peso>0 && b.date!==r.date && dataOk(b.date); })
       .sort(function(x,y){ return s2d(y.date)-s2d(x.date); }).slice(0,7).map(function(b){ return b.peso; });
@@ -110,7 +111,7 @@ function rhrBase(exclDate){ return medBase("rhr", exclDate); }
    HRV giù + FC su = carico sistemico vero.
    HRV giù + FC normale = probabile rumore di misura.
    ============================================================ */
-var SONNO_BASSO=6.5, STRESS_ALTO=2;
+var SONNO_BASSO=6.5, STRESS_ALTO=2, HC_BASSO=60;   /* HC: sotto 60 e' la fascia «scarsa» di Zepp */
 function recovery(date){
   var b=benOn(date); if(!b) return {lvl:0, parts:[], hint:""};
   /* HRV: sotto la fascia normale dei 60 giorni precedenti (log, media - 1 DS);
@@ -123,7 +124,12 @@ function recovery(date){
   if(b.alc){ parts.push("alcol la sera prima"); lvl=Math.max(lvl,1); }
   if(hrvLow){ parts.push("HRV "+b.hrv+" (norma ~"+hb+")"); lvl=Math.max(lvl,1); }
   if(rhrHigh){ parts.push("FC riposo "+b.rhr+" (norma ~"+rb+")"); lvl=Math.max(lvl,1); }
-  if(b.read!=null && b.read<70){ parts.push("readiness "+b.read); lvl=Math.max(lvl,1); }
+  /* HybridCharge (Zepp, dal 07/11/2026 al posto della readiness): un punteggio 0-100 calcolato
+     da sonno, HRV e FC a riposo, cioe' gli stessi dati che registri. Non e' un segnale in piu':
+     conta da solo solo quando manca HRV o FC; con i tuoi dati presenti fa da conferma. */
+  var bHc = (b.hc!=null && b.hc!=="" && plaus("hc", +b.hc)) ? +b.hc : null;
+  var hcBasso = bHc!=null && bHc<HC_BASSO, datiPropri = !!(bHrv && bRhr);
+  if(hcBasso && !datiPropri){ parts.push("HybridCharge "+bHc+" (manca "+(bHrv? "la FC a riposo" : "l'HRV")+")"); lvl=Math.max(lvl,1); }
   /* soglie come da Lettura dati e Jarvis (decisione del 18/10/2026): sonno sotto 6,5 h, stress da 2 */
   var sonnoCorto = b.sonno!=null && b.sonno<SONNO_BASSO, stressAlto = b.stress!=null && b.stress>=STRESS_ALTO;
   if(sonnoCorto){ parts.push("sonno "+sonnoTxt(b.sonno)); lvl=Math.max(lvl,1); }
@@ -139,7 +145,11 @@ function recovery(date){
     hint="HRV giù ma FC a riposo nella norma: probabilmente è rumore di misura. Allenati normale e rileggi domani."; }
   else if(rhrHigh && !hrvLow){
     hint="FC a riposo sopra la norma con HRV tenuta: spesso precede un malanno. Tieni i carichi fermi per una seduta."; }
-  return {lvl:lvl, parts:parts, hint:hint};
+  if(hcBasso && datiPropri){
+    if(lvl>0) parts.push("HybridCharge "+bHc+" (conferma)");
+    else if(!hint) hint="HybridCharge "+bHc+" sotto 60, ma HRV, FC a riposo e sonno sono nella norma: il punteggio di Zepp pesa anche la fatica del giorno prima. Allenati normale; se si ripete per tre mattine guarda sonno e stress.";
+  }
+  return {lvl:lvl, parts:parts, hint:hint, hc:bHc};
 }
 function recoveryNote(date){ return recovery(date).parts.join(" · "); }
 /* recupero basso di OGGI (livello 2): conta solo la riga benessere di oggi, mai il dato di ieri.
@@ -806,20 +816,6 @@ function casaFuori(){
   });
   if(c.length<3 || f.length<3) return {ok:false, nc:c.length, nf:f.length};
   return {ok:true, sc:media(c), sf:media(f), hc:mediana(hc), hf:mediana(hf), nc:c.length, nf:f.length};
-}
-async function benPaste(){
-  var txt="";
-  try{ txt=await navigator.clipboard.readText(); }
-  catch(e){ toast("Non riesco a leggere gli appunti: tocca Consenti quando l'iPhone lo chiede"); return; }
-  var f=function(re){ var m=String(txt).match(re); return m? m[1].replace(",",".") : null; };
-  var vals={sonno:f(/sonno[^\d]{0,14}(\d+(?:[.,]\d+)?)/i), hrv:f(/hrv[^\d]{0,14}(\d+)/i),
-            rhr:f(/(?:fc|riposo|rhr)[^\d]{0,14}(\d+)/i), peso:f(/peso[^\d]{0,14}(\d+(?:[.,]\d+)?)/i)};
-  if(vals.sonno){ var sn=parseFloat(vals.sonno); vals.sonno = sn>24 ? sonnoHM(sn/60) : sonnoHM(sn); }   /* da Salute: minuti o ore decimali; nel campo si scrive in ore.minuti */
-  var n=0;
-  [["sonno","bSonno"],["hrv","bHrv"],["rhr","bRhr"],["peso","bPeso"]].forEach(function(p){
-    if(vals[p[0]]){ var el=document.getElementById(p[1]); if(el){ el.value=vals[p[0]]; n++; } }
-  });
-  toast(n? n+" valori incollati: controllali e salva" : "Negli appunti non trovo valori di Salute");
 }
 
 /* ---------- 11 · chiusura della settimana ---------- */

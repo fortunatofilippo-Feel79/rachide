@@ -277,7 +277,7 @@ function kpiRows(){
 function oraMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function hm(s){ var a=String(s||"0:0").split(":"); return (+a[0]||0)*60+(+a[1]||0); }
 function orari(){ return Object.assign({mattina:"07:30", sera:"21:30", domenica:"18:00"}, S.orari||{}); }
-function mattinaFatta(b){ return !!(b && (b.hrv||b.rhr||b.sonno||b.read||b.peso)); }
+function mattinaFatta(b){ return !!(b && (b.hrv||b.rhr||b.sonno||b.hc!=null&&b.hc!==""||b.peso)); }
 function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente!=null || b.camm!=null)); }
 function simDue(){ var w=weekOf(today()); return w>=31 && (w-31)%4===0 && !(S.sim||[]).some(function(x){ return x.w===w; }); }
 function agendaVoci(){
@@ -285,7 +285,7 @@ function agendaVoci(){
   var pe=pianoDelGiorno(oggi);
   if(pe && pe.stato==="oggi") v.push({k:"seduta", t:"Seduta "+pe.d+" · "+PLAN[pe.d].name, q:(pe.ora||"")+" · "+({casa:"a casa",bande:"con le bande",corpo:"a corpo libero"}[pe.l]||""), d:PLAN[pe.d].ex.length+" esercizi, "+PLAN[pe.d].min+" minuti",
     fatto:false, dovuto: now>=hm(pe.ora||"07:30")-60, a:"seduta", m:pe.d});
-  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, dolori",
+  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"HRV, FC a riposo, HybridCharge, sonno, peso, dolori",
     fatto:mattinaFatta(b), dovuto: now>=hm(o.mattina)-90, a:"benm"});
   /* dovuti solo i tre pasti principali; gli spuntini sono facoltativi */
   var g=cibDay(oggi), attesi=[["col",600],["pra",900],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });

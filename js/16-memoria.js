@@ -21,7 +21,8 @@ var CFG_GRUPPI={
   coach:     function(){ return S.cdone||{}; },
   prodotti:  function(){ return S.prodotti||{}; },
   settimane: function(){ return {piano:S.pianoSett||{}, dispo:S.dispo||{}, tempo:S.tempo||{}}; },
-  proposte:  function(){ return S.proposte||{}; }
+  proposte:  function(){ return S.proposte||{}; },
+  ricette:   function(){ return S.ricette||[]; }
 };
 var CFG_ALIAS={picco:"impostazioni", profilo:"impostazioni", orari:"impostazioni", suoni:"impostazioni",
   freeze:"impostazioni", cibo:"impostazioni", passo1:"impostazioni", target:"impostazioni", proposta:"impostazioni"};
@@ -37,6 +38,7 @@ function cfgApplica(g, v){
   else if(g==="coach" && v && typeof v==="object") S.cdone=v;
   else if(g==="settimane" && v && typeof v==="object"){ S.pianoSett=v.piano||{}; S.dispo=v.dispo||{}; S.tempo=v.tempo||{}; }
   else if(g==="proposte" && v && typeof v==="object") S.proposte=v;
+  else if(g==="ricette" && Array.isArray(v)) S.ricette=v;
   else if(g==="prodotti" && v && typeof v==="object") S.prodotti=Object.assign({}, S.prodotti||{}, v);   /* unione: un prodotto letto non si perde */
 }
 /* righe per App_Config: una per gruppo, spezzata se supera la cella di Sheets (50.000 caratteri) */

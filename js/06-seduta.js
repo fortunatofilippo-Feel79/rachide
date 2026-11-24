@@ -183,7 +183,7 @@ function briefing(){
     bn.forEach(function(b){
       var rc=recovery(b.date);
       L.push("- "+b.date+": peso "+(b.peso||"-")+" | HRV "+(b.hrv||"-")+" | FC rip "+(b.rhr||"-")+
-        " | read "+(b.read||"-")+" | sonno "+(b.sonno? sonnoTxt(b.sonno) : "-")+" | stress "+(b.stress==null?"-":b.stress)+
+        " | HC "+(b.hc==null||b.hc===""? (b.read? "- (readiness "+b.read+")" : "-") : b.hc)+" | sonno "+(b.sonno? sonnoTxt(b.sonno) : "-")+" | stress "+(b.stress==null?"-":b.stress)+
         " | mente "+(b.mente==null?"-":b.mente)+" | reflusso "+(b.refl==null?"-":b.refl)+
         " | alcol "+(b.alc?"si":"no")+(rc.hint?"  >> "+rc.hint:""));
     }); }
