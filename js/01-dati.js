@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.13.0";
+var VERSIONE_APP = "4.14.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · uni = unilaterale · sec = misurato in secondi
@@ -508,6 +508,11 @@ var FONTI={
   sandercock:{t:"Sandercock, Bromley, Brodie 2005 · Med Sci Sports Exerc 37:433 (allenamento aerobico e HRV, meta-analisi)", u:"https://pubmed.ncbi.nlm.nih.gov/15741842/"},
   buffey:{t:"Buffey et al. 2022 · Sports Med 52:1765", u:"https://link.springer.com/content/pdf/10.1007/s40279-022-01649-4.pdf"},
   gollwitzer:{t:"Gollwitzer e Sheeran 2006 · implementation intentions", u:"https://kops.uni-konstanz.de/entities/publication/2e749bfb-8533-437c-8203-7e788c910c5f"},
+  drake:{t:"Drake et al. 2013 · caffeina 0, 3 o 6 ore prima di dormire, J Clin Sleep Med 9:1195", u:"https://pubmed.ncbi.nlm.nih.gov/24235903/"},
+  brooks:{t:"Brooks e Lack 2006 · durata del pisolino dopo una notte corta, Sleep 29:831", u:"https://pubmed.ncbi.nlm.nih.gov/16796222/"},
+  balban:{t:"Balban et al. 2023 · respirazione strutturata e sospiro ciclico, Cell Rep Med 4:100895", u:"https://pubmed.ncbi.nlm.nih.gov/36630953/"},
+  acg:{t:"Katz et al. 2022 · linea guida ACG sul reflusso, Am J Gastroenterol 117:27", u:"https://pubmed.ncbi.nlm.nih.gov/34807007/"},
+  aragon:{t:"Schoenfeld e Aragon 2018 · proteine per pasto, J Int Soc Sports Nutr 15:10", u:"https://pubmed.ncbi.nlm.nih.gov/29497353/"},
   piano:{t:"Regola del piano (Piano Unico v5, decisioni del coach)", u:""}
 };
 var KPI=[

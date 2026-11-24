@@ -72,6 +72,8 @@ function viewOggi(){
 
   /* 0 · cosa registrare oggi, e quando */
   if(typeof cardAgenda==="function") h+=cardAgenda();
+  /* 0b · il consiglio di oggi, dopo il benessere del mattino (proposta 36) */
+  if(typeof cardConsiglio==="function") h+=cardConsiglio();
 
   /* recupero: oggi o, al mattino, il dato più fresco entro 2 giorni */
   var recB=benOn(today());

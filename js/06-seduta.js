@@ -180,6 +180,7 @@ function briefing(){
     var hr=hrvRiferimento(), hc=hrvCaloLento();
     L.push("- misura HRV/FC dal "+CAMBIO_MISURA+" | riferimento HRV "+(hr? hr.v+" su "+hr.n+" notti"+(hr.provv?" (provvisorio)":"") : "non ancora (servono "+RIF_MIN+" notti)")+
       (hc? " | media 14 giorni "+hc.m14+" ("+(hc.scarto>0?"+":"")+hc.scarto+"%)"+(hc.calo?" >> calo lento":"") : ""));
+    if(typeof consTestoCoach==="function") L.push(consTestoCoach());
     var svs=sveltaSettimana(); L.push("- Camminata svelta 30' (regola 76): "+(svs.segnate? svs.fatte+" negli ultimi 7 giorni, su "+svs.segnate+" sere segnate" : "non ancora segnata"));
     var hcs=hcStato(); L.push("- "+(hcs? hcTesto(hcs) : "HybridCharge: norma non ancora calcolabile (servono 14 mattine)")+" | solo lettura, non entra nello stato di oggi");
     bn.forEach(function(b){

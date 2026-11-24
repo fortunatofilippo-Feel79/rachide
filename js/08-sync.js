@@ -175,7 +175,8 @@ var SYNC = {
         cibP:keepn(r,loc,"cibP"), cibC:keepn(r,loc,"cibC"), cibG:keepn(r,loc,"cibG"), cibA:keepn(r,loc,"cibA"),
         cibJ:keeps(r,loc,"cibJ"), sede:keeps(r,loc,"sede"), citta:keeps(r,loc,"citta"),
         dolnotte:(r.dolnotte===undefined)? !!(loc&&loc.dolnotte) : (r.dolnotte===true||r.dolnotte==="Sì"),
-        svelta:(r.svelta===undefined || r.svelta==="")? (loc && loc.svelta!=null? loc.svelta : null) : (r.svelta===true||r.svelta==="Sì")};
+        svelta:(r.svelta===undefined || r.svelta==="")? (loc && loc.svelta!=null? loc.svelta : null) : (r.svelta===true||r.svelta==="Sì"),
+        cons:keeps(r,loc,"cons")};
     }), S.ben, byDate, "App_Benessere");
     if(d.sim) S.sim = this.fuse(d.sim.map(function(r){
       return {date:r.date, w:+r.w||weekOf(r.date), ex:r.ex||"", q:r.q||"", a:r.a||"", side:r.side||""};
@@ -194,7 +195,7 @@ var SYNC = {
   benRow(r){
     return {date:r.date,w:r.w,refl:r.refl,resp:r.resp?"Sì":"No",camm:r.camm,hrv:r.hrv,
       read:r.read,hc:(r.hc==null?"":r.hc),sonno:sonnoHM(r.sonno),alc:r.alc?"Sì":"No",peso:r.peso,rhr:r.rhr,stress:r.stress,
-      mente:r.mente,passi:r.passi,ipo:r.ipo,dolm:(r.dolm==null?"":r.dolm),dolmz:r.dolmz||"",cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibA:(r.cibA==null?"":r.cibA),cibJ:r.cibJ,sede:r.sede||"",citta:r.citta||"",dolnotte:r.dolnotte?"Sì":"No",svelta:(r.svelta==null?"":(r.svelta?"Sì":"No")),note:r.note};
+      mente:r.mente,passi:r.passi,ipo:r.ipo,dolm:(r.dolm==null?"":r.dolm),dolmz:r.dolmz||"",cibP:r.cibP,cibC:r.cibC,cibG:r.cibG,cibA:(r.cibA==null?"":r.cibA),cibJ:r.cibJ,sede:r.sede||"",citta:r.citta||"",dolnotte:r.dolnotte?"Sì":"No",svelta:(r.svelta==null?"":(r.svelta?"Sì":"No")),cons:r.cons||"",note:r.note};
   },
   /* dallo stato dell'app al foglio: solo quello che manca, quindi si può ripetere */
   payloadAll(){
