@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.12.1";
+var VERSIONE_APP = "4.13.0";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · uni = unilaterale · sec = misurato in secondi
@@ -505,6 +505,7 @@ var FONTI={
   silbernagel:{t:"Silbernagel et al. 2007 · pain-monitoring model", u:"https://search.pedro.org.au/search-results/record-detail/18389"},
   spiering:{t:"Spiering et al. 2021 · J Strength Cond Res 35:1449", u:"https://pubmed.ncbi.nlm.nih.gov/33629972/"},
   mcmaster:{t:"McMaster et al. 2013 · Sports Med 43:367", u:"https://pubmed.ncbi.nlm.nih.gov/23529287/"},
+  sandercock:{t:"Sandercock, Bromley, Brodie 2005 · Med Sci Sports Exerc 37:433 (allenamento aerobico e HRV, meta-analisi)", u:"https://pubmed.ncbi.nlm.nih.gov/15741842/"},
   buffey:{t:"Buffey et al. 2022 · Sports Med 52:1765", u:"https://link.springer.com/content/pdf/10.1007/s40279-022-01649-4.pdf"},
   gollwitzer:{t:"Gollwitzer e Sheeran 2006 · implementation intentions", u:"https://kops.uni-konstanz.de/entities/publication/2e749bfb-8533-437c-8203-7e788c910c5f"},
   piano:{t:"Regola del piano (Piano Unico v5, decisioni del coach)", u:""}
@@ -557,5 +558,7 @@ var KPI=[
   {id:"completezza", area:"Abitudini", nome:"Mattine registrate", unita:"/7", freq:"ultimi 7 giorni",
    come:"Giorni con il benessere del mattino compilato (peso, HRV, FC o sonno)", bersaglio:"≥ 5 su 7", ok:5, att:3, verso:"su", fonte:"piano"},
   {id:"camminate", area:"Abitudini", nome:"Camminate dopo i pasti", unita:"/giorno", freq:"media 7 giorni",
-   come:"Camminate brevi dopo pranzo e cena (0-2). Abbassano la glicemia dopo il pasto", bersaglio:"≥ 1,5", ok:1.5, att:1, verso:"su", fonte:"buffey"}
+   come:"Camminate brevi dopo pranzo e cena (0-2). Abbassano la glicemia dopo il pasto", bersaglio:"≥ 1,5", ok:1.5, att:1, verso:"su", fonte:"buffey"},
+  {id:"svelta", area:"Abitudini", nome:"Camminata svelta 30′", unita:"/7", freq:"ultimi 7 giorni",
+   come:"Giorni con la camminata svelta da 30′ segnata la sera (regola 76: al ritmo in cui parli ma non canti, almeno 1 h dopo un pasto pieno). Separata dalle camminate lente dopo i pasti. L'allenamento aerobico alza l'HRV a riposo", bersaglio:"≥ 3 su 7", ok:3, att:2, verso:"su", fonte:"sandercock"}
 ];

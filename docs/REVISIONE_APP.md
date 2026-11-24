@@ -49,3 +49,9 @@ Punto di partenza: **5 schede**, **24 KPI**, un indice di benessere su 6 aree, u
 ## 3. Risposte (24/11/2026)
 1. In Zepp **HRV notturna e FC a riposo restano separate** da HybridCharge: il recupero continua a leggere HRV e FC, e HybridCharge resta una conferma.
 2. La mattina si vedono sia HybridCharge al risveglio sia quello del momento. **Si registra solo quello al risveglio** (versione 4.12.1): è preso ogni giorno nello stesso momento, quindi si può confrontare da un giorno all'altro e con la tua norma. Quello del momento dipende dall'ora in cui lo guardi.
+
+## 4. Camminata svelta · 4.13.0 (proposta 35, approvata il 24/11/2026)
+- **Nel modulo della sera:** «Camminata svelta 30′ · No / Sì» (colonna `svelta` di App_Benessere). È separata dalle camminate lente dopo i pasti della regola 13.
+- **Nel cruscotto:** il KPI «Camminata svelta 30′», con bersaglio 3 su 7 (regola 76), conta nell'area Movimento del benessere. Fonte sull'effetto dell'allenamento aerobico sull'HRV a riposo: [Sandercock, Bromley, Brodie 2005](https://pubmed.ncbi.nlm.nih.gov/15741842/), meta-analisi.
+- **Nei tuoi dati letti insieme:** la lettura «Camminata svelta e HRV» confronta l'HRV del mattino dopo, con almeno 4 giorni per parte. Nel briefing c'è il conteggio dei 7 giorni.
+- **Difetto corretto:** nel modulo del mattino il «Sì» a «Dolore di notte» non si poteva selezionare, perché il gestore dei clic non conosceva quel pulsante. Restava sempre «No». È un dato di sicurezza (regola 19).

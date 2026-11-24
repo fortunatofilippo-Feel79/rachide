@@ -206,7 +206,8 @@ document.addEventListener("click", function(ev){
   if(gg && gg.classList.contains("pill")){ gg.classList.toggle("on"); return; }
   var sdp=ev.target.closest("[data-sd]");
   if(sdp){ var cw=document.getElementById("bCittaW"); if(cw) cw.style.display = sdp.dataset.sd==="Fuori" ? "block" : "none"; }
-  var keys=["en","sig","r","c","p","x","q","s","st","me","sd","mo","dl","do"];
+  /* nt = dolore di notte, sv = camminata svelta: senza qui i loro «Sì» non si potevano scegliere */
+  var keys=["en","sig","r","c","p","x","q","s","st","me","sd","mo","dl","do","nt","sv"];
   for(var i=0;i<keys.length;i++){
     var b=ev.target.closest("[data-"+keys[i]+"]");
     if(b && b.classList.contains("pill")){
@@ -463,7 +464,7 @@ async function saveMis(){
 }
 /* Benessere in due momenti, ognuno con i suoi campi:
    mattina (al risveglio, da Zepp): HRV, FC, HybridCharge, sonno, peso, dove hai dormito, alcol, dolori
-   sera (prima di dormire): reflusso, camminate, respirazione, stress, testa, note.
+   sera (prima di dormire): reflusso, camminate, camminata svelta (regola 76), respirazione, stress, testa, note.
    Senza momento (correzione di un giorno passato) si vedono tutti. Ogni modulo
    salva solo i campi che mostra: gli altri restano come sono. */
 function pillScala(id, key, max, sel, da){
@@ -509,6 +510,9 @@ function formBen(date, isAdd, momento){
     '<div class="scala"><b>0</b> niente · <b>1</b> lieve: un episodio breve, non ti disturba · <b>2</b> bruciore o rigurgito più volte, o che ti disturba · <b>3</b> forte: ti sveglia, ti fa cambiare posizione o prendere qualcosa. Conta il giorno e la notte scorsa.</div>'+
     '<label class="fld"><span class="eyebrow">Camminate dopo i pasti · bersaglio 2'+hi(ie.camm)+'</span><div class="pills" id="bCam">'+
       [0,1,2].map(v=>'<button class="pill '+(b.camm===v?"on":"")+'" data-c="'+v+'">'+v+'</button>').join("")+'</div></label>'+
+    '<label class="fld"><span class="eyebrow">Camminata svelta 30′ · regola 76'+(sveltaSettimana().fatte? ' · '+sveltaSettimana().fatte+' su 3 in 7 giorni' : '')+'</span><div class="pills" id="bSv">'+
+      '<button class="pill '+(b.svelta?"":"on")+'" data-sv="0">No</button><button class="pill '+(b.svelta?"on":"")+'" data-sv="1">Sì</button></div></label>'+
+    '<div class="scala">Al ritmo in cui parli ma non canti, almeno 1 h dopo un pasto pieno. È diversa dalle camminate lente dopo i pasti qui sopra: quelle non contano qui.</div>'+
     '<label class="fld"><span class="eyebrow">Respirazione 4-7</span><div class="pills" id="bResp">'+
       '<button class="pill '+(b.resp?"":"on")+'" data-p="0">No</button><button class="pill '+(b.resp?"on":"")+'" data-p="1">Sì</button></div></label>'+
     '<label class="fld"><span class="eyebrow">Stress · 0 nessuno · 3 marcato'+hi(ie.stress)+'</span><div class="pills" id="bStr">'+
@@ -537,6 +541,7 @@ async function saveBen(origDate){
     refl:pick("#bRefl","r",prev.refl==null?null:prev.refl), camm:pick("#bCam","c",prev.camm==null?null:prev.camm),
     resp: c("#bResp")? pick("#bResp","p")===1 : !!prev.resp, alc: c("#bAlc")? pick("#bAlc","x")===1 : !!prev.alc,
     dolnotte: c("#bNotte")? pick("#bNotte","nt")===1 : !!prev.dolnotte,
+    svelta: c("#bSv")? pick("#bSv","sv")===1 : (prev.svelta==null? null : !!prev.svelta),
     hrv:g("bHrv",prev.hrv==null?null:prev.hrv), rhr:g("bRhr",prev.rhr==null?null:prev.rhr), hc:g("bHc",prev.hc==null?null:prev.hc),
     sonno:(function(){ var el=document.getElementById("bSonno"); if(!el) return prev.sonno==null?null:prev.sonno; return el.value===""? null : sonnoOre(el.value); })(), peso:g("bPeso",prev.peso==null?null:prev.peso),
     stress:pick("#bStr","st",prev.stress==null?null:prev.stress), mente:pick("#bMen","me",prev.mente==null?null:prev.mente),

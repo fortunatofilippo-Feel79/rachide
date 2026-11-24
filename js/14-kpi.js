@@ -234,7 +234,15 @@ function kpiValori(){
   var mat=0; for(var i=0;i<7;i++){ var dd=new Date(); dd.setDate(dd.getDate()-i); if(mattinaFatta(benOn(d2s(dd)))) mat++; }
   put("completezza", mat, mat+" su 7");
   var cm=mediaUltimi("camm",7); put("camminate", cm==null?null:r1(cm), cm==null? "–" : dec(r1(cm)));
+  var sv=sveltaSettimana(); put("svelta", sv.segnate? sv.fatte : null, sv.segnate? sv.fatte+" su 7" : "–");
   return out;
+}
+/* camminata svelta (regola 76): quante negli ultimi 7 giorni, e quante sere l'hanno segnata (Si' o No) */
+function sveltaSettimana(fino){
+  var f=fino? s2d(fino) : new Date(), fatte=0, segnate=0;
+  for(var i=0;i<7;i++){ var d=new Date(f.getTime()); d.setDate(d.getDate()-i); var b=benOn(d2s(d));
+    if(b && b.svelta!=null){ segnate++; if(b.svelta) fatte++; } }
+  return {fatte:fatte, segnate:segnate};
 }
 function giorniDa(s){ return Math.round((new Date().setHours(0,0,0,0)-s2d(s).getTime())/86400000); }
 
@@ -296,7 +304,7 @@ function oraMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function hm(s){ var a=String(s||"0:0").split(":"); return (+a[0]||0)*60+(+a[1]||0); }
 function orari(){ return Object.assign({mattina:"07:30", sera:"21:30", domenica:"18:00"}, S.orari||{}); }
 function mattinaFatta(b){ return !!(b && (b.hrv||b.rhr||b.sonno||b.hc!=null&&b.hc!==""||b.peso)); }
-function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente!=null || b.camm!=null)); }
+function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente!=null || b.camm!=null || b.svelta!=null)); }
 function simDue(){ var w=weekOf(today()); return w>=31 && (w-31)%4===0 && !(S.sim||[]).some(function(x){ return x.w===w; }); }
 function agendaVoci(){
   var oggi=today(), b=benOn(oggi), now=oraMin(), o=orari(), dom=new Date().getDay()===0, w=weekOf(oggi), v=[];
@@ -312,7 +320,7 @@ function agendaVoci(){
   var manca=attesi.filter(function(k){ return !(g[k]||[]).length && !pastoSaltato(g, k); });
   v.push({k:"cibo", t:"Pasti", q:"dopo ogni pasto · 20 secondi", d: regi+" pasti principali su 3"+(spu? " + "+spu+(spu>1?" spuntini":" spuntino") : "")+(manca.length? " · manca "+manca.map(function(k){ return meal(k).n.toLowerCase(); }).join(", ") : ""),
     fatto: !manca.length && regi>0, dovuto: attesi.length>0, a:"cibo", m: manca[0]||"col"});
-  v.push({k:"sera", t:"Benessere della sera", q:"prima di dormire · 30 secondi", d:"Reflusso, camminate, stress, testa",
+  v.push({k:"sera", t:"Benessere della sera", q:"prima di dormire · 30 secondi", d:"Reflusso, camminate, camminata svelta, stress, testa",
     fatto:seraFatta(b), dovuto: now>=hm(o.sera)-90, a:"bens"});
   if(dom){
     /* la domenica in un modulo solo: tre domande, i giorni, passi e ipopnea da Zepp */
