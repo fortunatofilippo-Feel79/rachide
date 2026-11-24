@@ -69,7 +69,8 @@ function benDaInviare(date){ return !!(S.dirtyBen && S.dirtyBen[date]); }
 /* mediana HRV di riferimento: gli altri giorni con HRV, esclusa la data in esame,
    così un giorno storto non abbassa la propria soglia */
 function hrvBase(exclDate){
-  var v=S.ben.filter(function(b){ return b.hrv && b.date!==exclDate && plaus("hrv", b.hrv); }).map(function(b){ return b.hrv; });
+  var rif=exclDate||today();
+  var v=S.ben.filter(function(b){ return b.hrv && b.date!==exclDate && plaus("hrv", b.hrv) && dataOk(b.date) && stessaMisura("hrv", rif, b.date); }).map(function(b){ return b.hrv; });
   if(v.length<3) return null;
   v.sort(function(a,b){ return a-b; });
   var m=Math.floor(v.length/2);
@@ -94,7 +95,8 @@ function controlloBen(r){
 }
 /* mediana di riferimento per un campo qualsiasi, esclusa la data in esame */
 function medBase(field, exclDate){
-  var v=S.ben.filter(function(b){ return b[field] && b.date!==exclDate && plaus(field, b[field]); }).map(function(b){ return b[field]; });
+  var rif=exclDate||today();
+  var v=S.ben.filter(function(b){ return b[field] && b.date!==exclDate && plaus(field, b[field]) && dataOk(b.date) && stessaMisura(field, rif, b.date); }).map(function(b){ return b[field]; });
   if(v.length<3) return null;
   v.sort(function(a,b){ return a-b; });
   var m=Math.floor(v.length/2);

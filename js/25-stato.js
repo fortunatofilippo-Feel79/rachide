@@ -55,7 +55,7 @@ function segnaliOggi(){
   if(st.length || me.length){
     var mst=st.length? media(st) : null, mme=me.length? media(me) : null;
     var lv=(mst!=null && mst>=STRESS_ALTO) || (mme!=null && mme<=2) ? 1 : 0;
-    out.push({k:"testa", n:"Stress e testa", lvl:lv, t:(mst!=null? "stress "+dec(r1(mst))+" su 3" : "")+(mst!=null&&mme!=null? " · " : "")+(mme!=null? "testa "+dec(r1(mme))+" su 5" : "")});
+    out.push({k:"testa", n:"Stress e mente", lvl:lv, t:(mst!=null? "stress "+dec(r1(mst))+" su 3" : "")+(mst!=null&&mme!=null? " · " : "")+(mme!=null? "mente "+dec(r1(mme))+" su 5" : "")});
   }
   /* 4a · dolore notturno: medico, non coach (regola 19) */
   if(dolNotteRecente()) out.push({k:"notte", n:"Dolore di notte", lvl:2, t:"medico, non coach (regola 19): progressioni ferme finché non ne parli col medico"});
@@ -250,6 +250,8 @@ function cardStato(lista, conSeduta){
     var c = x.lvl==null ? "var(--faint)" : STO_COL[x.lvl];
     h+='<div class="strow"><i style="background:'+c+'"></i><span class="sn">'+esc(x.n)+'</span><span class="sv">'+esc(x.t)+'</span></div>';
   });
+  var cl=(typeof hrvCaloLento==="function")? hrvCaloLento() : null;
+  if(cl && cl.calo) h+='<div class="xs" style="margin-top:8px;color:var(--amb)">'+esc(hrvCaloTesto(cl))+'</div>';
   var rcn=st.segnali.filter(function(x){ return x.k==="recupero" && x.nota; })[0];
   if(rcn && !pr.some(function(p){ return p.tipo==="fermi"; })) h+='<div class="xs mut" style="margin-top:8px">'+esc(rcn.nota)+'</div>';
   if(!st.segnali.some(function(x){ return x.k==="recupero" && x.lvl!=null; })) h+='<button class="btn sm" style="width:100%;margin-top:10px" data-a="ben" data-m="mattina">Compila il mattino</button>';
@@ -268,9 +270,10 @@ function stoInfo(){
   sheet('<div class="eyebrow glow">Stato di oggi</div><h2 style="margin:4px 0 8px">Come lo calcolo</h2>'+
     '<div class="sm">Metto insieme i dati che registri e li leggo uno accanto all\'altro. Ogni riga ha un colore: verde è nella norma, giallo è da tenere d\'occhio, rosso pesa da solo.</div>'+
     '<div class="gsez"><div class="eyebrow">I segnali</div><div class="sm">'+
-    '<b>Recupero</b>: HRV sotto la tua fascia e FC a riposo sopra la norma insieme, oppure stress alto con sonno corto. '+
+    '<b>Recupero</b>: HRV sotto la tua fascia e FC a riposo sopra la norma insieme, oppure stress alto con sonno corto. Fascia e norma usano solo le notti dopo l\'ultimo cambio di misura ('+CAMBIO_MISURA+'). '+
+    '<b>HRV in calo lento</b>: media dei 14 giorni più del '+Math.round(CALO_LENTO*100)+'% sotto il riferimento fisso (mediana delle prime '+RIF_NOTTI+' notti dopo il cambio). È solo un avviso. '+
     '<b>Sonno</b>: media delle ultime 3 notti sotto '+dec(SONNO_BASSO)+' ore (rosso sotto 6). '+
-    '<b>Stress e testa</b>: stress da '+STRESS_ALTO+' in su o testa a 2 o meno, su 3 giorni. '+
+    '<b>Stress e mente</b>: stress da '+STRESS_ALTO+' in su o mente a 2 o meno, su 3 giorni. '+
     '<b>Dolore</b>: una zona da '+STO_DOLORE+'/10 stamattina, da '+DOL_CAMBIA+' nell\'ultima seduta se non è rientrata, o tre volte in 14 giorni. '+
     '<b>Carico</b>: serie dure degli ultimi 7 giorni oltre il '+Math.round(STO_CARICO*100)+'% della tua media. '+
     '<b>Cibo</b>: ieri sotto l\''+Math.round(STO_KCAL*100)+'% delle calorie previste. '+

@@ -177,11 +177,14 @@ function briefing(){
   } else L.push("- nessuna rilevazione ancora");
   var bn=S.ben.filter(b=>b.refl!==null||b.hrv||b.peso||b.stress!==null).slice(-7);
   if(bn.length){ L.push(""); L.push("Benessere ultimi giorni");
+    var hr=hrvRiferimento(), hc=hrvCaloLento();
+    L.push("- misura HRV/FC dal "+CAMBIO_MISURA+" | riferimento HRV "+(hr? hr.v+" su "+hr.n+" notti"+(hr.provv?" (provvisorio)":"") : "non ancora (servono "+RIF_MIN+" notti)")+
+      (hc? " | media 14 giorni "+hc.m14+" ("+(hc.scarto>0?"+":"")+hc.scarto+"%)"+(hc.calo?" >> calo lento":"") : ""));
     bn.forEach(function(b){
       var rc=recovery(b.date);
       L.push("- "+b.date+": peso "+(b.peso||"-")+" | HRV "+(b.hrv||"-")+" | FC rip "+(b.rhr||"-")+
         " | read "+(b.read||"-")+" | sonno "+(b.sonno? sonnoTxt(b.sonno) : "-")+" | stress "+(b.stress==null?"-":b.stress)+
-        " | testa "+(b.mente==null?"-":b.mente)+" | reflusso "+(b.refl==null?"-":b.refl)+
+        " | mente "+(b.mente==null?"-":b.mente)+" | reflusso "+(b.refl==null?"-":b.refl)+
         " | alcol "+(b.alc?"si":"no")+(rc.hint?"  >> "+rc.hint:""));
     }); }
   return L.join("\n");

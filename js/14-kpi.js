@@ -73,12 +73,50 @@ function caricoSettimana(righe){
   return {pesi:Math.round(o.pesi), bande:Math.round(o.bande), corpo:Math.round(o.corpo), tot:Math.round(o.pesi+o.bande+o.corpo)};
 }
 
+/* ---------- cambio della misura (proposta 33, regola 8) ----------
+   Il 07/11/2026 il Helio Ring e' passato al firmware 2.9.0.1 (HybridCharge al posto
+   di Readiness; ultimo Readiness registrato il 06/11). Dopo un cambio di sensore o
+   di firmware HRV e FC a riposo non si confrontano con le notti di prima: fascia,
+   mediane e norme usano solo le notti dalla stessa parte del cambio. */
+var CAMBIO_MISURA="07/11/2026";
+var CAMPI_MISURA={hrv:true, rhr:true};
+function stessaMisura(campo, rif, data){
+  if(!CAMBIO_MISURA || !CAMPI_MISURA[campo]) return true;
+  var c=s2d(CAMBIO_MISURA).getTime();
+  return (s2d(rif).getTime()>=c) === (s2d(data).getTime()>=c);
+}
+/* riferimento fisso: mediana delle prime 28 notti dopo il cambio, poi bloccato.
+   Con 14-27 notti e' provvisorio; sotto le 14 non c'e'. */
+var RIF_NOTTI=28, RIF_MIN=14, CALO_LENTO=0.15;
+function hrvRiferimento(){
+  if(!CAMBIO_MISURA) return null;
+  var c=s2d(CAMBIO_MISURA).getTime();
+  var v=S.ben.filter(function(b){ return b.hrv && dataOk(b.date) && plaus("hrv", b.hrv) && s2d(b.date).getTime()>=c; })
+    .sort(function(a,b){ return s2d(a.date)-s2d(b.date); }).slice(0, RIF_NOTTI).map(function(b){ return +b.hrv; });
+  if(v.length<RIF_MIN) return null;
+  return {v:Math.round(mediana(v)), n:v.length, provv:v.length<RIF_NOTTI};
+}
+/* calo lento: media dei 14 giorni piu' del 15% sotto il riferimento fisso.
+   E' solo un avviso: non entra nel giorno rosso e non propone di fermare i carichi. */
+function hrvCaloLento(date){
+  date=date||today();
+  var r=hrvRiferimento(); if(!r) return null;
+  var u=benFinestra("hrv", date, 14, true); if(u.length<7) return null;
+  var m=media(u);
+  return {rif:r.v, provv:r.provv, n:r.n, m14:Math.round(m), scarto:Math.round((m/r.v-1)*100), calo: m < r.v*(1-CALO_LENTO)};
+}
+function hrvCaloTesto(c){
+  return "HRV in calo lento: media dei 14 giorni "+c.m14+" contro il riferimento "+c.rif+(c.provv?" (provvisorio)":"")+", "+c.scarto+"%. "+
+    "Non cambia la seduta: guarda sonno, alcol, stress e malanni; se dura, parlane col medico.";
+}
+
 /* ---------- serie storiche del benessere ---------- */
 function benFinestra(campo, fino, giorni, incluso){
   var t1=s2d(fino).getTime()+(incluso?86400000:0), t0=s2d(fino).getTime()-giorni*86400000+(incluso?86400000:0);
   return S.ben.filter(function(b){
     if(b[campo]==null || b[campo]==="" || !dataOk(b.date)) return false;
     if(PLAUS[campo] && !plaus(campo, b[campo])) return false;
+    if(!stessaMisura(campo, fino, b.date)) return false;
     var t=s2d(b.date).getTime(); return t>=t0 && t<t1;
   }).map(function(b){ return +b[campo]; });
 }
