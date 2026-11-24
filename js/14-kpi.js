@@ -110,6 +110,24 @@ function hrvCaloTesto(c){
     "Non cambia la seduta: guarda sonno, alcol, stress e malanni; se dura, parlane col medico.";
 }
 
+/* HybridCharge nel tempo: media dei 7 giorni contro la tua norma (mediana dei 60 giorni
+   precedenti, almeno 14 mattine). Le fasce di Zepp sono uguali per tutti, la norma e' tua.
+   Solo lettura: non entra nello stato di oggi ne' nell'indice, per non contare due volte
+   sonno, HRV e FC da cui e' calcolato. */
+var HC_SCARTO=10;
+function hcStato(date){
+  date=date||today();
+  var base=benFinestra("hc", date, 60, false); if(base.length<14) return null;
+  var u=benFinestra("hc", date, 7, true); if(u.length<4) return null;
+  var norma=Math.round(mediana(base)), m7=Math.round(media(u)), d=m7-norma;
+  return {m7:m7, norma:norma, scarto:d, n:base.length, trend: d<=-HC_SCARTO? "sotto" : d>=HC_SCARTO? "sopra" : "dentro"};
+}
+function hcTesto(x){
+  if(!x) return "";
+  return "HybridCharge, 7 giorni: "+x.m7+" · tua norma "+x.norma+" ("+(x.scarto>0?"+":"")+x.scarto+")"+
+    (x.trend==="sotto"? ": sotto il tuo solito, guarda sonno, stress e carico della settimana" : x.trend==="sopra"? ": sopra il tuo solito" : "");
+}
+
 /* ---------- serie storiche del benessere ---------- */
 function benFinestra(campo, fino, giorni, incluso){
   var t1=s2d(fino).getTime()+(incluso?86400000:0), t0=s2d(fino).getTime()-giorni*86400000+(incluso?86400000:0);
@@ -277,7 +295,7 @@ function kpiRows(){
 function oraMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function hm(s){ var a=String(s||"0:0").split(":"); return (+a[0]||0)*60+(+a[1]||0); }
 function orari(){ return Object.assign({mattina:"07:30", sera:"21:30", domenica:"18:00"}, S.orari||{}); }
-function mattinaFatta(b){ return !!(b && (b.hrv||b.rhr||b.sonno||b.read||b.peso)); }
+function mattinaFatta(b){ return !!(b && (b.hrv||b.rhr||b.sonno||b.hc!=null&&b.hc!==""||b.peso)); }
 function seraFatta(b){ return !!(b && (b.refl!=null || b.stress!=null || b.mente!=null || b.camm!=null)); }
 function simDue(){ var w=weekOf(today()); return w>=31 && (w-31)%4===0 && !(S.sim||[]).some(function(x){ return x.w===w; }); }
 function agendaVoci(){
@@ -285,7 +303,7 @@ function agendaVoci(){
   var pe=pianoDelGiorno(oggi);
   if(pe && pe.stato==="oggi") v.push({k:"seduta", t:"Seduta "+pe.d+" · "+PLAN[pe.d].name, q:(pe.ora||"")+" · "+({casa:"a casa",bande:"con le bande",corpo:"a corpo libero"}[pe.l]||""), d:PLAN[pe.d].ex.length+" esercizi, "+PLAN[pe.d].min+" minuti",
     fatto:false, dovuto: now>=hm(pe.ora||"07:30")-60, a:"seduta", m:pe.d});
-  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"Peso, HRV, FC a riposo, sonno, dolori",
+  v.push({k:"mattina", t:"Benessere del mattino", q:"al risveglio · 1 minuto", d:"HRV, FC a riposo, HybridCharge, sonno, peso, dolori",
     fatto:mattinaFatta(b), dovuto: now>=hm(o.mattina)-90, a:"benm"});
   /* dovuti solo i tre pasti principali; gli spuntini sono facoltativi */
   var g=cibDay(oggi), attesi=[["col",600],["pra",900],["cen",1320]].filter(function(x){ return now>=x[1]; }).map(function(x){ return x[0]; });
@@ -297,11 +315,9 @@ function agendaVoci(){
   v.push({k:"sera", t:"Benessere della sera", q:"prima di dormire · 30 secondi", d:"Reflusso, camminate, stress, testa",
     fatto:seraFatta(b), dovuto: now>=hm(o.sera)-90, a:"bens"});
   if(dom){
-    v.push({k:"chiusura", t:"Chiusura della settimana", q:"domenica · 1 minuto", d:"Tre domande e i giorni delle sedute",
+    /* la domenica in un modulo solo: tre domande, i giorni, passi e ipopnea da Zepp */
+    v.push({k:"chiusura", t:"Chiusura della settimana", q:"domenica · 2 minuti", d:"Tre domande, i giorni della settimana dopo, passi e ipopnea da Zepp",
       fatto:!!(S.chiusure||{})[w], dovuto: now>=hm(o.domenica)-120, a:"chiusw"});
-    var wb=S.ben.filter(function(x){ return x.w===w && (x.passi||x.ipo); })[0];
-    v.push({k:"sett", t:"Riepilogo settimanale", q:"domenica · 2 numeri da Zepp", d:"Passi medi e indice di ipopnea",
-      fatto:!!wb, dovuto: now>=hm(o.domenica)-120, a:"sett"});
   }
   var lm=ultimoValido(S.mis), gm=lm? giorniDa(lm.date) : 99;
   if(gm>=14) v.push({k:"misure", t:"Misure", q:"al mattino, a digiuno · 3 minuti", d:"Peso, vita, torace, braccio, coscia"+(lm?" · ultime "+gm+" giorni fa":""), fatto:false, dovuto:true, a:"mis"});
@@ -329,7 +345,7 @@ function agendaApri(a, m){
   if(a==="bens") return formBen(today(), false, "sera");
   if(a==="cibo") return formPasto(m||"col");
   if(a==="chiusw") return formChiusura();
-  if(a==="sett") return formSett();
+  if(a==="sett") return formChiusura();
   if(a==="mis") return formMis();
   if(a==="mob") return formMob();
   if(a==="sim") return formSim();

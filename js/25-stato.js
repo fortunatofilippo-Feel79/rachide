@@ -42,9 +42,9 @@ function stoRighe(da, a){   /* righe del log fra 'da' e 'a' giorni fa (compresi)
 function segnaliOggi(){
   var out=[], oggi=today(), b=benOn(oggi);
   /* 1 · recupero: HRV e FC a riposo, sonno, stress, alcol */
-  if(b && (b.hrv||b.rhr||b.sonno||b.read||b.stress!=null)){
+  if(b && (b.hrv||b.rhr||b.sonno||(b.hc!=null&&b.hc!=="")||b.stress!=null)){
     var rc=recovery(oggi);
-    out.push({k:"recupero", n:"Recupero", lvl:rc.lvl, t: rc.lvl? rc.parts.join(" · ") : "nella norma"+(b.hrv? " · HRV "+b.hrv : "")+(b.sonno? " · sonno "+sonnoTxt(b.sonno) : ""), nota:rc.hint});
+    out.push({k:"recupero", n:"Recupero", lvl:rc.lvl, t: rc.lvl? rc.parts.join(" · ") : "nella norma"+(b.hrv? " · HRV "+b.hrv : "")+(b.sonno? " · sonno "+sonnoTxt(b.sonno) : "")+(rc.hc!=null? " · HybridCharge "+rc.hc : ""), nota:rc.hint});
   } else out.push({k:"recupero", n:"Recupero", lvl:null, t:"compila il benessere del mattino: senza, lo stato è una lettura a metà"});
   /* 2 · sonno delle ultime 3 notti: una notte corta si regge, tre no */
   var s3=benFinestra("sonno", oggi, 3, true);

@@ -80,7 +80,7 @@ var RICETTE=[
 /* alimenti e ricette aggiunti dalle patch del coach */
 var CIBX=[], CIBR=[];
 function cibCat(){ return CIBI.concat(CIBX); }
-function cibRic(){ return RICETTE.concat(CIBR); }
+function cibRic(){ return RICETTE.concat(CIBR, typeof ricetteMie==="function"? ricetteMie() : []); }
 function cibFind(n){ return cibCat().filter(function(x){ return x.n===n; })[0]; }
 
 /* ---------- giorno di lavoro ---------- */
@@ -143,7 +143,7 @@ function cibTot(g){
 async function cibSave(g,date){
   var dt=date||cibDate(), b=benOn(dt);
   if(!b){
-    b={date:dt, w:weekOf(dt), refl:null, resp:false, camm:null, hrv:null, read:null,
+    b={date:dt, w:weekOf(dt), refl:null, resp:false, camm:null, hrv:null, hc:null,
        sonno:null, alc:false, peso:null, rhr:null, stress:null, mente:null,
        passi:null, ipo:null, note:""};
     S.ben.push(b);
@@ -192,24 +192,30 @@ function cibProposta(){
 }
 
 /* ---------- voci ---------- */
+/* ora della voce (hh:mm), solo per le voci aggiunte oggi: l'ultimo pasto pieno
+   prima della seduta (regola 52) si legge da qui invece di riscriverlo */
+function cibOraOra(){ var d=new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+function cibNuova(v){ if(cibDate()===today() && !v.t) v.t=cibOraOra(); return v; }
 async function cibAdd(mk, nome, qta){
   var g=cibDay(), x=cibFind(nome);
   if(!x) return false;
   var lst=g[mk]||(g[mk]=[]);
   var gia=lst.filter(function(v){ return v.n===nome && !v.w; })[0];
   if(gia) gia.q=(gia.q||1)+(qta||1);
-  else lst.push({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:qta||1});
+  else lst.push(cibNuova({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:qta||1}));
   return cibSave(g);
 }
 async function cibAddRic(mk, nome){
   var r=cibRic().filter(function(x){ return x.n===nome; })[0];
   if(!r) return false;
   var g=cibDay(), lst=g[mk]||(g[mk]=[]);
+  /* ricetta tua: le voci con i loro valori, cosi' come le avevi salvate */
+  if(r.voci){ r.voci.forEach(function(v){ var c=JSON.parse(JSON.stringify(v)); delete c.t; lst.push(cibNuova(c)); }); return cibSave(g); }
   r.v.forEach(function(pair){
     var x=cibFind(pair[0]); if(!x) return;
     var gia=lst.filter(function(v){ return v.n===x.n && !v.w; })[0];
     if(gia) gia.q=(gia.q||1)+pair[1];
-    else lst.push({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:pair[1]});
+    else lst.push(cibNuova({n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:pair[1]}));
   });
   return cibSave(g);
 }
@@ -230,7 +236,7 @@ async function cibAddLibero(mk, testo, fatt){
   var st={p:Math.round(Math.max(base.p*0.15, base.p-gia.p)*f),
           c:Math.round(Math.max(base.c*0.15, base.c-gia.c)*f),
           g:Math.round(Math.max(base.g*0.15, base.g-gia.g)*f)};
-  (g[mk]||(g[mk]=[])).push({n:testo, p:st.p, c:st.c, g:st.g, q:1, w:1});
+  (g[mk]||(g[mk]=[])).push(cibNuova({n:testo, p:st.p, c:st.c, g:st.g, q:1, w:1}));
   return cibSave(g);
 }
 /* una voce gia' nota (dal tuo storico o dal catalogo), con i suoi valori */
@@ -242,15 +248,48 @@ async function cibAddVoce(mk, v){
     if(v.bc) nv.bc=v.bc;      /* bc: prodotto letto col codice a barre */
     if(v.a) nv.a=v.a;         /* a: alcol in grammi */
     if(v.gr) nv.gr=v.gr;      /* gr: grammi di una voce pesata */
-    lst.push(nv); }
+    lst.push(cibNuova(nv)); }
   return cibSave(g);
 }
 function cibIeri(){ var d=s2d(cibDate()); d.setDate(d.getDate()-1); return d2s(d); }
+/* «come l'ultima volta»: il giorno piu' recente (fino a 14 giorni prima) in cui quel pasto c'era */
+function cibUltimo(mk){
+  var d=s2d(cibDate());
+  for(var n=1;n<=14;n++){ d.setDate(d.getDate()-1); var ds=d2s(d), it=cibDay(ds)[mk]||[];
+    if(it.length) return {date:ds, n:n, voci:it}; }
+  return null;
+}
 async function cibRipeti(mk){
-  var y=cibDay(cibIeri())[mk]||[]; if(!y.length) return false;
+  var u=cibUltimo(mk); if(!u) return false;
   var g=cibDay(), lst=g[mk]||(g[mk]=[]);
-  y.forEach(function(v){ lst.push(JSON.parse(JSON.stringify(v))); });
+  u.voci.forEach(function(v){ var c=JSON.parse(JSON.stringify(v)); delete c.t; lst.push(cibNuova(c)); });
   return cibSave(g);
+}
+/* ---------- ricette tue: un pasto che ripeti, salvato con i suoi valori ---------- */
+function ricetteMie(){ return Array.isArray(S.ricette)? S.ricette : []; }
+function ricettaSalva(mk, nome){
+  nome=String(nome||"").trim(); var it=(cibDay()[mk]||[]).filter(function(v){ return !v.w; });
+  if(!nome || it.length<1) return false;
+  var voci=it.map(function(v){ var c=JSON.parse(JSON.stringify(v)); delete c.t; return c; });
+  S.ricette=ricetteMie().filter(function(r){ return r.n.toLowerCase()!==nome.toLowerCase(); });
+  S.ricette.push({n:nome, m:mk, voci:voci, mia:1});
+  cfgTocca("ricette"); return true;
+}
+function ricettaTogli(nome){ S.ricette=ricetteMie().filter(function(r){ return r.n!==nome; }); cfgTocca("ricette"); }
+/* il pasto che di solito registri a quest'ora */
+function cibPastoOra(g){
+  var h=new Date().getHours()+new Date().getMinutes()/60;
+  if(CIB_DAY){ g=g||cibDay(); var vuoto=["col","pra","cen"].filter(function(k){ return !(g[k]||[]).length && !pastoSaltato(g,k); })[0]; return vuoto||"ex"; }
+  return h<10.5? "col" : h<12? "sm" : h<15.5? "pra" : h<19? "sp" : "cen";
+}
+/* ora dell'ultimo pasto pieno prima di un'ora data (hh:mm), dal diario del cibo */
+function cibOraPasto(date, prima){
+  var g=cibDay(date), lim=hm(prima||"23:59"), best=null;
+  ["col","pra","cen"].forEach(function(k){
+    var it=g[k]||[], kc=kcalDi(cibSomma(it)); if(kc<300) return;      /* pieno: almeno 300 kcal */
+    it.forEach(function(v){ if(v.t && hm(v.t)<=lim && (!best || hm(v.t)>hm(best))) best=v.t; });
+  });
+  return best;
 }
 /* cosa mangi davvero: le voci delle ultime 4 settimane, con i valori gia'
    convertiti. Prima quelle usate in questo pasto, poi le piu' frequenti. */
@@ -276,37 +315,7 @@ function cibVoceBtn(v, mk, i, src){
     '<div class="t"><b>'+esc(v.n)+'</b><span class="xs mut">'+esc(v.d||"")+'</span></div>'+
     '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+macTxt(v)+'</div></button>';
 }
-/* scrivi a parole: mentre scrivi, se il piatto l'hai gia' mangiato te lo propongo con i valori veri */
-function formLibero(mk){
-  var m=meal(mk);
-  var h='<div class="eyebrow">'+esc(cibDate())+'</div><h2 style="margin:3px 0 10px;font-size:18px">'+esc(m.n)+'</h2>'+
-    '<label class="fld"><span class="eyebrow">Cosa hai mangiato</span>'+
-    '<textarea id="cibTxt" data-m="'+mk+'" rows="2" placeholder="Esempio: pasta al pomodoro e mozzarella"></textarea></label>'+
-    '<div id="cibSug"></div>'+
-    '<div class="eyebrow" style="margin:12px 0 6px">Porzione</div><div class="pills" id="cibPz">'+
-    PORZ.map(function(p,i){ return '<button class="pill'+(i===1?" on":"")+'" data-q="'+p[1]+'">'+p[0]+'</button>'; }).join("")+'</div>'+
-    '<div class="xs mut" style="margin-top:6px">Vale come stima finch\u00e9 non la converto con i valori veri.</div>'+
-    '<button class="btn pri" style="margin-top:14px" data-a="ciblibok" data-m="'+mk+'">Aggiungi</button>'+
-    '<button class="btn ghost" style="margin-top:8px" data-a="pasto" data-m="'+mk+'">Indietro</button>';
-  sheet(h);
-  setTimeout(function(){ var t=document.getElementById("cibTxt"); if(t) t.focus(); }, 60);
-}
 var _CIBR=[], _CIBS=[];
-function cibSuggerisci(testo, mk){
-  var box=document.getElementById("cibSug"); if(!box) return;
-  var parole=String(testo||"").toLowerCase().split(/\s+/).filter(function(p){ return p.length>=3; });
-  if(!parole.length){ box.innerHTML=""; _CIBS=[]; return; }
-  var pool=cibStorico(mk).concat(cibCat().map(function(x){ return {n:x.n, d:x.d, p:x.p, c:x.c, g:x.g}; }));
-  var visti={};
-  _CIBS=pool.filter(function(v){
-    var nome=(v.n+" "+(v.d||"")).toLowerCase();
-    if(visti[v.n]) return false;
-    var ok=parole.every(function(p){ return nome.indexOf(p)>=0; });
-    if(ok) visti[v.n]=1; return ok;
-  }).slice(0,4);
-  box.innerHTML = _CIBS.length ? '<div class="xs mut" style="margin:8px 0 4px">Gi\u00e0 registrato, con i valori veri: tocca per aggiungerlo</div>'+
-    '<div class="card" style="padding:2px 12px">'+_CIBS.map(function(v,i){ return cibVoceBtn(v, mk, i, "s"); }).join("")+'</div>' : "";
-}
 async function cibDel(mk, i){ var g=cibDay(); (g[mk]||[]).splice(i,1); return cibSave(g); }
 async function cibQ(mk, i, d){
   var g=cibDay(), v=(g[mk]||[])[i]; if(!v) return false;
@@ -457,6 +466,8 @@ function cardCibo(){
        '</button>';
   });
   h+='</div>';
+  var mkOra=cibPastoOra(g);
+  h+='<button class="btn pri sm" style="width:100%;margin-top:10px" data-a="alimscrivi" data-m="'+mkOra+'">＋ Aggiungi a '+esc(meal(mkOra).n.toLowerCase())+'</button>';
 
   var hint=cibHint(r,g);
   h+='<div class="sm" style="margin-top:12px;font-weight:700;color:'+
@@ -482,6 +493,7 @@ function cardCibo(){
 
 function formPasto(mk, cat){
   var m=meal(mk), g=cibDay(), it=g[mk]||[], t=cibSomma(it);
+  var apriCoach=!!cat && cat!=="alim";
   cat=cat||(mk==="col"?"col":(mk==="pra"||mk==="cen")?"pia":"prot");
 
   var h='<div class="between"><div><div class="eyebrow">'+esc(cibDate())+'</div>'+
@@ -492,6 +504,7 @@ function formPasto(mk, cat){
 
   h+='<div class="daysw">'+cibDayPills(mk,cat)+'</div>';
 
+  /* 1 · cosa c'e' gia' */
   if(it.length){
     h+='<div class="card" style="padding:2px 12px;margin:10px 0">';
     it.forEach(function(v,i){
@@ -499,66 +512,113 @@ function formPasto(mk, cat){
       h+='<div class="vrow'+(v.w?" attesa":"")+'">'+
          '<div class="vtxt"><b>'+esc(v.n)+q1(q)+'</b>'+
          (v.w? '<span class="xs" style="color:var(--amb)">stima provvisoria, in attesa</span>'
-             : '<span class="xs mut">'+esc(v.d||"")+(v.d?' \u00b7 ':'')+macTxt(v, q)+'</span>')+
+             : '<span class="xs mut">'+esc(v.d||"")+(v.d?' · ':'')+macTxt(v, q)+(v.t?' · '+esc(v.t):'')+'</span>')+
          '</div>'+
-         '<div class="vq"><button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="-0.5">\u2212</button>'+
-         '<button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="0.5">+</button>'+
-         '<button class="vx" data-a="cibdel" data-m="'+mk+'" data-i="'+i+'">\u2715</button></div></div>';
+         '<div class="vq"><button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="-0.5" aria-label="meno">−</button>'+
+         '<button data-a="cibq" data-m="'+mk+'" data-i="'+i+'" data-d="0.5" aria-label="più">+</button>'+
+         '<button class="vx" data-a="cibdel" data-m="'+mk+'" data-i="'+i+'" aria-label="togli">✕</button></div></div>';
     });
     h+='</div>';
+    var pq=cibProtPasto(mk, t);
+    if(pq){
+      h+='<div class="xs" style="margin:-4px 0 6px;color:var(--amb)">'+esc(pq)+'</div>';
+      var sp=cibSpuntinoProteico(mk);
+      if(sp) h+='<button class="btn sm" style="width:100%;margin-bottom:10px;text-align:left" data-a="cibprot" data-m="'+mk+'" data-t="'+sp.k+'">＋ '+esc(sp.v.n)+' <span class="xs mut">('+Math.round(sp.v.p*(sp.v.q||1))+' g di proteine) allo '+esc(meal(sp.k).n.toLowerCase())+'</span></button>';
+      else if(mk==="cen") h+='<div class="xs mut" style="margin:-2px 0 10px">Dopo cena niente spuntino (reflusso): recuperale domani a colazione.</div>';
+    }
+    if(it.filter(function(v){ return !v.w; }).length>=2 && mk!=="ex")
+      h+='<button class="btn sm ghost" style="width:100%;margin-bottom:10px" data-a="ricsalva" data-m="'+mk+'">Salva questo pasto come ricetta</button>';
   } else {
     var sal=pastoSaltato(g, mk);
-    h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:16px"><div class="sm mut">'+(sal? 'Segnato come saltato oggi.' : 'Niente registrato per questo pasto.')+'</div>'+
-      (mk!=="ex"? '<button class="btn sm ghost" style="margin-top:10px" data-a="cibsalta" data-m="'+mk+'">'+(sal? 'Togli «saltato»' : (m.fac? 'Oggi non lo faccio' : 'Oggi l\'ho saltato'))+'</button>' : '')+
-      (m.fac && !sal? '<div class="xs mut" style="margin-top:6px">Gli spuntini sono facoltativi: conta il totale della giornata.</div>' : '')+'</div>';
-    var ieri=cibDay(cibIeri())[mk]||[];
-    if(ieri.length) h+='<button class="btn" style="margin-bottom:8px" data-a="cibrip" data-m="'+mk+'">Come ieri: '+
-      esc(ieri.map(function(v){ return v.n; }).join(", ").slice(0,60))+'</button>';
+    h+='<div class="card flat" style="margin:10px 0;text-align:center;padding:14px"><div class="sm mut">'+(sal? 'Segnato come saltato.' : 'Niente registrato per questo pasto.')+'</div>'+
+      (mk!=="ex"? '<button class="btn sm ghost" style="margin-top:8px" data-a="cibsalta" data-m="'+mk+'">'+(sal? 'Togli «saltato»' : (m.fac? 'Oggi non lo faccio' : 'L\'ho saltato'))+'</button>' : '')+'</div>';
   }
 
-  h+='<button class="btn pri" style="margin-bottom:8px" data-a="alimscrivi" data-m="'+mk+'">Scrivi cosa hai mangiato</button>'+
-     '<div class="xs mut" style="margin:-2px 0 10px">Anche tutto insieme: «pollo 200 g, riso 80, un cucchiaio d\'olio». Ti mostro cosa ho capito prima di aggiungere.</div>';
+  /* 2 · i modi per aggiungere, dal piu' veloce */
+  var ul=cibUltimo(mk);
+  if(ul) h+='<button class="btn" style="margin-bottom:8px;text-align:left" data-a="cibrip" data-m="'+mk+'"><b>Come '+(ul.n===1?'ieri':cibDayLabel(CIB_DAY+ul.n))+'</b> <span class="xs mut">'+
+      esc(ul.voci.map(function(v){ return v.n; }).join(", ").slice(0,60))+' · '+macTxt(cibSomma(ul.voci))+'</span></button>';
+  h+='<button class="btn pri" style="margin-bottom:8px" data-a="alimscrivi" data-m="'+mk+'">Scrivi cosa hai mangiato</button>';
   h+='<div class="grid2"><button class="btn" data-a="scan" data-m="'+mk+'">'+
      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>Codice a barre</button>'+
-     '<button class="btn" data-a="pasto" data-m="'+mk+'" data-c="alim">Cerca nella tabella</button></div><div style="height:14px"></div>';
+     '<button class="btn" data-a="pasto" data-m="'+mk+'" data-c="alim">Tabella a grammi</button></div><div style="height:14px"></div>';
 
-  h+=prodottiCard(mk);
-  _CIBR=cibStorico(mk).filter(function(v){ return v.same>0 || v.cnt>=2; }).slice(0,6);
-  if(_CIBR.length){
-    h+='<div class="eyebrow" style="margin-bottom:6px">Usati di recente</div><div class="card" style="padding:2px 12px;margin-bottom:14px">'+
-       _CIBR.map(function(v,i){ return cibVoceBtn(v, mk, i, "r"); }).join("")+'</div>';
-  }
-
-  var ric=cibRic().filter(function(r){ return r.m===mk; });
+  /* 3 · un tocco: le tue ricette, poi le voci che usi di piu' in questo pasto */
+  var ric=cibRic().filter(function(r){ return r.m===mk; }).sort(function(a,b){ return (b.mia||0)-(a.mia||0); });
   if(ric.length){
     h+='<div class="eyebrow" style="margin-bottom:6px">Ricette</div><div class="card" style="padding:2px 12px;margin-bottom:14px">';
     ric.forEach(function(r){
-      h+='<button class="item" data-a="cibric" data-m="'+mk+'" data-n="'+esc(r.n)+'">'+
-         '<div class="t"><b>'+esc(r.n)+'</b><span class="xs mut">'+esc(r.v.map(function(x){return x[0];}).join(", "))+'</span></div>'+
-         '<div style="font-weight:700;color:var(--glow)">+</div></button>';
+      var tt=r.voci? cibSomma(r.voci) : null;
+      h+='<div class="between"><button class="item" style="flex:1" data-a="cibric" data-m="'+mk+'" data-n="'+esc(r.n)+'">'+
+         '<div class="t"><b>'+esc(r.n)+(r.mia?' <span class="xs mut">· tua</span>':'')+'</b><span class="xs mut">'+esc((r.voci? r.voci.map(function(x){ return x.n; }) : r.v.map(function(x){ return x[0]; })).join(", "))+'</span></div>'+
+         '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+(tt? macTxt(tt) : '+')+'</div></button>'+
+         (r.mia? '<button class="vx" style="padding:8px" data-a="ricvia" data-m="'+mk+'" data-n="'+esc(r.n)+'" aria-label="togli la ricetta">✕</button>' : '')+'</div>';
     });
     h+='</div>';
   }
+  _CIBR=cibStorico(mk).filter(function(v){ return v.same>0 || v.cnt>=2; }).slice(0,6);
+  if(_CIBR.length){
+    h+='<div class="eyebrow" style="margin-bottom:6px">Usati di recente in questo pasto</div><div class="card" style="padding:2px 12px;margin-bottom:14px">'+
+       _CIBR.map(function(v,i){ return cibVoceBtn(v, mk, i, "r"); }).join("")+'</div>';
+  }
+  h+=prodottiCard(mk);
 
+  /* 4 · le fonti complete: tabella a grammi o porzioni del coach */
   if(cat==="alim"){
     ALIMF.mk=mk;
-    h+='<div class="between" style="margin-bottom:6px"><div class="eyebrow">Tabella degli alimenti \u00b7 a grammi</div>'+
-       '<button class="lnk xs" data-a="pasto" data-m="'+mk+'">porzioni del coach</button></div>'+alimSfoglia(mk, ALIM_SFO)+
-       '<div class="xs mut" style="margin-top:8px">Valori medi per 100 g dalle tabelle di composizione (CREA, USDA). Per i prodotti confezionati usa il codice a barre: \u00e8 pi\u00f9 preciso.</div>';
+    h+='<div class="between" style="margin-bottom:6px"><div class="eyebrow">Tabella degli alimenti · a grammi</div>'+
+       '<button class="lnk xs" data-a="pasto" data-m="'+mk+'">chiudi</button></div>'+alimSfoglia(mk, ALIM_SFO)+
+       '<div class="xs mut" style="margin-top:8px">Valori medi per 100 g dalle tabelle di composizione (CREA, USDA). Per i prodotti confezionati usa il codice a barre: è più preciso.</div>';
   } else {
-  h+='<div class="eyebrow" style="margin-bottom:6px">Porzioni del coach</div><div class="ctabs">';
-  CIB_CAT.forEach(function(c){
-    h+='<button class="pill'+(c[0]===cat?" on":"")+'" data-a="pasto" data-m="'+mk+'" data-c="'+c[0]+'">'+c[1]+'</button>';
-  });
-  h+='</div><div class="card" style="padding:2px 12px">';
-  cibCat().filter(function(x){ return x.cat===cat; }).forEach(function(x){
-    h+='<button class="item" data-a="cibadd" data-m="'+mk+'" data-n="'+esc(x.n)+'">'+
-       '<div class="t"><b>'+esc(x.n)+'</b><span class="xs mut">'+esc(x.d||"")+'</span></div>'+
-       '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+macTxt(x)+'</div></button>';
-  });
-  h+='</div>';
+    h+='<details class="altro"'+(apriCoach?' open':'')+'><summary>Porzioni del coach</summary><div class="ctabs" style="margin-top:8px">';
+    CIB_CAT.forEach(function(c){
+      h+='<button class="pill'+(c[0]===cat?" on":"")+'" data-a="pasto" data-m="'+mk+'" data-c="'+c[0]+'">'+c[1]+'</button>';
+    });
+    h+='</div><div class="card" style="padding:2px 12px">';
+    cibCat().filter(function(x){ return x.cat===cat; }).forEach(function(x){
+      h+='<button class="item" data-a="cibadd" data-m="'+mk+'" data-n="'+esc(x.n)+'">'+
+         '<div class="t"><b>'+esc(x.n)+'</b><span class="xs mut">'+esc(x.d||"")+'</span></div>'+
+         '<div class="xs" style="font-weight:700;color:var(--glow);white-space:nowrap">'+macTxt(x)+'</div></button>';
+    });
+    h+='</div></details>';
   }
   h+='<button class="btn ghost" style="margin-top:14px" data-a="x">Chiudi</button>';
   sheet(h);
 }
-
+/* proteine del pasto: ~0,4 g/kg a pasto principale (Schoenfeld e Aragon 2018). Solo un avviso, solo sotto 0,25 g/kg */
+var PROT_PASTO=0.4;
+function cibProtPasto(mk, t){
+  var m=meal(mk); if(m.fac || mk==="ex") return "";
+  var pe=(typeof ultimoPeso==="function" && ultimoPeso()) || 0; if(!pe) return "";
+  var obi=Math.round(pe*PROT_PASTO);
+  if(t.p >= pe*0.25 || kcalDi(t)<250) return "";
+  return "Proteine del pasto "+Math.round(t.p)+" g: per la crescita conviene arrivare a circa "+obi+" g (0,4 g/kg a pasto). Basta uno yogurt greco o un latte proteico.";
+}
+/* lo spuntino proteico giusto, fra quelli che usi gia': dopo colazione quello della mattina,
+   dopo pranzo quello del pomeriggio; dopo cena niente (reflusso). Solo se lo spuntino e' ancora vuoto. */
+var _CIBP=null;
+function cibSpuntinoProteico(mk){
+  var k = mk==="col"? "sm" : mk==="pra"? "sp" : null; _CIBP=null;
+  if(!k || cibDate()!==today()) return null;
+  var g=cibDay(); if((g[k]||[]).length || pastoSaltato(g, k)) return null;
+  var denso=function(v){ var kc=kcalDi(v); return v.p>=12 && kc>0 && 4*v.p/kc>=0.35 && v.g<=12; };
+  var mie=cibStorico("sm").concat(cibStorico("sp")).filter(function(v){ return !v.a && denso(v); })
+    .sort(function(a,b){ return (b.cnt-a.cnt) || (b.p-a.p); });
+  var v=mie[0];
+  if(!v){ var x=["Yogurt greco 0%","Milk Pro High Protein","Fiocchi di latte","Whey isolate"].map(cibFind).filter(Boolean)[0];
+    if(x) v={n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:1}; }
+  if(!v) return null;
+  _CIBP={k:k, v:v};
+  return _CIBP;
+}
+/* nome per la ricetta tua */
+function formRicetta(mk){
+  var it=(cibDay()[mk]||[]).filter(function(v){ return !v.w; });
+  sheet('<div class="eyebrow">'+esc(meal(mk).n)+'</div><h2 style="margin:3px 0 10px;font-size:18px">Salva come ricetta</h2>'+
+    '<div class="sm mut">'+esc(it.map(function(v){ return v.n+q1(v.q||1); }).join(", "))+' · '+macTxt(cibSomma(it))+'</div>'+
+    '<label class="fld"><span class="eyebrow">Nome</span><input type="text" id="ricNome" maxlength="40" placeholder="Es. Pranzo in ufficio"></label>'+
+    '<div class="xs mut">La ritrovi in cima al pasto, si aggiunge con un tocco con gli stessi valori. Va sul foglio con le impostazioni.</div>'+
+    '<button class="btn pri" style="margin-top:14px" data-a="ricok" data-m="'+mk+'">Salva</button>'+
+    '<button class="btn ghost" style="margin-top:8px" data-a="pasto" data-m="'+mk+'">Indietro</button>');
+  setTimeout(function(){ var t=document.getElementById("ricNome"); if(t) t.focus(); }, 60);
+}

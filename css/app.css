@@ -246,7 +246,7 @@ nav.tabs .lb{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:
 /* ---------- cibo: la giornata come sequenza di pasti ---------- */
 .macro{margin:12px 0 4px}
 .mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
-.mlab{font-size:11px;font-weight:700;color:var(--dim);width:12px}
+.mlab{font-size:11px;font-weight:700;color:var(--dim);min-width:12px;white-space:nowrap}
 .mbar{flex:1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .mbar i{display:block;height:100%;border-radius:2px}
 .mval{font-size:12px;font-weight:700;letter-spacing:-.02em;min-width:26px;text-align:right}

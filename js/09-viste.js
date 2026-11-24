@@ -76,7 +76,7 @@ function viewOggi(){
   /* recupero: oggi o, al mattino, il dato più fresco entro 2 giorni */
   var recB=benOn(today());
   if(!recB){ for(var rb=1;rb<=2 && !recB;rb++){ var dd=new Date(); dd.setDate(dd.getDate()-rb); recB=benOn(d2s(dd)); } }
-  var rc=null, recOk = recB && (recB.hrv||recB.read||recB.rhr||recB.sonno);
+  var rc=null, recOk = recB && (recB.hrv||recB.hc||recB.rhr||recB.sonno);
   if(recOk) rc=recovery(recB.date);
 
   /* 1 · la prossima seduta, in testa */
@@ -117,6 +117,9 @@ function viewOggi(){
     h+=coachBadge(next);
     h+=cardRischio(w, rischioSettimana(w));
   }
+
+  /* 1b · come va la settimana, in una riga (il dettaglio e' in Corpo) */
+  if(typeof rigaBenessereSett==="function") h+=rigaBenessereSett();
 
   /* 2 · una sola progressione */
   h+=cardProg();
@@ -475,9 +478,11 @@ function viewProg(){
   h+='<button class="card" data-a="nav" data-v="corpo" style="display:block;width:100%;text-align:left"><div class="eyebrow">Peso, misure, mobilità</div><div class="sm mut" style="margin-top:4px">Sono nella scheda Corpo, con la spinta del peso e il corridoio.</div></button>';
   }
   else if(PROG_TAB==="diag"){
+  h+='<div class="xs mut" style="margin-top:12px">Il dettaglio dietro lo stato di oggi e il benessere della settimana: va anche nel briefing del coach.</div>';
   h+=cardDiagnosi(dg);
   }
   else {
+  h+='<div class="xs mut" style="margin-top:12px">Ogni indicatore con definizione, bersaglio e fonte: è la base su cui lavora il coach. Per decidere oggi guarda lo stato in Oggi.</div>';
   h+=cardCruscotto();
   }
   h+='<div style="height:24px"></div></div>';
@@ -527,13 +532,17 @@ function viewCorpo(){
   h+=cardFabbisogno();
 
   var td=today(), b=S.ben.filter(x=>x.date===td)[0];
-  h+='<div class="card"><div class="eyebrow">Benessere di oggi</div>'+
-     '<div class="grid2" style="margin-top:8px"><button class="btn sm '+(mattinaFatta(b)?"ghost":"amb")+'" data-a="ben" data-m="mattina">'+(mattinaFatta(b)?"✓ ":"")+'Mattino · 1′</button>'+
-     '<button class="btn sm '+(seraFatta(b)?"ghost":"")+'" data-a="ben" data-m="sera">'+(seraFatta(b)?"✓ ":"")+'Sera · 30″</button></div>';
+  /* si compila da un posto solo, l'agenda di Oggi: qui si legge e si correggono i giorni passati */
+  var daFareB=[!mattinaFatta(b)? "mattino" : "", !seraFatta(b)? "sera" : ""].filter(Boolean);
+  h+='<div class="card"><div class="between"><div class="eyebrow">Benessere di oggi</div>'+
+     '<div class="xs" style="font-weight:700;color:'+(daFareB.length?"var(--amb)":"var(--ok)")+'">'+(daFareB.length? "da fare: "+daFareB.join(" e ") : "mattino e sera ✓")+'</div></div>'+
+     (daFareB.length? '<button class="lnk xs" style="margin-top:6px" data-a="nav" data-v="oggi">Si compila da Oggi → Da registrare oggi</button>' : '');
   if(b) h+='<div class="sm" style="margin-top:9px">Reflusso '+(b.refl==null?"–":b.refl)+' · camminate '+(b.camm==null?"–":b.camm)+
-    ' · HRV '+(b.hrv||"–")+' · readiness '+(b.read||"–")+' · sonno '+sonnoTxt(b.sonno)+' · alcol '+(b.alc?"sì":"no")+'</div>';
-  else h+='<div class="xs mut" style="margin-top:8px">Al risveglio i numeri di Zepp, la sera reflusso e stress. Due momenti brevi invece di uno lungo.</div>';
+    ' · HRV '+(b.hrv||"–")+' · HybridCharge '+hcTxt(b)+' · sonno '+sonnoTxt(b.sonno)+' · alcol '+(b.alc?"sì":"no")+'</div>';
+  else h+='<div class="xs mut" style="margin-top:8px">Al risveglio i numeri di Zepp (HRV, FC a riposo, HybridCharge, sonno), la sera reflusso e stress. Due momenti brevi invece di uno lungo.</div>';
   if(b && b.sede==="Fuori") h+='<div class="xs" style="margin-top:4px;color:var(--amb)">Notte fuori casa'+(b.citta?' · '+esc(b.citta):'')+'</div>';
+  var hcs=(typeof hcStato==="function")? hcStato(today()) : null;
+  if(hcs) h+='<div class="xs" style="margin-top:6px;color:'+(hcs.trend==="sotto"?"var(--amb)":"var(--mut)")+'">'+esc(hcTesto(hcs))+'.</div>';
   var cf=casaFuori();
   h+= cf.ok ? '<div class="xs" style="margin-top:8px">Ultimi 60 giorni · sonno casa <b>'+sonnoTxt(cf.sc)+'</b> contro fuori <b>'+sonnoTxt(cf.sf)+'</b>'+
               ((cf.hc&&cf.hf)?' · HRV '+Math.round(cf.hc)+' contro '+Math.round(cf.hf):'')+'</div>'
@@ -548,7 +557,7 @@ function viewCorpo(){
     recentB.forEach(function(x){
       var rn=recoveryNote(x.date);
       h+='<button class="item" data-a="ben" data-d="'+esc(x.date)+'"><div class="badge"'+(rn?' style="color:var(--amb);border-color:rgba(224,164,88,.5)"':'')+'>'+x.date.slice(0,5)+'</div>'+
-         '<div class="t"><b>HRV '+(x.hrv||"–")+' · read '+(x.read||"–")+'</b><span class="xs mut">sonno '+sonnoTxt(x.sonno)+' · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
+         '<div class="t"><b>HRV '+(x.hrv||"–")+' · FC '+(x.rhr||"–")+' · HC '+hcTxt(x)+'</b><span class="xs mut">sonno '+sonnoTxt(x.sonno)+' · reflusso '+(x.refl==null?"–":x.refl)+' · alcol '+(x.alc?"sì":"no")+'</span></div>'+
          '<div class="ch">›</div></button>';
     });
     h+='</div>';
@@ -556,12 +565,12 @@ function viewCorpo(){
 
   /* --- riepilogo settimanale --- */
   var wb=S.ben.filter(function(x){ return x.w===weekOf(today()) && (x.passi||x.ipo); })[0];
-  h+='<div class="card"><div class="between"><div class="eyebrow">Riepilogo settimanale</div>'+
-     '<button class="btn sm '+(wb?"ghost":"amb")+'" data-a="sett">'+(wb?"Modifica":"Compila")+'</button></div>';
+  h+='<div class="card"><div class="between"><div class="eyebrow">Passi e ipopnea · settimana</div>'+
+     '<button class="btn sm ghost" data-a="chiusw">'+(wb?"Modifica":"Compila")+'</button></div>';
   if(wb) h+='<div class="sm" style="margin-top:9px">Passi '+(wb.passi?kfmt(wb.passi):"\u2013")+'/giorno \u00b7 ipopnea '+
      (wb.ipo==null?"\u2013":dec(wb.ipo))+'/h'+
      ((wb.ipo!==null&&wb.ipo!==undefined&&wb.ipo>5)?' <span style="color:var(--amb);font-weight:700">sopra 5</span>':'')+'</div>';
-  else h+='<div class="xs mut" style="margin-top:8px">Due numeri da Zepp, la domenica. Passi medi e indice di ipopnea.</div>';
+  else h+='<div class="xs mut" style="margin-top:8px">Due numeri da Zepp: si scrivono nella chiusura della domenica, insieme alle tre domande.</div>';
   h+='</div>';
 
   /* --- modulo B: mobilita' --- */

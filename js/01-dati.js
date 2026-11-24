@@ -5,7 +5,7 @@
    Piano: Piano_Unico_v5 · Guida_Tecnica_v5
    ============================================================ */
 /* versione dell'app: deve coincidere con VERSIONE in sw.js (lo controlla un test) */
-var VERSIONE_APP = "4.10.0";
+var VERSIONE_APP = "4.12.1";
 
 /* ---------- catalogo esercizi ---------- */
 /* g = gruppo · t = tipo (rec) · uni = unilaterale · sec = misurato in secondi
@@ -90,6 +90,8 @@ function sonnoOre(v){
 }
 function sonnoMin(h){ return (h===null || h===undefined || h==="" || !isFinite(+h))? null : Math.round(+h*60); }
 function sonnoHM(h){ var t=sonnoMin(h); return t===null? "" : Math.floor(t/60)+"."+String(t%60).padStart(2,"0"); }
+/* HybridCharge del mattino (0-100, Zepp). Prima del 07/11/2026 c'era la readiness: resta nello storico, non si confronta */
+function hcTxt(b){ return (b && b.hc!=null && b.hc!=="") ? String(b.hc) : "–"; }
 function sonnoTxt(h){ var t=sonnoMin(h); return t===null? "–" : Math.floor(t/60)+" h "+String(t%60).padStart(2,"0"); }
 
 /* ---------- riscaldamento: 6 minuti, blocco scoliosi ---------- */

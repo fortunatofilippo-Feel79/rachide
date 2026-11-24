@@ -131,6 +131,12 @@ function cardRecuperoGrafico(){
   var out='<div class="card"><div class="between"><div class="eyebrow">Recupero · HRV</div><div class="xs mut">media a 7 giorni</div></div><div class="gwrap">'+
     gLine(ptsDaily(g,m),{band:h? [h.basso,h.alto] : null, dec:0, alt:"HRV, media a 7 giorni", vuoto:"Servono almeno 3 notti con HRV in una settimana."})+'</div>';
   out+='<div class="xs mut" style="margin-top:4px">'+(h? 'Fascia verde = la tua norma ('+h.basso+'-'+h.alto+'): '+(h.trend==="sotto"?'ora sei sotto, tieni i carichi fermi.':h.trend==="sopra"?'ora sei sopra la norma.':'ora sei dentro.') : 'La norma si calcola dopo 14 notti.')+'</div>';
+  var hg=mm7("hc",g,4), hs=(typeof hcStato==="function")? hcStato(today()) : null;
+  if(hg.some(function(v){ return v!=null; })){
+    out+='<div class="between" style="margin-top:12px"><div class="eyebrow">HybridCharge · Zepp</div><div class="xs mut">media a 7 giorni</div></div><div class="gwrap">'+
+      gLine(ptsDaily(g,hg),{ref: hs? [{y:hs.norma, t:"norma "+hs.norma}] : [], dec:0, min:0, max:100, alt:"HybridCharge, media a 7 giorni", vuoto:"Servono almeno 4 mattine con HybridCharge in una settimana."})+'</div>'+
+      '<div class="xs mut" style="margin-top:4px">'+(hs? esc(hcTesto(hs))+'. ' : 'La tua norma si calcola dopo 14 mattine. ')+'Solo lettura: è calcolato da sonno, HRV e FC, che lo stato di oggi legge già.</div>';
+  }
   ["sonno7","fc7","stress7"].forEach(function(id){
     var d=KPI.filter(function(x){ return x.id===id; })[0], v=kpiValori()[id];
     out+='<button class="krow" data-a="kpi" data-v="'+id+'"><i style="background:'+STATO_COL[v.stato]+'"></i><span class="kn">'+esc(d.nome.replace(", media 7 giorni",""))+'</span>'+kpiSpark(id)+'<span class="kv">'+esc(kpiBreve(d,v))+'</span></button>';

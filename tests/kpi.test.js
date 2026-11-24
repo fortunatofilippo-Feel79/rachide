@@ -51,10 +51,13 @@ test('agenda: la sera non e\' ancora dovuta alle 10, il mattino si', () => {
   assert.equal(ctx.agendaVoci().find(x => x.k === 'mattina').fatto, true);
 });
 
-test('agenda della domenica: chiusura e riepilogo settimanale', () => {
+test('agenda della domenica: una voce sola, la chiusura comprende passi e ipopnea', () => {
   const ctx = carica({ now: new Date(2026, 10, 8, 19, 0, 0).getTime() });
-  const k = ctx.agendaVoci().map(x => x.k);
-  assert.ok(k.includes('chiusura') && k.includes('sett'));
+  const v = ctx.agendaVoci();
+  const k = v.map(x => x.k);
+  assert.ok(k.includes('chiusura'));
+  assert.ok(!k.includes('sett'), 'il riepilogo settimanale non e\' piu\' una voce a parte');
+  assert.match(v.find(x => x.k === 'chiusura').d, /passi e ipopnea/);
 });
 
 test('ogni KPI ha definizione, bersaglio, fonte nota e un valore calcolabile', () => {

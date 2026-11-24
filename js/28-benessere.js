@@ -61,6 +61,13 @@ function beneGruppi(righe, cond, val){
   righe.forEach(function(x){ var c=cond(x), v=val(x); if(c==null || v==null || isNaN(v)) return; (c? A : B).push(+v); });
   return {a:A.length? media(A) : null, b:B.length? media(B) : null, na:A.length, nb:B.length};
 }
+/* ora di fine cena (hh:mm): l'ultima voce di cena con l'ora */
+function cenaOra(b){
+  if(!b || !b.cibJ) return null;
+  var g; try{ g=JSON.parse(b.cibJ); }catch(e){ return null; }
+  var t=(g.cen||[]).map(function(v){ return v.t; }).filter(Boolean).sort();
+  return t.length? t[t.length-1] : null;
+}
 function beneLetture(){
   var gg=S.ben.filter(function(b){ return dataOk(b.date) && giorniDa(b.date)>=0 && giorniDa(b.date)<BENE_GIORNI; });
   var per={}; gg.forEach(function(b){ per[b.date]=b; });
@@ -94,6 +101,22 @@ function beneLetture(){
   /* grassi del giorno e reflusso */
   metti(beneGruppi(gg, function(b){ return b.cibG>0? b.cibG>=tg.g*1.25 : null; }, function(b){ return b.refl; }), 0.5, false, function(g,d){
     return {t:"Grassi e reflusso", m:"Nelle giornate oltre "+Math.round(tg.g*1.25)+" g di grassi il reflusso è "+dec(r1(g.a))+" su 3, nelle altre "+dec(r1(g.b))+"."}; });
+  /* ora della cena e reflusso della notte dopo. Il reflusso si segna la sera e conta il giorno
+     e la notte prima: la cena di oggi si legge nel reflusso di domani. Lo spartiacque e' la tua
+     ora di cena tipica (mediana), cosi' i due gruppi esistono sempre. Linea guida ACG 2022:
+     niente pasti 2-3 ore prima di coricarsi (raccomandazione debole). */
+  var dopo=function(b){ return per[d2s(new Date(s2d(b.date).getTime()+86400000))]||null; };
+  var oreCena=gg.map(function(b){ var o=cenaOra(b); return o==null? null : hm(o); }).filter(function(x){ return x!=null; });
+  if(oreCena.length>=2*BENE_MIN_N){
+    var medC=Math.round(mediana(oreCena)), medTxt=("0"+Math.floor(medC/60)).slice(-2)+":"+("0"+Math.round(medC%60)).slice(-2);
+    /* le cene alla stessa ora della mediana vanno nel gruppo che rende le due parti piu' simili */
+    var tardi=oreCena.filter(function(t){ return t>medC; }).length, presto=oreCena.filter(function(t){ return t<medC; }).length;
+    var pariTardi = tardi<presto;
+    metti(beneGruppi(gg, function(b){ var o=cenaOra(b); if(o==null) return null; var t=hm(o); return pariTardi? t>=medC : t>medC; },
+      function(b){ var n=dopo(b); return n && n.refl!=null? n.refl : null; }), 0.4, false, function(g,d){
+      return {t:"Ora della cena e reflusso", m:"Dopo le cene finite "+(pariTardi? "dalle " : "oltre le ")+medTxt+" (la tua ora tipica) il reflusso della notte dopo è "+dec(r1(g.a))+" su 3, dopo quelle più presto "+dec(r1(g.b))+" su 3."+
+        (d>0? " Anticipare la cena è la leva più semplice: la linea guida ACG 2022 suggerisce 2-3 ore prima di coricarsi." : "")}; });
+  }
   /* sonno e energia in seduta */
   metti(beneGruppi(gg, function(b){ var s=son(b); return s==null? null : s<SONNO_BASSO; }, function(b){ var s=seduta(b.date); return s && s.en? s.en : null; }), 0.5, false, function(g,d){
     return {t:"Sonno ed energia in seduta", m:"Nelle sedute dopo una notte corta segni energia "+dec(r1(g.a))+" su 5, nelle altre "+dec(r1(g.b))+"."+(d<0? " In quei giorni l'app ti propone di accorciare: conviene accettare." : "")}; });
@@ -149,12 +172,27 @@ function beneSuggerimentiOggi(st){
   return out;
 }
 
+/* tre livelli di lettura: lo stato di oggi decide la seduta; questa riga dice come va
+   la settimana (il dettaglio e' in Corpo); KPI e diagnosi sono il dettaglio per il coach */
+function rigaBenessereSett(){
+  var ix=beneIndice(); beneSegna(ix.indice);
+  if(ix.indice==null) return "";
+  var col = ix.indice>=80? "var(--ok)" : ix.indice>=60? "var(--amb)" : "var(--alert)";
+  var deb=ix.aree.filter(function(a){ return a.punti!=null && a.stato!=="ok"; }).sort(function(a,b){ return a.punti-b.punti; })[0];
+  var prec=(S.beneSett||{})[weekOf(today())-1];
+  return '<button class="card flat" data-a="nav" data-v="corpo" style="display:block;width:100%;text-align:left;padding:12px 14px">'+
+    '<div class="between"><div class="eyebrow">La settimana · benessere</div><div class="ch" style="color:var(--dim)">›</div></div>'+
+    '<div class="sm" style="margin-top:4px"><b style="color:'+col+'">'+ix.indice+'/100</b> · '+esc(ix.titolo.toLowerCase())+
+    (prec!=null? ' <span class="xs mut">('+(ix.indice-prec>=0?"+":"")+(ix.indice-prec)+' sulla scorsa)</span>' : '')+
+    (deb? ' · da guardare: <b>'+esc(deb.n.toLowerCase())+'</b>' : ' · nessuna area fuori posto')+'</div></button>';
+}
+
 /* ---------- la scheda ---------- */
 function cardBenessere(){
   var ix=beneIndice(); beneSegna(ix.indice);
   var col = ix.indice==null? "var(--faint)" : ix.indice>=80? "var(--ok)" : ix.indice>=60? "var(--amb)" : "var(--alert)";
   var w=weekOf(today()), prec=(S.beneSett||{})[w-1];
-  var h='<div class="card" style="border-color:'+col+'"><div class="between"><div class="eyebrow" style="color:'+col+'">Benessere</div>'+
+  var h='<div class="card" style="border-color:'+col+'"><div class="between"><div class="eyebrow" style="color:'+col+'">Benessere della settimana</div>'+
     '<button class="lnk xs" data-a="beneinfo">Come lo calcolo?</button></div>'+
     '<div class="between" style="margin-top:6px;align-items:flex-end"><div><span class="num" style="font-size:32px;color:'+col+'">'+(ix.indice==null? "–" : ix.indice)+'</span><small class="mut" style="font-weight:600"> su 100</small></div>'+
     '<div style="text-align:right"><div class="sm" style="font-weight:700">'+ix.titolo+'</div>'+
