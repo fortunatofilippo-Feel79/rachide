@@ -488,8 +488,8 @@ function formBen(date, isAdd, momento){
     '<div class="grid3">'+
       '<label class="fld"><span class="eyebrow">HRV notte</span><input type="number" inputmode="numeric" id="bHrv" value="'+(b.hrv||"")+'"'+ph(ie.hrv)+'></label>'+
       '<label class="fld"><span class="eyebrow">FC riposo</span><input type="number" inputmode="numeric" id="bRhr" value="'+(b.rhr||"")+'"'+ph(ie.rhr)+'></label>'+
-      '<label class="fld"><span class="eyebrow">HybridCharge</span><input type="number" inputmode="numeric" min="0" max="100" id="bHc" value="'+(b.hc==null?"":b.hc)+'"'+ph(ie.hc)+'></label></div>'+
-    '<div class="scala">HybridCharge al risveglio, 0-100: <b>0-59</b> scarso · <b>60-79</b> discreto · <b>80-100</b> buono (fasce di Zepp). Lo calcola da sonno, HRV e FC: l\'app lo legge insieme a quei numeri, non in più.</div>'+
+      '<label class="fld"><span class="eyebrow">HybridCharge risveglio</span><input type="number" inputmode="numeric" min="0" max="100" id="bHc" value="'+(b.hc==null?"":b.hc)+'"'+ph(ie.hc)+'></label></div>'+
+    '<div class="scala">Scrivi il valore <b>al risveglio</b> (Wake), non quello del momento: quello del momento cambia con l\'ora in cui guardi e non si confronta da un giorno all\'altro. Fasce di Zepp: <b>0-59</b> scarso · <b>60-79</b> discreto · <b>80-100</b> buono. Lo calcola da sonno, HRV e FC: l\'app lo legge insieme a quei numeri, non in più.</div>'+
     '<div class="grid2">'+
       '<label class="fld"><span class="eyebrow">Sonno ore.minuti</span><input type="text" inputmode="decimal" id="bSonno" value="'+sonnoHM(b.sonno)+'"'+(ph(sonnoHM(ie.sonno))||' placeholder="6.40"')+'></label>'+
       '<label class="fld"><span class="eyebrow glow">Peso mattino kg</span><input type="number" step="0.1" inputmode="decimal" id="bPeso" value="'+(b.peso||"")+'"'+ph(ie.peso)+'></label></div>'+

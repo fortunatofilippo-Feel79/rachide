@@ -46,6 +46,6 @@ Punto di partenza: **5 schede**, **24 KPI**, un indice di benessere su 6 aree, u
 | E | **Ora della cena e reflusso** | Nei «tuoi dati letti insieme» (Corpo). L'ora di fine cena si confronta con il reflusso segnato la sera dopo, che conta anche la notte. Lo spartiacque è la tua ora di cena tipica e servono 4 cene per parte. Riferimento: la [linea guida ACG 2022](https://pubmed.ncbi.nlm.nih.gov/34807007/) suggerisce di non mangiare nelle 2-3 ore prima di coricarsi (raccomandazione condizionale, evidenza bassa) |
 | F | **Spuntino proteico** | Se colazione o pranzo restano sotto 0,25 g/kg di proteine, l'app propone con un tocco lo spuntino proteico che usi di più. Se non ne hai uno abituale, lo prende dal catalogo (yogurt greco, latte proteico). Dopo colazione va nello spuntino della mattina, dopo pranzo in quello del pomeriggio. Dopo cena niente spuntino, per il reflusso |
 
-## 3. Cosa mi serve ancora sapere da te
-1. Nell'app Zepp vedi ancora **HRV notturna e FC a riposo** separate, o solo HybridCharge? Se spariscono, il recupero va riscritto attorno a HybridCharge.
-2. Quale valore di HybridCharge leggi la mattina: quello al **risveglio** (Wake) o quello del momento? L'app dà per scontato il primo.
+## 3. Risposte (24/11/2026)
+1. In Zepp **HRV notturna e FC a riposo restano separate** da HybridCharge: il recupero continua a leggere HRV e FC, e HybridCharge resta una conferma.
+2. La mattina si vedono sia HybridCharge al risveglio sia quello del momento. **Si registra solo quello al risveglio** (versione 4.12.1): è preso ogni giorno nello stesso momento, quindi si può confrontare da un giorno all'altro e con la tua norma. Quello del momento dipende dall'ora in cui lo guardi.
