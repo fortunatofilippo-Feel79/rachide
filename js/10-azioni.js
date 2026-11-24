@@ -515,9 +515,9 @@ function formBen(date, isAdd, momento){
     '<label class="fld"><span class="eyebrow">Stress · 0 nessuno · 3 marcato'+hi(ie.stress)+'</span><div class="pills" id="bStr">'+
       [0,1,2,3].map(v=>'<button class="pill '+(b.stress===v?"on":"")+'" data-st="'+v+'">'+v+'</button>').join("")+'</div></label>'+
     '<div class="scala"><b>0</b> tranquilla, stacchi senza sforzo · <b>1</b> normale: impegni gestiti · <b>2</b> pesante: tensione nel corpo o fatichi a staccare · <b>3</b> ti senti sopraffatto. Valuta la giornata intera, non il momento.</div>'+
-    '<label class="fld"><span class="eyebrow">Testa · 1 vuoto · 5 lucido'+hi(ie.mente)+'</span><div class="pills" id="bMen">'+
+    '<label class="fld"><span class="eyebrow">Mente · 1 svuotata · 5 carica'+hi(ie.mente)+'</span><div class="pills" id="bMen">'+
       [1,2,3,4,5].map(v=>'<button class="pill '+(b.mente===v?"on":"")+'" data-me="'+v+'">'+v+'</button>').join("")+'</div></label>'+
-    '<div class="scala"><b>1</b> annebbiato tutto il giorno · <b>2</b> appannato, ti distrai spesso · <b>3</b> il tuo solito · <b>4</b> sveglio, ti concentri con facilità · <b>5</b> giornata limpida. Pensa alle ore centrali, non a stasera.</div>'+
+    '<div class="scala"><b>1</b> svuotata: tutto pesa, anche le cose piacevoli costano fatica · <b>2</b> scarica: vai avanti ma senza voglia, poca pazienza, ti distrai · <b>3</b> il tuo solito · <b>4</b> carica: motivato, ti concentri con facilità · <b>5</b> piena: entusiasmo e lucidità in più. Valuta la testa e l\'umore della giornata, non il corpo: gambe stanche e testa presente è 4.</div>'+
     '<label class="fld"><span class="eyebrow">Note</span><input type="text" id="bNote" value="'+esc(b.note||"")+'"></label>';
   }
   h+=((!isAdd && dt!==today())?verWarn():"")+
