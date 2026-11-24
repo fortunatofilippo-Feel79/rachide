@@ -18,7 +18,7 @@ var BENE_DOM=[
   {k:"recupero",  n:"Recupero",             kpi:["hrv7","fc7","sonno7"]},
   {k:"testa",     n:"Testa",                kpi:["stress7"], extra:"mente"},
   {k:"corpo",     n:"Corpo",                kpi:["dolore","mobilita","asimmetria","vita_altezza"]},
-  {k:"movimento", n:"Movimento",            kpi:["aderenza","serie_gruppo","passi","camminate"]},
+  {k:"movimento", n:"Movimento",            kpi:["aderenza","serie_gruppo","passi","camminate","svelta"]},
   {k:"cibo",      n:"Nutrizione",           kpi:["proteine","kcal","pendenza","giorni_cibo"]},
   {k:"digestione",n:"Digestione e respiro", kpi:["reflusso7","ipopnea"], extra:"resp"}
 ];
@@ -117,6 +117,9 @@ function beneLetture(){
       return {t:"Ora della cena e reflusso", m:"Dopo le cene finite "+(pariTardi? "dalle " : "oltre le ")+medTxt+" (la tua ora tipica) il reflusso della notte dopo è "+dec(r1(g.a))+" su 3, dopo quelle più presto "+dec(r1(g.b))+" su 3."+
         (d>0? " Anticipare la cena è la leva più semplice: la linea guida ACG 2022 suggerisce 2-3 ore prima di coricarsi." : "")}; });
   }
+  /* camminata svelta e HRV del mattino dopo (regola 76) */
+  metti(beneGruppi(gg, function(b){ var p=prima(b); return (!p || p.svelta==null)? null : !!p.svelta; }, hrv), 0.07, true, function(g,d){
+    return {t:"Camminata svelta e HRV", m:"Il mattino dopo una camminata svelta l'HRV è in media "+Math.round(g.a)+", dopo i giorni senza "+Math.round(g.b)+"."+(d>0? " Nei tuoi dati la regola 76 funziona: tienila." : " Per ora non si vede un effetto: l'allenamento aerobico agisce in settimane, non in un giorno.")}; });
   /* sonno e energia in seduta */
   metti(beneGruppi(gg, function(b){ var s=son(b); return s==null? null : s<SONNO_BASSO; }, function(b){ var s=seduta(b.date); return s && s.en? s.en : null; }), 0.5, false, function(g,d){
     return {t:"Sonno ed energia in seduta", m:"Nelle sedute dopo una notte corta segni energia "+dec(r1(g.a))+" su 5, nelle altre "+dec(r1(g.b))+"."+(d<0? " In quei giorni l'app ti propone di accorciare: conviene accettare." : "")}; });
@@ -146,6 +149,7 @@ var BENE_CONS={
   aderenza:  function(){ return "Sedute sotto il piano: in Adatta la settimana segna i giorni veri e il tempo che hai. Meglio tre sedute da 30 minuti che una saltata."; },
   serie_gruppo:function(v){ return "Volume fuori dal range su qualche gruppo ("+v.txt.split("fuori: ")[1]+"): lo sistema l'adattamento della settimana, guardalo prima della prossima seduta."; },
   passi:     function(){ return "Passi sotto 8.000: una camminata di 15 minuti dopo pranzo e una dopo cena valgono circa 3.000 passi e aiutano anche il reflusso."; },
+  svelta:    function(v){ return "Camminata svelta a "+v.txt+": la regola 76 ne chiede 3 a settimana. Mettila in calendario come una seduta, per esempio dopo il lavoro, almeno un'ora dopo il pranzo."; },
   camminate: function(){ return "Camminate dopo i pasti sotto il bersaglio: dieci minuti dopo cena sono quelli che contano di più per reflusso e glicemia."; },
   proteine:  function(v){ return "Proteine a "+v.txt+": aggiungi 25-30 g a colazione o uno spuntino proteico al pomeriggio, non tutto a cena."; },
   kcal:      function(v){ return "Calorie "+v.txt+": se sei sotto, la crescita si ferma prima che lo dicano i carichi; se sei sopra, guarda la vita alla prossima misura."; },

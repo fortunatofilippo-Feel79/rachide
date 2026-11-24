@@ -163,6 +163,7 @@ function kpiStoria(id){
     mobilita:function(){ var p=(S.mob||[]).filter(function(m){ return dataOk(m.date); }).map(function(m,i){ var mx=null; MOB.filter(function(t){ return t.bi; }).forEach(function(t){ var d=mobAsym(m,t.k); if(d!==null) mx=Math.max(mx||0, Math.abs(d)); }); return {x:i, y:mx, l:lblData(m.date)}; });
       return {tipo:"line", pts:p, ref:[{y:2,t:"2"}], dec:1, min:0, nota:"Massima differenza sinistra-destra ad ogni rilevazione."}; },
     completezza:function(){ return {tipo:"bar", items:ws.map(function(w){ var n=S.ben.filter(function(b){ return b.w===w && mattinaFatta(b); }).length; return {l:String(w), v:n}; }), line:5, lineT:"5", nota:"Mattine registrate per settimana."}; },
+    svelta:function(){ return {tipo:"bar", items:ws.map(function(w){ var n=S.ben.filter(function(b){ return b.w===w && b.svelta===true; }).length; return {l:String(w), v:n}; }), line:3, lineT:"3", nota:"Camminate svelte da 30′ per settimana (regola 76)."}; },
     camminate:function(){ var g=giorniN(56), m=mm7("camm",g,3); return {tipo:"line", pts:ptsDaily(g,m), ref:[{y:1.5,t:"1,5"}], dec:1, min:0, nota:"Media a 7 giorni delle camminate dopo i pasti."}; }
   };
   var f=T[id]; return f? f() : {tipo:"vuoto", t:"Nessuna storia per questo indicatore."};

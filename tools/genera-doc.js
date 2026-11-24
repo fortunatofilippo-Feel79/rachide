@@ -36,7 +36,7 @@ const COLONNE = {
     passi: 'passi medi della settimana (domenica)', ipo: 'indice di ipopnea eventi/ora (domenica)', dolm: 'dolore massimo al mattino 0-10 (qualsiasi zona)',
     dolmz: 'dolore al mattino per zona, zona:valore separati da ;',
     cibP: 'proteine del giorno g', cibC: 'carboidrati g', cibG: 'grassi g', cibA: 'alcol del giorno g (7 kcal al grammo, contate nelle calorie)', cibJ: 'pasti del giorno (JSON: colazione, spuntini, pranzo, cena, fuori pasto; salta = pasti segnati come saltati). Gli spuntini sono facoltativi: conta il totale del giorno',
-    sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', dolnotte: 'dolore di notte Sì/No (regola 19: medico, non coach)', note: 'nota libera'
+    sede: 'dove hai dormito: Casa o Fuori', citta: 'città, se fuori', dolnotte: 'dolore di notte Sì/No (regola 19: medico, non coach)', svelta: 'camminata svelta 30′ fatta oggi Sì/No (sera, regola 76); vuoto se non segnata. Diversa da camm, le camminate lente dopo i pasti', note: 'nota libera'
   },
   sim: { date: 'data', w: 'settimana', ex: 'esercizio del check', q: 'domanda', a: 'risposta Sì/No/Non verificato', side: 'lato che limita' },
   mob: {
@@ -118,7 +118,7 @@ function genera() {
    ['Dopo ogni pasto', 'Il pasto: scritto in una riga («pollo 200 g, riso 80, un cucchiaio d\'olio»: l\'app riconosce gli alimenti e mostra cosa ha capito), «come l\'ultima volta» (il giorno più recente con quel pasto), le tue ricette, i tuoi soliti con un tocco, codice a barre, tabella a grammi, porzioni del coach. Dalla scheda Cibo un pulsante apre già il pasto dell\'ora. Quello che non riconosce resta una stima che il coach converte', '20 secondi'],
    ['Durante la seduta', 'Serie (ripetizioni o secondi), carico o banda, RIR di ogni serie, lato più duro, com\'era l\'esecuzione (pulita, qualche sbavatura, sporca), note', 'in seduta'],
    ['Fine seduta', 'Durata, energia 1-5, dolore per zona (il massimo, già compilato dagli esercizi), note', '30 secondi'],
-   ['Prima di dormire', 'Reflusso 0-3, camminate dopo i pasti 0-2, respirazione 4-7, stress 0-3, testa 1-5', '30 secondi'],
+   ['Prima di dormire', 'Reflusso 0-3, camminate dopo i pasti 0-2, camminata svelta 30′ (regola 76, Sì/No), respirazione 4-7, stress 0-3, testa 1-5', '30 secondi'],
    ['Domenica', 'Un modulo solo: chiusura della settimana (tre domande; per ogni giorno della settimana dopo: casa, fuori con le bande, fuori senza niente o occupato, e 30, 60 o 90 minuti) con passi medi e ipopnea da Zepp nello stesso modulo', '2 minuti'],
    ['Domenica sera', 'Il coach legge il briefing (con la proposta dell\'app per la settimana dopo) e scrive il piano di massima (operazione `settimana`); l\'app lo mostra in Oggi, adatta gli esercizi al tempo di ogni giorno e lo porta nel calendario', 'coach'],
    ['Durante la settimana', 'Adatta la settimana: cambi luogo o tempo di un giorno e l\'app risceglie le sedute che mancano e ne adatta gli esercizi per chiudere tutti i gruppi. Se la settimana rischia di rompersi (meno di 2 sedute) propone 30 minuti a corpo libero', '1 minuto'],
