@@ -1,4 +1,4 @@
-# Revisione dell'app · versione 4.11.0 (24/11/2026)
+# Revisione dell'app · versioni 4.11.0 e 4.12.0 (24/11/2026)
 
 Che cosa è cambiato, perché, e cosa resta da decidere. Le fonti sono in fondo a ogni punto.
 
@@ -33,20 +33,19 @@ Che cosa è cambiato, perché, e cosa resta da decidere. Le fonti sono in fondo 
 - Misure: il peso si precompila con quello del mattino, senza scriverlo due volte.
 - Scheda Cibo: le etichette dei macronutrienti non vanno più a capo.
 
-## 2. Da decidere (non applicato)
+## 2. Razionalizzazione · applicata in 4.12.0 (decisione del 24/11/2026)
 
-Lettura della struttura: oggi l'app ha **5 schede**, **24 KPI**, un indice di benessere su 6 aree, uno stato di oggi con 9 segnali, una diagnosi e un briefing. È molto, e alcune cose si ripetono. Queste proposte toccano abitudini, quindi aspettano una tua decisione.
+Punto di partenza: **5 schede**, **24 KPI**, un indice di benessere su 6 aree, uno stato di oggi con 9 segnali, una diagnosi e un briefing. Molte cose si ripetevano.
 
-| # | Proposta | Perché | Costo per te |
-| --- | --- | --- | --- |
-| A | **Un solo posto per compilare.** Benessere del mattino e della sera solo dall'agenda di Oggi; in Corpo resta il riepilogo da leggere (e la correzione dei giorni passati) | Oggi gli stessi moduli si aprono da Oggi e da Corpo | nessuno |
-| B | **Domenica in un modulo solo.** Passi medi e ipopnea dentro la chiusura della settimana | Oggi sono due voci separate in agenda, la stessa sera | nessuno |
-| C | **Tre livelli di lettura, non tre sintesi.** Stato di oggi = decisione sulla seduta; indice di benessere = come va la settimana (una riga in Oggi, il dettaglio in Corpo); KPI e diagnosi = per il coach, in Progressi | Stato, indice e diagnosi oggi si leggono in tre schede diverse con parole diverse | da provare |
-| D | **HybridCharge nel tempo.** Una media a 7 giorni contro il tuo riferimento personale, come per l'HRV, solo come lettura (non nello stato di oggi) | Le fasce di Zepp sono uguali per tutti; il tuo 65 può essere normale | serve 1 mese di dati |
-| E | **Pasti e reflusso.** Lettura incrociata fra ora della cena e reflusso della notte, ora che le voci hanno l'ora | La regola 52 parla del pasto prima della seduta; per il reflusso conta anche la cena | nessuno, servono 3-4 settimane di dati |
-| F | **Spuntini e proteine.** Se un pasto principale resta basso di proteine, proporre lo spuntino proteico giusto fra quelli che usi già | Arrivare a 4 pasti da 0,4 g/kg è la strada indicata da Schoenfeld e Aragon | nessuno |
+| # | Cosa | Come funziona adesso |
+| --- | --- | --- |
+| A | **Un solo posto per compilare** | Mattino e sera si compilano solo dall'agenda di Oggi («Da registrare oggi»). In Corpo il riquadro «Benessere di oggi» dice cosa manca e rimanda a Oggi. Si possono ancora correggere i giorni passati e aggiungere un giorno saltato |
+| B | **Domenica in un modulo solo** | La chiusura della settimana ha un quarto punto: passi medi e ipopnea da Zepp. In agenda c'è una voce sola. In Corpo il riquadro «Passi e ipopnea» si legge, e «Modifica» riapre la chiusura |
+| C | **Tre livelli di lettura** | **Stato di oggi** (Oggi): decide la seduta. **Benessere della settimana**: una riga in Oggi (punteggio, confronto con la settimana scorsa, area da guardare), il dettaglio in Corpo. **KPI e diagnosi** (Progressi): il dettaglio per il coach, ora scritto in testa alle due schede |
+| D | **HybridCharge nel tempo** | Media dei 7 giorni contro la tua norma, cioè la mediana dei 60 giorni precedenti. Servono almeno 14 mattine; da 10 punti sotto si legge «sotto il tuo solito». Compare in Corpo, nel grafico di Progressi → Salute (con la linea della norma) e nel briefing. È solo una lettura: non entra nello stato di oggi |
+| E | **Ora della cena e reflusso** | Nei «tuoi dati letti insieme» (Corpo). L'ora di fine cena si confronta con il reflusso segnato la sera dopo, che conta anche la notte. Lo spartiacque è la tua ora di cena tipica e servono 4 cene per parte. Riferimento: la [linea guida ACG 2022](https://pubmed.ncbi.nlm.nih.gov/34807007/) suggerisce di non mangiare nelle 2-3 ore prima di coricarsi (raccomandazione condizionale, evidenza bassa) |
+| F | **Spuntino proteico** | Se colazione o pranzo restano sotto 0,25 g/kg di proteine, l'app propone con un tocco lo spuntino proteico che usi di più. Se non ne hai uno abituale, lo prende dal catalogo (yogurt greco, latte proteico). Dopo colazione va nello spuntino della mattina, dopo pranzo in quello del pomeriggio. Dopo cena niente spuntino, per il reflusso |
 
-## 3. Cosa mi serve sapere da te
+## 3. Cosa mi serve ancora sapere da te
 1. Nell'app Zepp vedi ancora **HRV notturna e FC a riposo** separate, o solo HybridCharge? Se spariscono, il recupero va riscritto attorno a HybridCharge.
 2. Quale valore di HybridCharge leggi la mattina: quello al **risveglio** (Wake) o quello del momento? L'app dà per scontato il primo.
-3. Proposte A-F: quali vuoi, quali no.

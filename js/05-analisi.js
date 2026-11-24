@@ -828,8 +828,16 @@ function cardChiusura(w, completa){
     '<h2 style="margin:5px 0 4px;font-size:16px">Tre domande, un minuto</h2>'+
     '<div class="xs mut">Cosa ha funzionato, una cosa da cambiare, dove sei e quanto tempo hai la settimana prossima. Il coach ci costruisce il piano.</div></button>';
 }
+/* passi e ipopnea della settimana: vivono sulla riga benessere del giorno in cui li scrivi */
+function settZepp(w){ return S.ben.filter(function(x){ return x.w===w && (x.passi||x.ipo!=null&&x.ipo!==""); }).sort(function(a,b){ return s2d(b.date)-s2d(a.date); })[0] || {}; }
+function salvaSettZepp(passi, ipo, dove){
+  var dt=dove||today(), b=benOn(dt);
+  if(!b){ b={date:dt, w:weekOf(dt), refl:null, camm:null, resp:false, alc:false, hrv:null, rhr:null,
+             hc:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
+  b.passi=passi; b.ipo=ipo; benTouch(dt);
+}
 function formChiusura(){
-  var w=weekOf(today()), ch=(S.chiusure||{})[w]||{};
+  var w=weekOf(today()), ch=(S.chiusure||{})[w]||{}, sw=settZepp(w);
   sheet('<div class="eyebrow amb">Chiusura della settimana '+w+'</div><h2 style="margin:4px 0 10px">Tre domande, un minuto</h2>'+
     '<label class="fld"><span class="eyebrow">1 · Cosa è andato bene?</span><textarea id="cwBene" placeholder="Anche una cosa piccola">'+esc(ch.bene||"")+'</textarea></label>'+
     '<label class="fld"><span class="eyebrow">2 · Una cosa da cambiare</span><textarea id="cwCambia" placeholder="Una sola, concreta">'+esc(ch.cambia||"")+'</textarea></label>'+
@@ -841,6 +849,11 @@ function formChiusura(){
         return '<button class="pill'+(ch.mom===m?" on":"")+'" data-mo="'+m+'">'+m+'</button>'; }).join("")+'</div>'+
     '<div class="flag info" style="margin-top:10px"><b>Se-allora</b><div>Pensa ogni giorno così: «se è lunedì mattina, allora alleno». '+
       'Un piano legato a un momento preciso regge meglio di un\'intenzione generica.</div></div>'+
+    /* la domenica in un modulo solo: anche i due numeri della settimana da Zepp */
+    '<div class="eyebrow" style="margin-top:14px">4 · Da Zepp, la media della settimana</div>'+
+    '<div class="grid2"><label class="fld"><span class="eyebrow">Passi al giorno</span><input type="number" inputmode="numeric" id="wPassi" value="'+(sw.passi||"")+'"></label>'+
+    '<label class="fld"><span class="eyebrow">Ipopnea · eventi/ora</span><input type="number" step="0.1" inputmode="decimal" id="wIpo" value="'+(sw.ipo==null?"":sw.ipo)+'"></label></div>'+
+    '<div class="xs mut">I passi servono a leggere il peso (se la pendenza cala e i passi salgono, la causa è il movimento). L\'ipopnea non guida l\'allenamento: è un andamento da mostrare al medico se resta sopra 5.</div>'+
     '<button class="btn pri" style="margin-top:14px" data-a="savechiusw">Salva</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
 }
@@ -856,6 +869,9 @@ async function saveChiusura(){
   S.chiusure[w]={bene:document.getElementById("cwBene").value.trim(), cambia:document.getElementById("cwCambia").value.trim(),
     giorni:gg, mom:mo?mo.dataset.mo:"", fuori:fu, occupati:oc, ts:today()};
   cfgTocca("chiusure");
+  var num=function(id){ var e=document.getElementById(id); if(!e || e.value==="") return null; return +String(e.value).replace(",","."); };
+  var wp=num("wPassi"), wi=num("wIpo"), sw0=settZepp(w);
+  if(wp!=null || wi!=null || sw0.date) salvaSettZepp(wp, wi, sw0.date);   /* se c'erano gia', si corregge la stessa riga */
   var ok=await save(); closeSheet(); render();
   if(SYNC.on()) doPush(false);
   toast(!ok? "NON salvata: vedi la scheda Coach" :

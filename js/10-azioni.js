@@ -139,6 +139,8 @@ document.addEventListener("click", function(ev){
     if(vv) cibAddVoce(el.dataset.m, vv).then(function(){ render(); formPasto(el.dataset.m); });
     return;
   }
+  if(a==="cibprot"){ var cp=_CIBP, mkp=el.dataset.m; if(!cp) return;
+    cibAddVoce(cp.k, cp.v).then(function(){ render(); formPasto(mkp); toast(cp.v.n+" aggiunto allo "+meal(cp.k).n.toLowerCase()); }); return; }
   if(a==="ricsalva"){ formRicetta(el.dataset.m); return; }
   if(a==="ricok"){ var rn=document.getElementById("ricNome"), mkr=el.dataset.m;
     if(!rn || !rn.value.trim()){ toast("Dai un nome alla ricetta"); return; }
@@ -161,8 +163,7 @@ document.addEventListener("click", function(ev){
   if(a==="swagg"){ swApplica(); return; }
   if(a==="purga"){ purgaSheet(); return; }
   if(a==="purgago"){ purgaVai(); return; }
-  if(a==="sett"){ formSett(); return; }
-  if(a==="savesett"){ saveSett(); return; }
+  if(a==="sett"){ formChiusura(); return; }
   if(a==="mob"){ formMob(); return; }
   if(a==="savemob"){ saveMob(); return; }
   if(a==="mobhow"){ mobHow(el.dataset.k); return; }
@@ -556,9 +557,6 @@ async function saveBen(origDate){
 }
 var SIMQ=[["Floor Press","I due manubri arrivano in alto insieme?"],["Box Squat","Il peso è uguale sui due piedi? (5 squat a occhi chiusi)"],
   ["Split-stance RDL","I due lati scendono alla stessa profondità?"],["Bird-dog","I due lati sono ugualmente stabili?"]];
-/* riepilogo settimanale: due numeri, una volta a settimana.
-   Vivono sulla riga benessere del giorno in cui li scrivi, così non
-   serve una tabella nuova sul foglio. */
 function purgaSheet(){
   var n=conteggiaRotte();
   sheet('<div class="eyebrow amb">Conferma</div><h2 style="margin:4px 0 8px">Rimuovere '+n+' righe?</h2>'+
@@ -582,28 +580,6 @@ async function purgaVai(){
   closeSheet(); render();
   toast(okS? tolte+" righe rimosse" : "NON salvato: vedi la scheda Coach");
 }
-function formSett(){
-  var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0]||{};
-  sheet('<div class="eyebrow">Riepilogo settimanale</div><h2 style="margin:4px 0 4px">Settimana '+weekOf(dt)+'</h2>'+
-    '<div class="sm mut" style="margin-bottom:6px">Due numeri letti da Zepp, una volta a settimana. La domenica è il momento naturale.</div>'+
-    '<label class="fld"><span class="eyebrow">Passi · media giornaliera</span><input type="number" inputmode="numeric" id="wPassi" value="'+(b.passi||"")+'"></label>'+
-    '<div class="xs mut">Serve al modulo peso: se la pendenza si appiattisce e i passi sono saliti, la causa è il movimento, non il cibo.</div>'+
-    '<label class="fld"><span class="eyebrow">Indice ipopnea · eventi/ora</span><input type="number" step="0.1" inputmode="decimal" id="wIpo" value="'+(b.ipo||"")+'"></label>'+
-    '<div class="xs mut">Non guida l\'allenamento. Serve ad avere un andamento da mostrare al medico se resta sopra 5.</div>'+
-    '<button class="btn pri" style="margin-top:14px" data-a="savesett">Salva</button>'+
-    '<button class="btn ghost" style="margin-top:8px" data-a="x">Annulla</button>');
-}
-async function saveSett(){
-  var g=function(id){ var v=document.getElementById(id).value; return v===""?null:+v; };
-  var dt=today(), b=S.ben.filter(function(x){ return x.date===dt; })[0];
-  if(!b){ b={date:dt, w:weekOf(dt), refl:null, camm:null, resp:false, alc:false, hrv:null, rhr:null,
-             hc:null, sonno:null, peso:null, stress:null, mente:null, note:""}; S.ben.push(b); }
-  b.passi=g("wPassi"); b.ipo=g("wIpo");
-  benTouch(dt);
-  var okS=await save(); if(SYNC.on()) doPush(false);
-  closeSheet(); render(); toast(okS?"Riepilogo salvato":"NON salvato: vedi la scheda Coach");
-}
-
 /* --- modulo B: test di mobilità, ogni 28 giorni --- */
 function formMob(){
   var l=mobLast();

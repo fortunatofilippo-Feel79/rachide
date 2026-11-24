@@ -520,7 +520,12 @@ function formPasto(mk, cat){
     });
     h+='</div>';
     var pq=cibProtPasto(mk, t);
-    if(pq) h+='<div class="xs" style="margin:-4px 0 10px;color:var(--amb)">'+esc(pq)+'</div>';
+    if(pq){
+      h+='<div class="xs" style="margin:-4px 0 6px;color:var(--amb)">'+esc(pq)+'</div>';
+      var sp=cibSpuntinoProteico(mk);
+      if(sp) h+='<button class="btn sm" style="width:100%;margin-bottom:10px;text-align:left" data-a="cibprot" data-m="'+mk+'" data-t="'+sp.k+'">＋ '+esc(sp.v.n)+' <span class="xs mut">('+Math.round(sp.v.p*(sp.v.q||1))+' g di proteine) allo '+esc(meal(sp.k).n.toLowerCase())+'</span></button>';
+      else if(mk==="cen") h+='<div class="xs mut" style="margin:-2px 0 10px">Dopo cena niente spuntino (reflusso): recuperale domani a colazione.</div>';
+    }
     if(it.filter(function(v){ return !v.w; }).length>=2 && mk!=="ex")
       h+='<button class="btn sm ghost" style="width:100%;margin-bottom:10px" data-a="ricsalva" data-m="'+mk+'">Salva questo pasto come ricetta</button>';
   } else {
@@ -588,6 +593,23 @@ function cibProtPasto(mk, t){
   var obi=Math.round(pe*PROT_PASTO);
   if(t.p >= pe*0.25 || kcalDi(t)<250) return "";
   return "Proteine del pasto "+Math.round(t.p)+" g: per la crescita conviene arrivare a circa "+obi+" g (0,4 g/kg a pasto). Basta uno yogurt greco o un latte proteico.";
+}
+/* lo spuntino proteico giusto, fra quelli che usi gia': dopo colazione quello della mattina,
+   dopo pranzo quello del pomeriggio; dopo cena niente (reflusso). Solo se lo spuntino e' ancora vuoto. */
+var _CIBP=null;
+function cibSpuntinoProteico(mk){
+  var k = mk==="col"? "sm" : mk==="pra"? "sp" : null; _CIBP=null;
+  if(!k || cibDate()!==today()) return null;
+  var g=cibDay(); if((g[k]||[]).length || pastoSaltato(g, k)) return null;
+  var denso=function(v){ var kc=kcalDi(v); return v.p>=12 && kc>0 && 4*v.p/kc>=0.35 && v.g<=12; };
+  var mie=cibStorico("sm").concat(cibStorico("sp")).filter(function(v){ return !v.a && denso(v); })
+    .sort(function(a,b){ return (b.cnt-a.cnt) || (b.p-a.p); });
+  var v=mie[0];
+  if(!v){ var x=["Yogurt greco 0%","Milk Pro High Protein","Fiocchi di latte","Whey isolate"].map(cibFind).filter(Boolean)[0];
+    if(x) v={n:x.n, d:x.d, p:x.p, c:x.c, g:x.g, q:1}; }
+  if(!v) return null;
+  _CIBP={k:k, v:v};
+  return _CIBP;
 }
 /* nome per la ricetta tua */
 function formRicetta(mk){
